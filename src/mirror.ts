@@ -35,11 +35,17 @@ export interface Mirror {
   /** Results that looked like failures and were not, by named negative. */
   negatives: Record<NegativeKind, number>;
   editSequences: { candidates: number; sessionsWith: number; promoted: number };
-  directives: { repeated: number; sessions: number };
+  /**
+   * The same instruction given in several sessions: directive rooms (any object: a command, a path or words) whose
+   * cases span two or more sessions. sessions = the distinct sessions behind them; heldBack = the later cases the
+   * route withholds for the boss (P3: it read 0 while room 1 showed the same line in 3 sessions).
+   */
+  directives: { repeated: number; sessions: number; heldBack: number };
   workflows: { occurrences: number; sessions: number; verified: number };
   /** Cases the player has confirmed as issues so far (separate from every detector count). */
   confirmedIssues: number;
-  calls: { total: number; withResult: number; orphanResults: number };
+  /** interrupted = calls your stop cut off before any result was logged (their receipts say "interrupted, no result"). */
+  calls: { total: number; withResult: number; interrupted: number; orphanResults: number };
   redactions: number;
   topTools: [string, number][];
   rooms: number;
@@ -58,10 +64,10 @@ export function buildMirror(sessions: Session[], episodes: Episode[], rooms: Roo
     repeatedCommand: { episodes: 0, sessionsWith: 0, shellCalls: 0, genuineFailures: 0 },
     negatives: negativeCounts(sessions),
     editSequences: { candidates: 0, sessionsWith: 0, promoted: 0 },
-    directives: { repeated: 0, sessions: 0 },
+    directives: { repeated: 0, sessions: 0, heldBack: 0 },
     workflows: { occurrences: 0, sessions: 0, verified: 0 },
     confirmedIssues: 0,
-    calls: { total: 0, withResult: 0, orphanResults: 0 },
+    calls: { total: 0, withResult: 0, interrupted: 0, orphanResults: 0 },
     redactions: 0,
     topTools: [],
     rooms: rooms.length,
@@ -115,8 +121,12 @@ export function buildMirror(sessions: Session[], episodes: Episode[], rooms: Roo
   m.repeatedCommand.sessionsWith = sessionsOf((e) => e.type === 'repeated-command').size;
   const es = episodes.filter((e) => e.type === 'edit-sequence');
   m.editSequences = { candidates: es.length, sessionsWith: sessionsOf((e) => e.type === 'edit-sequence').size, promoted: es.filter((e) => e.type === 'edit-sequence' && e.promoted).length };
-  const textRooms = rooms.filter((r) => r.family === 'directive' && r.object.kind === 'text');
-  m.directives = { repeated: textRooms.length, sessions: new Set(textRooms.flatMap((r) => [...r.episodes, ...r.withheld].map((e) => e.sessionId))).size };
+  const sessionsIn = (r: Room) => new Set([...r.episodes, ...r.withheld].map((e) => e.sessionId));
+  const dirRooms = rooms.filter((r) => r.family === 'directive' && sessionsIn(r).size >= 2);
+  m.directives = { repeated: dirRooms.length, sessions: new Set(dirRooms.flatMap((r) => [...sessionsIn(r)])).size, heldBack: dirRooms.reduce((a, r) => a + r.withheld.length, 0) };
+  // Calls a stop cut off before any result was logged (one per interrupted call, agent-authored sessions excluded).
+  const human = new Set(sessions.filter((x) => !x.agentAuthored).map((x) => x.id));
+  m.calls.interrupted = new Set(episodes.flatMap((e) => (e.type === 'interrupt' && human.has(e.sessionId) && e.interruptedCall && !e.interruptedCall.result ? [`${e.sessionId}:${e.interruptedCall.callId}`] : []))).size;
   const wf = episodes.filter((e) => e.type === 'workflow');
   m.workflows = { occurrences: wf.length, sessions: sessionsOf((e) => e.type === 'workflow').size, verified: rooms.filter((r) => r.family === 'workflow').length };
   if (disp) for (const e of episodes) if (disp.get(e.id) === 'issue') m.confirmedIssues++;
@@ -143,7 +153,9 @@ export function character(m: Mirror, episodes: Episode[], total: number): Charac
     if (what) cutoff.set(what, (cutoff.get(what) ?? 0) + 1);
   }
   const top = [...cutoff.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
-  const stopLine = `${plural(stops.length, 'stop')} in ${plural(total, 'session')}${top && top[1] >= 2 ? ` · ${top[1]} cut off ${top[0]}` : ''}`;
+  // One truth with its denominator (P3 gate fix 8): the stops that drew a line, out of every stop you made.
+  // The sessions it was seen in print on the card's footer (evidenceSessions of the total).
+  const stopLine = `${stops.length} of ${plural(m.interrupts, 'stop')} drew a line${top && top[1] >= 2 ? ` · ${top[1]} of them cut off ${top[0]}` : ''}`;
   const table: Record<CharacterName, { n: number; line: string }> = {
     'Boundary Keeper': { n: lineSessions, line: stopLine },
     'Ritual Smith': { n: m.workflows.sessions, line: `The same check, diff and report sequence ran in ${m.workflows.sessions} of ${plural(total, 'session')}` },

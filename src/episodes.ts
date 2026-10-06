@@ -145,6 +145,9 @@ export function describeCall(c: ToolCall | null): string | null {
   return c.name;
 }
 
+/** The receipt's result for a call the player's stop cut off before any result was logged. */
+export const INTERRUPTED_NO_RESULT = 'interrupted, no result';
+
 export function describeResult(c: ToolCall | null): string | null {
   if (!c) return null;
   if (!c.result) return 'no result recorded';
@@ -300,7 +303,8 @@ export function interruptEpisodes(s: Session): InterruptEpisode[] {
       receipt: {
         quote: human ? clip(human.text, QUOTE_LIMIT) : null,
         action: describeCall(cut),
-        result: describeResult(cut),
+        // The stop cut the call off: say so, never a bare "no result recorded" (P3 gate fix 8).
+        result: cut && !cut.result ? INTERRUPTED_NO_RESULT : describeResult(cut),
       },
     });
   }

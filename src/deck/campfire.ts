@@ -62,7 +62,8 @@ function pairKind(a: Card, b: Card): { kind: FuseKind; why: string } | null {
   const ta = contentTokens(a.text);
   const tb = contentTokens(b.text);
   const j = jaccard(ta, tb);
-  if (j >= NEAR_DUPLICATE) return { kind: 'near', why: `${Math.round(j * 100)}% of the content words match` };
+  // The share itself stays off the thread (P3 gate fix 12): the preview shows the shared words beside the two lines.
+  if (j >= NEAR_DUPLICATE) return { kind: 'near', why: 'most content words match' };
   const [short, long] = ta.length <= tb.length ? [ta, b.text] : [tb, a.text];
   const longT = contentTokens(long);
   if (short.length > 0 && short.every((t) => longT.includes(t)) && EXCEPTION_WORDS.test(long)) return { kind: 'subsumed', why: 'the longer line says the same and adds an exception' };

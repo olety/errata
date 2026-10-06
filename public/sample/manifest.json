@@ -3773,7 +3773,7 @@
     "pivot_sessions": [
       "S02"
     ],
-    "display": "6 stops in 12 sessions · 5 cut off a full test run",
+    "display": "6 of 7 stops drew a line · 5 of them cut off a full test run",
     "disposition": "Counts are recounted from actual session events: six boundary/test stops, five interrupted full-suite pytest calls, and twelve sessions. S02 is a pivot, not a stop; including it gives seven interruption pairs. Describes the synthetic sampled build, not the person.",
     "expected_session_count": 12,
     "expected_full_suite_cutoffs": 5,

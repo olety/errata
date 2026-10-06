@@ -26,7 +26,7 @@ describe('type 1: interrupt → next genuine human message', () => {
     expect(e!.interrupt).toBe('turn_aborted');
     expect(e!.receipt.quote).toStartWith('no — keep the public API names');
     expect(e!.receipt.action).toBe('exec: sed -i s/get_user/fetch_user/g src/api/public.py');
-    expect(e!.receipt.result).toBe('no result recorded');
+    expect(e!.receipt.result).toBe('interrupted, no result');
   });
 
   test('a pivot is detected as an episode but starts unreviewed; it never counts until the player says issue', async () => {
