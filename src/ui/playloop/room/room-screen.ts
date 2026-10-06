@@ -142,7 +142,9 @@ function compose(p: ScreenProps<RoomView>, event: boolean): HTMLElement {
     reducedMotion: p.ui.reducedMotion,
     height: beastHeight(p, cols.arena, arenaH - PIPS_H),
     drag: p.drag,
+    // With a card selected, a tap on a head is the drop (tap–tap); only an idle tap reads the head's receipt.
     onHead: (id) => {
+      if (p.ui.selected) return;
       flush();
       p.api.focusReceipt(id);
     },

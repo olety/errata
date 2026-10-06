@@ -120,12 +120,12 @@ describe('ribbons (Astra, astra-neck)', () => {
     for (let t = 0.05; t <= 1; t += 0.05) expect(quadAt(S, c, P, t).y).toBeLessThan(quadAt(S, c, P, t - 0.05).y + 1e-9);
   });
 
-  test('the strip has one outline, a back face from the twist, and ring bands clamped to 2–6', () => {
+  test('the strip has one outline, a back face from the twist, and one ring band per repeat up to six', () => {
     const n = neckShape(S, P, 30, 40, 4);
     expect(n.front.startsWith('M')).toBe(true);
     expect(n.back).not.toBe('');
     expect(n.rings).toHaveLength(4);
-    expect(neckShape(S, P, 30, 40, 1).rings).toHaveLength(2);
+    expect(neckShape(S, P, 30, 40, 1).rings).toHaveLength(1);
     expect(neckShape(S, P, 30, 40, 11).rings).toHaveLength(6);
     expect(neckShape(S, P, 30, 40, 0).rings).toHaveLength(0);
     expect(neckShape(S, { x: 300, y: 380 }, 30, 40).back).toBe('');

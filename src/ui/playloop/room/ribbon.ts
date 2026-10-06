@@ -94,7 +94,7 @@ export interface NeckShape {
   front: string;
   /** The back face the twist shows (t ≥ 0.53), darker paper; empty for very short necks. */
   back: string;
-  /** Ring bands: short filled sections across the strip (2–6 drawn; the tag text says the count). */
+  /** Ring bands: short filled sections across the strip (one per repeat, at most six; the tag text says the count). */
   rings: string[];
   control: P;
   /** The ribbon itself, for the fold (section(0, u, u) shortens it along the same curve). */
@@ -104,13 +104,14 @@ export interface NeckShape {
 
 /**
  * A paper neck from socket `s` to head point `p`, width `w0` at the socket tapering to `w1` at the head, with
- * `rings` ring bands at t = i/(m+1), m clamped to 2–6 when any.
+ * `rings` ring bands at t = i/(m+1), m clamped to 1–6 when any.
  */
 export function neckShape(s: P, p: P, w0: number, w1: number, rings = 0, o: { anchor?: boolean; band?: number } = {}): NeckShape {
   const c = neckControl(s, p, o.anchor);
   const twist = len(sub(p, s)) > 40;
   const rib = ribbon(s, c, p, w0, w1, { twist, cap: 2 });
-  const m = rings > 0 ? Math.max(2, Math.min(6, Math.round(rings))) : 0;
+  // One band per repeat up to six; past six the tag's text carries the exact count.
+  const m = rings > 0 ? Math.max(1, Math.min(6, Math.round(rings))) : 0;
   const band = o.band ?? 3;
   const ringsD = Array.from({ length: m }, (_, i) => {
     const t = (i + 1) / (m + 1);
