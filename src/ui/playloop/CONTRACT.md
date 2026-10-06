@@ -4,7 +4,7 @@
 
 `adapter.ts` is the only play-loop module that imports the engine. Its `select*` functions turn the game state into views. Its `act*` functions are the only transitions. Every number in a view is computed there, with its honesty-map source (play-loop §13) named in a JSDoc line.
 
-`controller.ts` owns the one `PlayState`, routes input to `act*`, and hands views to components. `drag.ts` turns pointer and keyboard input into `DragIntent`s.
+`controller.ts` owns the one `PlayState`, routes input to `act*`, and hands views to components through `ControllerApi`. `drag.ts` turns pointer input into drags, taps and long-presses and resolves drops by hit-testing registered targets. `geometry.ts` computes the bands. `mount.ts` composes the workers' components per screen; `debug.ts` is the plain render on `#play`.
 
 ```
 engine (src/*.ts, src/deck/*)  ←  adapter.ts (select* / act*)  ←  controller.ts (state machine, keys, tap-tap)
@@ -39,7 +39,13 @@ engine (src/*.ts, src/deck/*)  ←  adapter.ts (select* / act*)  ←  controller
 | `CampfireView`, `ThreadView`, `ChangePreviewView`, `LaneTab` | `selectCampfire`, `selectChangePreview` | campfire |
 | `BossView`, `BossHeadView`, `BossCandidateView` | `selectBoss` | boss/apply |
 | `ApplyView`, `ApplyDiffView`, `ApplyBlockerView`, `InkState` | `selectApply` | boss/apply (presentation only) |
-| `Screen` | `selectScreen` | controller |
+| `Screen` | `selectScreen` | controller, `mount.ts` |
+| `UiView` | `Controller.uiView()` | every worker: selection, inspector, live drag preview, beat, reduced motion, bands, notice, pending campfire proposal |
+| `Bands`, `Band` | `layout()` in `geometry.ts` | cards/layout (Table, hand, books, piles), room/rig (creature height, shore) |
+| `ControllerApi` | `Controller.api` | every worker: the only way to act |
+| `DropBinder` | `mount.ts` (over `DragCore`) | every worker that renders a card or a target |
+| `ScreenProps<V>` | `mount.ts` | `RoomScreen`, `EventScreen`, `CampfireScreen`, `BossScreen`, `ApplyScreen` |
+| `SettleChoice` | contract | campfire (the four settlement slots) |
 
 ## Acts
 
@@ -64,6 +70,7 @@ engine (src/*.ts, src/deck/*)  ←  adapter.ts (select* / act*)  ←  controller
 | `actBossAnswer(cardId, caseId)` | The answer drag; only an eligible card binds. | No |
 | `actBossNext()`, `actLockScore()` | Continue past a head; lock the score to the deck revision. | No |
 | `actPrepareApply(port)`, `actSeal(port)`, `actUndo(port)` | The engine's guarded write with backups and read-back, and Undo. Async. | No |
+| `actGrant(port, which)` | A folder grant: the deck is rebased on the files as read now, then the diff is rebuilt. | No |
 | `actReturnToCampfire(select)` | From an Apply blocker to the final campfire, with the blocker selected. | No |
 
 A room's stamps are final once `actPlay` succeeds, `actSkip` runs, or `actAdvance` leaves it through an offer. The UI says so with `RoomView.finalizes` while the hand is dealt.
