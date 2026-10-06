@@ -115,14 +115,14 @@ function compose(p: ScreenProps<RoomView>, event: boolean): HTMLElement {
   const phone = b.mode === 'phone';
   const judging = v.phase === 'judge' && v.review.remaining > 0;
   const cols = stageColumns(b.mode, b.viewport.w);
-  const root = el('section', `pl-room is-${b.mode}${p.ui.reducedMotion ? ' is-reduced' : ''}${event ? ' is-event' : ''} is-${v.kind}`);
+  const root = el('section', `pl-room is-${b.mode}${p.ui.reducedMotion ? ' is-reduced' : ''}${event ? ' is-event' : ''}${judging ? ' is-judging' : ''} is-${v.kind}`);
   root.style.height = `${stageH}px`;
   root.style.setProperty('--pl-room-pad', `${cols.pad}px`);
   root.style.setProperty('--pl-room-gap', `${cols.gap}px`);
   root.dataset.room = v.roomKey;
 
   // Phones: while heads wait for stamps the slip takes most of the stage; afterwards the beast does.
-  const arenaH = phone ? Math.round(stageH * (judging ? 0.4 : 0.6)) : stageH - 8;
+  const arenaH = phone ? Math.round(stageH * (judging ? 0.32 : 0.6)) : stageH - 8;
 
   const glow = new Map((p.ui.drag?.preview?.heads ?? []).map((h) => [h.caseId, h]));
   const cues: BeastCues = {
@@ -156,14 +156,15 @@ function compose(p: ScreenProps<RoomView>, event: boolean): HTMLElement {
   const arena = el('div', 'pl-room-arena', beast);
   arena.style.height = `${arenaH}px`;
   if (!phone) arena.style.width = `${cols.arena}px`;
-  const side = el('div', 'pl-room-side', ReceiptStage({ room: v, api: p.api }), askBox(p));
-  const rail = el('div', 'pl-room-rail', wordingBox(p), controlsBox(p));
+  const side = el('div', 'pl-room-side', ReceiptStage({ room: v, api: p.api }));
   if (phone) {
-    // One scroller under the beast: slip, prompt, wording; the controls stick to its bottom edge.
-    const scroller = el('div', 'pl-room-scroll', side, rail);
+    // One scroller under the beast: slip, prompt, wording, then the controls, which stick to its bottom edge once
+    // judging is done (while heads wait for stamps the slip needs the room).
+    const scroller = el('div', 'pl-room-scroll', side, askBox(p), wordingBox(p), controlsBox(p));
     scroller.style.height = `${Math.max(0, stageH - arenaH - cols.gap)}px`;
     root.append(arena, scroller);
   } else {
+    const rail = el('div', 'pl-room-rail', askBox(p), wordingBox(p), controlsBox(p));
     side.style.width = `${cols.side}px`;
     rail.style.width = `${cols.rail}px`;
     side.style.maxHeight = `${stageH - 8}px`;

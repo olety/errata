@@ -152,40 +152,50 @@ export interface TagRequest {
   /** Where the tag hangs: the head's collar, in stage px. */
   x: number;
   y: number;
-  /** Width of the full strip (sigil, project chip, date), each part at least 44 px. */
+  /** Width of the one-row strip (sigil, project chip, date), each part at least 44 px, 8 px apart. */
   fullW: number;
+  /** Width of the two-row strip (sigil and date, then the project chip). */
+  stackW?: number;
+  /** The two-row strip's height (96 with a project chip, 44 without). */
+  stackH?: number;
 }
+
+export type TagMode = 'full' | 'stacked' | 'compact';
 
 export interface TagPlacement extends Box {
   caseId: string;
-  mode: 'full' | 'compact';
+  mode: TagMode;
 }
 
 /**
- * Hang one tag per head (§0a.19: every hit region ≥ 44 px, ≥ 8 px apart). All heads get the full strip when every strip
- * fits; otherwise every head gets the compact knob (the agent sigil and date, 44 px) and the slip carries the current
- * head's full tag. A tag never covers another head (obstacles). A head whose tag cannot fit anywhere near it gets none
- * (its head stays the hit region). Requests come in socket order, so the anchor head is placed first.
+ * Hang one tag per head (§0a.19: every hit region ≥ 44 px, ≥ 8 px apart; never over another head). Preference, all
+ * heads alike: the one-row strip at home (under the collar), the two-row strip at home (all three parts kept), the
+ * compact knob (sigil and date; the slip carries the current head's full tag) at home; only then nudged positions, and a
+ * head whose tag cannot fit anywhere near it gets none (its head stays the hit region). Requests come in socket order,
+ * so the anchor head is placed first.
  */
 export function packTags(
   reqs: readonly TagRequest[],
   o: { bounds: { w: number; h: number }; h?: number; gap?: number; compactW?: number; obstacles?: readonly (Box & { owner: string })[] },
 ): TagPlacement[] {
   const blocks = o.obstacles ?? [];
-  const h = o.h ?? 44;
+  const h44 = o.h ?? 44;
   const gap = o.gap ?? 8;
-  const tryMode = (mode: 'full' | 'compact', all: boolean): TagPlacement[] | null => {
+  const size = (r: TagRequest, mode: TagMode) =>
+    mode === 'full' ? { w: r.fullW, h: h44 } : mode === 'stacked' ? { w: r.stackW ?? r.fullW, h: r.stackH ?? h44 } : { w: o.compactW ?? 44, h: h44 };
+  const tryMode = (mode: TagMode, nudge: boolean, all: boolean): TagPlacement[] | null => {
     const placed: TagPlacement[] = [];
     for (const r of reqs) {
-      const w = mode === 'full' ? r.fullW : (o.compactW ?? 44);
+      const { w, h } = size(r, mode);
       const step = h + gap;
-      const spots = [0, step, -step, 2 * step].flatMap((dy) => [0, -w / 2 - gap, w / 2 + gap].map((dx) => ({ dx, dy })));
+      const dys = nudge ? [0, step, -step, 2 * step] : [0];
+      const spots = dys.flatMap((dy) => [0, -w / 2 - gap, w / 2 + gap].map((dx) => ({ dx, dy })));
       let ok: TagPlacement | null = null;
-      for (const s of spots) {
-        const x = Math.round(Math.min(Math.max(0, r.x - w / 2 + s.dx), o.bounds.w - w));
-        const y = Math.round(Math.min(Math.max(0, r.y + s.dy), o.bounds.h - h));
+      for (const sp of spots) {
+        const x = Math.round(Math.min(Math.max(0, r.x - w / 2 + sp.dx), o.bounds.w - w));
+        const y = Math.round(Math.min(Math.max(0, r.y + sp.dy), o.bounds.h - h));
         const box = { caseId: r.caseId, mode, x, y, w, h };
-        const overlapsHead = blocks.some((b) => b.owner !== r.caseId && gapBetween(b, box) <= 0 && overlapArea(b, box) > 0);
+        const overlapsHead = blocks.some((b) => b.owner !== r.caseId && overlapArea(b, box) > 0);
         if (!overlapsHead && placed.every((p) => gapBetween(p, box) >= gap)) {
           ok = box;
           break;
@@ -196,5 +206,13 @@ export function packTags(
     }
     return placed;
   };
-  return tryMode('full', true) ?? tryMode('compact', false) ?? [];
+  return (
+    tryMode('full', false, true) ??
+    tryMode('stacked', false, true) ??
+    tryMode('compact', false, true) ??
+    tryMode('full', true, true) ??
+    tryMode('stacked', true, true) ??
+    tryMode('compact', true, false) ??
+    []
+  );
 }

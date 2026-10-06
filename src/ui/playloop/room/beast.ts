@@ -3,7 +3,7 @@
 // state treatments. A head's state comes from HeadView.state only; it folds below its socket only when bound.
 import type { BeastView, DropBinder, HeadGlow, HeadState, HeadView, RoomPhase, UiView } from '../contract';
 import { agentName, el, sigil, svg } from './dom';
-import { packTags, ringsText, shortDate, type HeadCue, type TagPlacement } from './logic';
+import { packTags, ringsText, shortDate, type HeadCue, type TagPlacement, type TagRequest } from './logic';
 import { animate, cue } from './motion';
 import { foldFrames, foldRest, neckShape, type NeckShape } from './ribbon';
 import { RIGS, fitRig, type HeadPlace, type Rig } from './rig';
@@ -100,11 +100,10 @@ function boat(w: number): SVGSVGElement {
   return s;
 }
 
-/** The full tag strip (agent sigil, project chip, date): each part its own ≥ 44 px hit region. */
+/** The tag (agent sigil, project chip, date): each part its own ≥ 44 px hit region; rings said under the date. */
 function tagStrip(h: HeadView, t: TagPlacement, onHead: (id: string) => void): HTMLElement {
   const strip = el('div', `pl-room-tag is-${t.mode}`);
-  strip.style.left = `${t.x}px`;
-  strip.style.top = `${t.y}px`;
+  Object.assign(strip.style, { left: `${t.x}px`, top: `${t.y}px`, width: `${t.w}px` });
   const part = (cls: string, aria: string, ...kids: (Node | string | null)[]) => {
     const b = el('button', `pl-room-tagpart ${cls}`, el('span', '', ...kids));
     b.type = 'button';
@@ -116,28 +115,48 @@ function tagStrip(h: HeadView, t: TagPlacement, onHead: (id: string) => void): H
     return b;
   };
   const agent = agentName(h.tag.agent);
+  const d = shortDate(h.tag.date);
+  const row = (...parts: HTMLElement[]) => el('div', 'pl-room-tagrow', ...parts);
   if (t.mode === 'compact') {
-    const d = shortDate(h.tag.date);
-    strip.append(part('is-compact', `${agent}${h.tag.project ? ` · ${h.tag.project}` : ''}${h.tag.date ? ` · ${h.tag.date}` : ''}: read this receipt`, sigil(h.tag.agent, 14), d ? el('span', 'pl-room-tagdate', d) : null));
-  } else {
-    strip.append(part('is-agent', `Agent: ${agent}`, sigil(h.tag.agent, 16)));
-    if (h.tag.project) strip.append(part('is-project', `Project: ${h.tag.project}`, h.tag.project));
-    if (h.tag.date) strip.append(part('is-date', `Date: ${h.tag.date}`, shortDate(h.tag.date)));
+    strip.append(row(part('is-compact', `${agent}${h.tag.project ? ` · ${h.tag.project}` : ''}${h.tag.date ? ` · ${h.tag.date}` : ''}${h.rings ? ` · ${ringsText(h.rings)}` : ''}: read this receipt`, sigil(h.tag.agent, 14), d ? el('span', 'pl-room-tagdate', d) : null)));
+    return strip;
   }
-  if (h.rings && t.mode === 'full') strip.append(el('span', 'pl-room-tagrings', ringsText(h.rings)));
+  const first = [part('is-agent', `Agent: ${agent}`, sigil(h.tag.agent, 16))];
+  if (h.tag.date || h.rings) {
+    first.push(
+      part(
+        'is-date',
+        `${h.tag.date ? `Date: ${h.tag.date}` : 'No date'}${h.rings ? ` · ${ringsText(h.rings)}` : ''}`,
+        d ? el('span', 'pl-room-tagdate', d) : null,
+        h.rings ? el('span', 'pl-room-tagrings', ringsText(h.rings)) : null,
+      ),
+    );
+  }
+  const project = h.tag.project ? part('is-project', `Project: ${h.tag.project}`, h.tag.project) : null;
+  if (t.mode === 'stacked' && project) strip.append(row(...first), row(project));
+  else strip.append(row(...first, ...(project ? [project] : [])));
   return strip;
 }
 
-/** Full strip width: sigil+name, project chip, date, each ≥ 44 px, 8 px apart (text widths estimated at 12 px). */
-function stripWidth(h: HeadView): number {
-  const txt = (s: string, mono = false) => Math.max(44, Math.round(s.length * (mono ? 7.3 : 7.2) + 22));
-  const parts = [44, h.tag.project ? txt(h.tag.project) : 0, h.tag.date ? txt('09-23', true) : 0].filter((x) => x > 0);
-  return parts.reduce((a, b) => a + b, 0) + 8 * (parts.length - 1);
+const textW = (s: string, px: number) => Math.round(s.length * px * 0.6 + 18);
+
+/** One-row strip width: sigil, date (with rings text), project chip; each ≥ 44 px, 8 px apart. */
+function tagSizes(h: HeadView): { fullW: number; stackW: number; stackH: number } {
+  const dateW = Math.max(44, textW('09-23', 12), h.rings ? textW(ringsText(h.rings), 10) : 0);
+  const projW = h.tag.project ? Math.max(44, textW(h.tag.project, 12)) : 0;
+  const row1 = 44 + (h.tag.date || h.rings ? 8 + dateW : 0);
+  const fullW = row1 + (projW ? 8 + projW : 0);
+  return { fullW, stackW: Math.max(row1, projW), stackH: projW ? 96 : 44 };
 }
 
 /** The head's side of the beast: −1 left of centre, +1 right, 0 on the axis (Astra's `side`). */
 function headSide(place: HeadPlace, cx: number): number {
   return place.at.x < cx - 4 ? -1 : place.at.x > cx + 4 ? 1 : 0;
+}
+
+/** Where a head's tag hangs from: its collar, or a lantern's bottom ring. */
+function tagPoint(hp: HeadPlace): { x: number; y: number } {
+  return { x: hp.at.x, y: Math.max(hp.at.y, hp.box.y + hp.box.h * 0.95) };
 }
 
 let styleSeq = 0;
@@ -209,7 +228,7 @@ export function Beast(p: BeastProps): HTMLElement {
   p.drag.bindTarget(`beast:${p.beast.roomKey}`, { kind: 'beast' }, bodyHit);
 
   const bySocket = new Map(heads.map((h) => [h.socket!, h]));
-  const tagReqs: { caseId: string; x: number; y: number; fullW: number }[] = [];
+  const tagReqs: TagRequest[] = [];
   const order = [...place.heads].sort((a, b) => b.socket - a.socket); // anchor (socket 0) painted last, on top
   for (const hp of order) {
     const h = bySocket.get(hp.socket)!;
@@ -220,7 +239,8 @@ export function Beast(p: BeastProps): HTMLElement {
     const side = headSide(hp, cx);
     const q = Math.max(0.6, Math.min(1.3, hp.box.h / 100));
     let flying = false;
-    const folded = h.state === 'bound' || h.state === 'sunk' || h.state === 'heron';
+    // Under reduced motion nothing folds, sinks or flies: the head keeps its neck and tag and wears a static icon.
+    const folded = !still && (h.state === 'bound' || h.state === 'sunk' || h.state === 'heron');
     const foldCue = !still && h.state === 'bound' ? (fold ? cue(fold.key, 440, fold.offset) : change ? cue(`fold:${change.key}`, 440) : null) : null;
 
     // Neck (paper ribbon or lantern string) from the socket to the head's collar, painted paper, back face, rings,
@@ -346,14 +366,15 @@ export function Beast(p: BeastProps): HTMLElement {
       Object.assign(page.style, { left: `${hp.at.x - 17}px`, top: `${hp.at.y - 22}px` });
       page.style.setProperty('--px', `${Math.round(place.w * 0.9 - hp.at.x + 160)}px`);
       page.style.setProperty('--py', `${Math.round(place.h - hp.at.y + 180)}px`);
-      if (animate(page, 'is-tearing', cue(`page:${strike.key}`, 640, strike.offset + 120))) inner.append(page);
+      if (animate(page, 'is-tearing', cue(`page:${strike.key}`, 640, strike.offset + 120))) root.append(page);
     }
 
-    if (!folded) tagReqs.push({ caseId: h.caseId, x: hp.at.x, y: hp.at.y + 6, fullW: stripWidth(h) });
+    if (!folded) tagReqs.push({ caseId: h.caseId, x: hp.at.x, y: tagPoint(hp).y + 6, ...tagSizes(h) });
   }
 
   // Tags: full strips when every strip fits, else compact knobs (the slip carries the current head's full tag).
-  const obstacles = place.heads.map((hp) => {
+  const standingUp = (st: HeadState) => still || (st !== 'bound' && st !== 'sunk' && st !== 'heron');
+  const obstacles = place.heads.filter((hp) => standingUp(bySocket.get(hp.socket)!.state)).map((hp) => {
     const h = bySocket.get(hp.socket)!;
     return { owner: h.caseId, x: hp.box.x + hp.box.w * 0.22, y: hp.box.y + hp.box.h * 0.15, w: hp.box.w * 0.56, h: hp.box.h * 0.6 };
   });
@@ -365,11 +386,12 @@ export function Beast(p: BeastProps): HTMLElement {
   const ties = svg('svg', { class: 'pl-room-ties', width: place.w, height: place.h, viewBox: `0 0 ${place.w} ${place.h}`, 'aria-hidden': 'true' });
   for (const t of tags) {
     const hp = place.heads.find((x) => bySocket.get(x.socket)?.caseId === t.caseId)!;
-    const tx = Math.min(Math.max(hp.at.x, t.x + 12), t.x + t.w - 12);
-    ties.append(svg('path', { d: `M${hp.at.x} ${hp.at.y} L${tx} ${t.y + 10}`, class: 'pl-room-tie' }));
-    root.append(tagStrip(heads.find((h) => h.caseId === t.caseId)!, t, p.onHead));
+    const from = tagPoint(hp);
+    const tx = Math.min(Math.max(from.x, t.x + 12), t.x + t.w - 12);
+    ties.append(svg('path', { d: `M${fmt(from.x)} ${fmt(from.y)} L${fmt(tx)} ${t.y + 10}`, class: 'pl-room-tie' }));
+    inner.append(tagStrip(heads.find((h) => h.caseId === t.caseId)!, t, p.onHead));
   }
-  root.append(ties);
+  inner.append(ties);
 
   // Pips on the crown: the lit pips are the view's one rose accent. Never "0/0": pips.text says it.
   const pips = el('div', 'pl-room-pips');
@@ -383,8 +405,6 @@ export function Beast(p: BeastProps): HTMLElement {
   if (p.beast.overflow) {
     const k = el('button', 'pl-room-knot', p.beast.overflow.text);
     k.type = 'button';
-    const right = Math.max(...place.heads.map((x) => x.box.x + x.box.w), place.w * 0.7);
-    Object.assign(k.style, { left: `${Math.min(place.w - 120, right - 30)}px`, top: `${Math.round(place.h * 0.38)}px` });
     root.append(k);
   }
 

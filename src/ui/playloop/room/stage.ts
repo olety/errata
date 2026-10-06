@@ -46,8 +46,10 @@ export function ReceiptStage(p: { room: RoomView; api: ControllerApi }): HTMLEle
   const head = v.heads.find((h) => h.caseId === r.caseId);
   const workshop = v.kind === 'workshop';
   const { position, total } = v.receipts.progress;
+  const headRow = el('header', 'pl-room-slip-head', el('span', 'pl-room-slip-count', workshop ? `Session ${position} of ${total}` : `Receipt ${position} of ${total}`));
   root.append(
-    el('header', 'pl-room-slip-head', el('span', 'pl-room-slip-count', workshop ? `Session ${position} of ${total}` : `Receipt ${position} of ${total}`), tagLine(head, r)),
+    headRow,
+    tagLine(head, r),
     r.quote
       ? el('blockquote', 'pl-room-quote', '“', codeText(r.quote), '”', r.pasted ? el('small', 'pl-room-pasted', ' pasted') : null)
       : el('p', 'pl-room-noquote', 'Tool evidence only'),
@@ -84,7 +86,8 @@ export function ReceiptStage(p: { room: RoomView; api: ControllerApi }): HTMLEle
     if (!live && v.phase === 'dealt') root.append(el('p', 'pl-room-slip-note', COPY.pullBack));
   }
 
-  // The queue: every head in the room (overflow heads included), the current one marked; any head can be read next.
+  // The queue, beside the count so it never scrolls away: every head in the room (overflow heads included), the current
+  // one marked; any head can be read next.
   if (v.heads.length > 1) {
     const q = el('nav', 'pl-room-queue');
     q.setAttribute('aria-label', 'Heads in this room');
@@ -104,7 +107,7 @@ export function ReceiptStage(p: { room: RoomView; api: ControllerApi }): HTMLEle
       b.title = label;
       q.append(b);
     }
-    root.append(q);
+    headRow.append(q);
   }
   return root;
 }
