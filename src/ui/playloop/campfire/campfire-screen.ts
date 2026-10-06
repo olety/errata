@@ -44,7 +44,7 @@ function button(label: Kid | Kid[], cls: string, onClick: () => void, opts: { pr
 }
 
 const px = (n: number) => `${n}px`;
-const PLATE_URL = `${import.meta.env.BASE_URL}playloop/campfire/campfire.png`;
+const PLATE_URL = `${import.meta.env.BASE_URL}playloop/campfire/campfire.webp`;
 
 // ------------------------------------------------------------------ presentation state (never game state)
 

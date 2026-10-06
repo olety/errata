@@ -32,8 +32,8 @@ describe('the rig: one logic for every skin (§0a.22)', () => {
       expect(r.sockets).toHaveLength(5);
       expect(r.heads).toHaveLength(5);
       expect(r.neckW).toHaveLength(5);
-      expect(r.body).toBe(`playloop/beasts/${skin}/body.png`);
-      expect(r.head).toBe(`playloop/beasts/${skin}/head.png`);
+      expect(r.body).toBe(`playloop/beasts/${skin}/body.webp`);
+      expect(r.head).toBe(`playloop/beasts/${skin}/head.webp`);
       for (const s of r.sockets) {
         // Each socket sits in a collar opening (within half a collar width of its measured centre, on its row).
         expect(r.collars.some((c) => Math.abs(s[0] - c.at[0]) <= c.w / 2 && Math.abs(s[1] - c.at[1]) < 1e-9)).toBe(true);

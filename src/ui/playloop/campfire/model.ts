@@ -367,7 +367,7 @@ export function codeSpans(text: string): { code: boolean; text: string }[] {
 
 // ------------------------------------------------------------------ geometry
 
-/** The campfire plate (plates/campfire.png, 1536 × 1024): the table edge and the candle, measured in plate pixels. */
+/** The campfire plate (campfire.webp, 1536 × 1024): the table edge and the candle, measured in plate pixels. */
 export const PLATE = { w: 1536, h: 1024, edgeY: 765, candleX: 446, dishTop: 805 } as const;
 
 export interface Rect {

@@ -12,9 +12,9 @@ export type Pt = readonly [number, number];
 
 export interface Rig {
   skin: Skin;
-  /** Body plate, relative to the page (public/playloop/beasts/<skin>/body.png); null when the head is the whole beast. */
+  /** Body plate, relative to the page (public/playloop/beasts/<skin>/body.webp); null when the head is the whole beast. */
   body: string | null;
-  /** Head sprite (head.png); null when heads are drawn (the Workshop's lanterns). */
+  /** Head sprite (head.webp); null when heads are drawn (the Workshop's lanterns). */
   head: string | null;
   /** Body plate size in px (its aspect matters; for a bodiless rig, the virtual box the head stands in). */
   plate: { w: number; h: number };
@@ -42,7 +42,8 @@ export interface Rig {
   fill: number;
 }
 
-const url = (skin: Skin, part: 'body' | 'head') => `playloop/beasts/${skin}/${part}.png`;
+/** WebP plates, about twice their largest drawn size (P2: 37 MB of PNG became 1.4 MB; the originals live outside the repo). */
+const url = (skin: Skin, part: 'body' | 'head') => `playloop/beasts/${skin}/${part}.webp`;
 
 /** Five sockets from collars: [collar index, offset across the collar in collar widths], in socket order. */
 function socketsOn(collars: readonly { at: Pt; w: number }[], plan: readonly [number, number][]): Pt[] {

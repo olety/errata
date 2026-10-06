@@ -429,7 +429,7 @@ export function summaryPlan(s: RunSummaryView): SummaryPlan {
 
 // ------------------------------------------------------------------ the world plate (presentation geometry)
 
-/** world-table.png is 1536 × 1024; the shore (wood edge) lies at 63.3 % of its height, the lake's far edge at 56.2 %. */
+/** world-table.webp is 1536 × 1024; the shore (wood edge) lies at 63.3 % of its height, the lake's far edge at 56.2 %. */
 export const PLATE = { ratio: 1536 / 1024, shore: 0.633, lake: 0.562 } as const;
 
 /**

@@ -65,7 +65,7 @@ export function Card(p: CardProps): HTMLElement {
   const key = cardArt(c);
   if (key) {
     const img = el('img', '');
-    img.src = asset(`cards/card-${key}.png`);
+    img.src = asset(`cards/card-${key}.webp`);
     img.alt = '';
     img.draggable = false;
     img.decoding = 'async';

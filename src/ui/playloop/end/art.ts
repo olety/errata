@@ -1,20 +1,20 @@
-// Owner: boss/apply. Art for the boss lake and Apply, copied unchanged from the Yard #4 plates into public/playloop/end/.
-// The boss is the run's largest family skin grown huge (§4, §9). BossView carries no skin yet, so every boss uses the
-// Suite Wyrm plates. TODO(contract ask): BossView.skin; then point body/head at public/playloop/beasts/<skin>/ once the
-// room/rig worker's art is merged, and drop the copies here.
+// Owner: boss/apply. Art for the boss lake and Apply. The boss is the run's largest family skin grown huge (§4, §9):
+// its body and head are that skin's room plates (BossView.skin); the lake is the Table's raised world plate.
 
 import type { Skin } from '../contract';
 
 const base = import.meta.env.BASE_URL;
-const at = (f: string) => `${base}playloop/end/${f}`;
+const at = (f: string) => `${base}playloop/${f}`;
+/** The boss never wears the Workshop owl or the Event heron: those skins fall back to the Suite Wyrm. */
+const bossSkin = (s: Skin | null): Skin => (s && s !== 'owl' && s !== 'heron' ? s : 'suite-wyrm');
 
 export const ART = {
   /** The raised world plate: sky, lake and wood (1536 × 1024). The boss tints it to blue hour. */
-  plate: at('world-table.png'),
-  body(_skin: Skin | null): string {
-    return at('boss-body-wyrm.png');
+  plate: at('layout/world-table.webp'),
+  body(skin: Skin | null): string {
+    return at(`beasts/${bossSkin(skin)}/body.webp`);
   },
-  head(_skin: Skin | null): string {
-    return at('boss-head-wyrm.png');
+  head(skin: Skin | null): string {
+    return at(`beasts/${bossSkin(skin)}/head.webp`);
   },
 };

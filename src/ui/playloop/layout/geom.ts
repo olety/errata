@@ -13,8 +13,8 @@ export interface Plate {
 
 /** The two plates the bench measured (bench/room-v1.html, PLATES). */
 export const PLATES = {
-  raised: { src: 'layout/world-table.png', w: 1536, h: 1024, edge: 647, band: [664, 1024] },
-  portrait: { src: 'layout/world-portrait.png', w: 1024, h: 1536, edge: 888, band: [904, 1536] },
+  raised: { src: 'layout/world-table.webp', w: 1536, h: 1024, edge: 647, band: [664, 1024] },
+  portrait: { src: 'layout/world-portrait.webp', w: 1024, h: 1536, edge: 888, band: [904, 1536] },
 } as const satisfies Record<string, Plate>;
 
 export interface PlatePlacement {

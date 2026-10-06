@@ -44,7 +44,7 @@ export function BossScreen(p: ScreenProps<BossView>): { stage: HTMLElement; wood
   stage.setAttribute('aria-label', plan.title);
 
   const body = el('img', 'pl-end-body');
-  body.src = ART.body(null);
+  body.src = ART.body(v.skin);
   body.alt = '';
   body.draggable = false;
 
@@ -82,7 +82,7 @@ function currentHead(h: BossHeadView, plan: BossPlan, v: BossView, p: ScreenProp
   const drag = p.ui.drag;
   const over = !!drag && drag.target?.kind === 'head' && drag.target.caseId === h.caseId;
   const glow = over ? drag!.preview?.heads.find((x) => x.caseId === h.caseId) : undefined;
-  const art = h.source === 'open' ? el('div', 'pl-end-page', el('span', 'pl-end-page-edge')) : look === 'heron' ? heron('pl-end-heronart') : sprite(ART.head(null), 'pl-end-headart');
+  const art = h.source === 'open' ? el('div', 'pl-end-page', el('span', 'pl-end-page-edge')) : look === 'heron' ? heron('pl-end-heronart') : sprite(ART.head(v.skin), 'pl-end-headart');
   const word = over ? (drag!.preview?.refused ?? (glow?.glow ? 'Release to answer this case' : (v.candidates.find((c) => c.cardId === drag!.cardId)?.reason ?? glow?.word ?? null))) : null;
   const node = el(
     'div',
@@ -102,7 +102,7 @@ function facedRow(plan: BossPlan, p: ScreenProps<BossView>, tearing: ReadonlySet
   const row = el('div', 'pl-end-faced');
   for (const { head, look } of plan.faced) {
     const tear = tearing.has(head.caseId);
-    const art = look === 'heron' ? heron('pl-end-heronart') : head.source === 'open' ? el('div', 'pl-end-page pl-end-page-s') : sprite(ART.head(null), 'pl-end-headart');
+    const art = look === 'heron' ? heron('pl-end-heronart') : head.source === 'open' ? el('div', 'pl-end-page pl-end-page-s') : sprite(ART.head(p.view.skin), 'pl-end-headart');
     const word = head.disposition === 'unreviewed' ? 'unstamped' : FACED_WORD[look];
     const item = el(
       'button',
