@@ -118,3 +118,20 @@ Each field below has a test in `tests/playloop-p2.test.ts`.
 | `RoomView.scope`, `api.confirmProject`, `actConfirmProject` | engine gap | The scope chip: confirm one project while judging a room whose heads span projects; drafts carry that scope, so check 4 turns other projects' heads aside. |
 | `UiView.tutorial` | integrator | Filled by `tutorial.ts` on the sample: one coach line per gesture, with a card or thread spotlight. |
 | Controller guards | campfire, boss/apply, cards | A card dropped on itself or on sealed text is refused with a notice; Enter at the fire leaves only when no proposal is up; arrow keys select through `api.select`; `boss.next()` clears the selection. |
+
+## P3 additions (lead, 2026-10-07, from the cold-player gate)
+
+Each field below has a test in `tests/playloop-p3.test.ts`, `tests/playloop-contract.test.ts` or `tests/e2e.test.ts`.
+
+| Field, act or selector | What it is |
+|---|---|
+| `pipsText`, `footerText`, `casesText`, `ghostText`, `strapText`, `provenanceText`, `sealedText`, `clearText`, `SEALED_WHY`, `BLOCK_HEADER_WHY` | The gate's honesty wording: "0 of 3 cases answered by a proposed line", "answers 3 cases here", "cases answered by the whole deck: 3 → 3 (this change affects 0)", "+46 line · +22 block header (the one-time marker lines)", "file weight 104 of 1,200 tok" / "room left 1,096", "seen in 3 sessions", "2 later cases held for the boss", the clear line. Token figures say "tok" on faces and "tokens, estimated" in the inspector. |
+| `CardArt` | One plate per family: wyrm, retry, scope, moth, verify, imported (an inked book; no creature). |
+| `RoomView.clear`, `RoomView.handDiffers`, `RoomView.scope.hint` | The clear line after a play or skip; one line naming how a multi-card hand differs; the local-words line under a global scope. |
+| `ThreadView.shared`, `ThreadView.newer` | A gold thread's shared content words and their share (preview only); a red pair's newer member (Keep one starts on it). |
+| `ChangePreviewView.changed` | The files whose bytes a seal would change; previews name only these. |
+| `Bands.flow` | Below 500 px the Table is a scrolling page; the room's controls stick above the status strip. |
+| `ApplyView.exported` | A browser without folder access: each file's managed block and a download name ("Exported, not applied"). |
+| `ApplyView.remember`, `api.apply.remember(on)`, `ApplyPort.canWrite/remember/remembered`, `applyRecord` | The second visit: keep the receipt and the stable line ids (and, in the app, the folder grants) only on the player's click. |
+| `DragHooks.onTap(cardId, under)`, `targetLabel` | A tap on another card while one is selected stacks it when that card is a target; every drop target is a named button for assistive tech and the keyboard. |
+| `CardProps.onActivate` | Cards are focusable buttons; Enter or Space selects (or stacks at the fire). |

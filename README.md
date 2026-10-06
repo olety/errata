@@ -31,7 +31,26 @@ bun test        # the engine and sample tests
 bun run build   # a static build in dist/
 ```
 
-Reading your own folders needs a browser with folder access (Chrome or Edge). Other browsers can drop session files and get the result as text to paste.
+Reading your own folders needs a browser with folder access (Chrome or Edge). Other browsers can drop session files and get the result as text to paste. To try your own logs, follow `docs/REAL-RUN-CHECKLIST.md`.
+
+## How it works
+
+- **The atom is an episode.** One moment in one session where the agent went off course: you stopped it and said what to do instead, the same command failed again unchanged, or the same file was edited three or more times. A verified check, diff and report workflow is an episode too, but it is a success and never a problem. Each head on a beast is one case: one episode, at most one per family per session.
+- **The cover rule.** A line answers a case only when all eight checks hold: you stamped the case a problem; the line is in the proposed file that agent reads; it targets that agent; its scope matches the case's project; its trigger fits the case; its response fits what the case shows; no exception on the line excludes the case; and you accepted the line for that case.
+- **What is written where.** Claude Code lines go to `~/.claude/CLAUDE.md`, Codex lines to `~/.codex/AGENTS.md`. The game's lines live in one managed block between `<!-- deck:begin v1 -->` and `<!-- deck:end -->`, one bullet per line, each ending with a `<!-- deck:<id> -->` marker that carries the line's stable id. Everything outside the block stays byte for byte, unless you edit or cut one of your own lines at the campfire. A Skill card writes `~/.claude/skills/<name>/SKILL.md`, and `~/.agents/skills/<name>/SKILL.md` when you grant `~/.agents`. A non-empty `~/.codex/AGENTS.override.md` blocks the Codex lane, because Codex then ignores `AGENTS.md`. The game never writes the override.
+- **The backups folder.** Before any write, Apply makes a new folder `~/.claude/.deck-backups/<bundle id>/` with a copy of each file before and after, plus a manifest with their checksums. Every copy is read back before the first write. Every written file is read back after it.
+- **Undo.** Undo restores a file to its original bytes only when the file still equals what Apply wrote. A file changed since then is left alone and reported. If you choose "Keep the receipt" after Apply, this browser keeps the receipt, the stable line ids and the folder grants, and the import page offers Undo on your next visit.
+
+## Synthetic sample
+
+**Play the synthetic sample** runs twelve made-up sessions (eight Claude Code, four Codex) in two projects, with a small `CLAUDE.md` and `AGENTS.md`. The sessions were written for the game around two rows of public agent trajectories. `public/sample/manifest.json` lists each source dataset with its revision and licence (NVIDIA SWE-Hero OpenHands trajectories, CC-BY-4.0; the rows come from the MIT-licensed Pylons/pyramid and datalad/datalad repositories), every row used with its checksum, and which events were sourced and which were authored. The sample's Apply writes to this browser's private storage, never to your files.
+
+## Known limits
+
+- Reading and writing folders needs the File System Access API, which only Chromium browsers have (Chrome, Edge, Brave, Arc). In Firefox and Safari you can drop session files, and Apply gives you the blocks to paste ("Exported, not applied").
+- Codex support covers the rollouts that the Codex CLI, the IDE extension and the desktop app write under `~/.codex/sessions`. Codex in the ChatGPT app (cloud tasks) is not claimed.
+- Token figures are estimates: UTF-8 bytes divided by three, rounded up per block. They are not a tokenizer count.
+- The game does not test whether an agent follows the lines it writes.
 
 ## Licence
 
