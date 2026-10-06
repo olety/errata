@@ -1,6 +1,6 @@
 // Face copy (play-loop §10, §14.6): title ≤ 20, summary ≤ 64, the two-way guard, marked excerpts.
 import { describe, expect, test } from 'bun:test';
-import { clampExcerpt, EXCERPT_MARK, FACE_TITLES, faceCopy, guardSummary, SUMMARY_MAX, TITLE_MAX, visibleLength } from '../src/deck/face';
+import { compressLine, clampExcerpt, EXCERPT_MARK, FACE_TITLES, faceCopy, guardSummary, SUMMARY_MAX, TITLE_MAX, visibleLength } from '../src/deck/face';
 import { draftCards } from '../src/deck/templates';
 import { newDeck, presentCards } from '../src/deck/deck';
 import { conflicts, resolveConflict } from '../src/deck/campfire';
@@ -74,5 +74,16 @@ describe('face copy', () => {
     expect(visibleLength(x)).toBeLessThanOrEqual(SUMMARY_MAX);
     expect((x.match(/`/g) ?? []).length % 2).toBe(0);
     expect(x.endsWith('…')).toBe(true);
+  });
+});
+
+describe('the guarded short form (P3, stall H: whole faces at M)', () => {
+  test('drops the scope prefix and every clause with no guarded word; the guard still decides', () => {
+    const exact = "In pyramid, never touch `pyramid/tests/`, it's frozen. Do it in `pyramid/config/` instead. Keep to this after any interruption, for the rest of the task.";
+    const short = compressLine(exact)!;
+    expect(short).toBe('Never touch `pyramid/tests/`. Do it in `pyramid/config/`.');
+    expect(guardSummary(exact, short).ok).toBe(true);
+    // A line whose every clause carries a guarded word has no short form.
+    expect(compressLine('Never run `pytest` twice, not ever.')).toBeNull();
   });
 });

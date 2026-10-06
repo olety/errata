@@ -144,7 +144,7 @@
 /* 4 · summary: up to three lines at the fixed reading size; an excerpt shows its mark */
 .pl-cards-summary { display: flex; flex-direction: column; gap: var(--pl-mgap); overflow: hidden; padding-top: 3px; }
 .pl-cards-text { margin: 0; font-size: var(--pl-s); line-height: var(--pl-sl); overflow-wrap: anywhere; }
-.pl-cards-text code { font-size: 0.86em; padding: 0 3px; background: var(--pl-cards-paper-2); border: 1px solid var(--pl-cards-line); border-radius: 2px; white-space: normal; }
+.pl-cards-text code { font-size: 0.86em; padding: 0 1px; background: var(--pl-cards-paper-2); border: 0; border-radius: 2px; white-space: normal; }
 .pl-cards-card.is-excerpt .pl-cards-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--pl-clamp); line-clamp: var(--pl-clamp); overflow: hidden; }
 .pl-cards-mark { flex: none; margin: 0; font-size: var(--pl-l); line-height: var(--pl-ll); font-weight: 500; color: var(--pl-cards-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pl-cards-mark::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 4px; border: 1.2px solid var(--pl-cards-ink-2); border-radius: 1px; rotate: 45deg; translate: 0 -1px; }

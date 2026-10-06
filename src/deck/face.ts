@@ -75,8 +75,11 @@ function template(card: Card): string | null {
     case 'preserve_boundary':
       return 'Keep to the boundary the user stated, for the task.';
     case 'confirm_scope_before_edit':
-      return 'After a stop, restate the scope before the next step.';
+      // P3: name the object the stop cut off, so the face keeps the guarded path or command (stall H: no excerpts).
+      if (file || cmd) return `Restate the scope in one line after a stop in ${code((file ?? cmd)!)}.`;
+      return 'After a stop, restate the scope in one line before editing.';
     case 'inspect_diff_against_boundary':
+      if (file || cmd) return `After a stop in ${code((file ?? cmd)!)}, check the diff before done.`;
       return 'After a stop, check the diff against the line drawn.';
     case 'standing_instruction':
       return NARROWED.test(card.text) ? 'Run only the changed test file; whole suite only on request.' : null;
@@ -161,12 +164,28 @@ export function faceTitle(card: Card): string {
   return t.length <= TITLE_MAX ? t : t.slice(0, TITLE_MAX);
 }
 
-/** The face of a card: exact line when it fits, a guarded template summary, or a marked excerpt. */
+/**
+ * A deterministic short form of the exact line (P3, stall H): the leading "In <project>, " (the scope ribbon shows
+ * it) and every clause with no guarded word and no exception dropped; the rest joined with semicolons. Null when
+ * nothing is left. The two-way guard still decides whether it may stand on the face.
+ */
+export function compressLine(exact: string): string | null {
+  const body = exact.replace(/^In [^,`]{1,80}, /, '');
+  const pieces = body.split(/(?<=[.;,])\s+/).map((x) => x.replace(/[.;,]+$/, '').trim()).filter((x) => x.length > 0);
+  const kept = pieces.filter((x) => guardedTokens(x).size > 0 || /\b(?:except|unless|other than|but only)\b/i.test(x));
+  if (kept.length === 0 || kept.length === pieces.length) return null;
+  // Each kept clause reads as its own sentence; a trailing "instead" is filler once the clauses stand alone.
+  return kept.map((x) => x.replace(/\s+instead$/i, '')).map((x) => `${x.charAt(0).toUpperCase()}${x.slice(1)}.`).join(' ');
+}
+
+/** The face of a card: exact line when it fits, a guarded template summary, a guarded short form, or a marked excerpt. */
 export function faceCopy(card: Card): Face {
   const exact = card.text;
   const title = faceTitle(card);
   if (visibleLength(exact) <= SUMMARY_MAX) return { title, summary: exact, mode: 'exact', mark: null, exact };
   const tpl = template(card);
   if (tpl && visibleLength(tpl) <= SUMMARY_MAX && guardSummary(exact, tpl).ok) return { title, summary: tpl, mode: 'summary', mark: null, exact };
+  const short = card.family === 'imported' ? null : compressLine(exact);
+  if (short && visibleLength(short) <= SUMMARY_MAX && guardSummary(exact, short).ok) return { title, summary: short, mode: 'summary', mark: null, exact };
   return { title, summary: clampExcerpt(exact), mode: 'excerpt', mark: EXCERPT_MARK, exact };
 }
