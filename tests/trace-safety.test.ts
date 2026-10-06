@@ -7,12 +7,22 @@ import { join } from 'node:path';
 const ROOT = join(import.meta.dir, '..');
 const BANNED = ['olety', 'oneiron', 'eiri', 'antevon', 'Users/'];
 
+const BINARY_EXT = /\.(png|webp|jpe?g|gif|avif|ico|woff2?|ttf|otf|mp3|ogg|wav|mp4|webm)$/i;
+
+/** Image, font and media bytes are not text: their compressed data can spell anything ("eiri" once, inside a PNG). */
+export function isBinary(path: string, bytes: Uint8Array): boolean {
+  if (BINARY_EXT.test(path)) return true;
+  const head = bytes.subarray(0, 8192);
+  return head.includes(0);
+}
+
+/** Every text file under dir (binary files skipped by extension or a NUL byte in their first 8 KB). */
 function files(dir: string): string[] {
   const out: string[] = [];
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
     if (statSync(p).isDirectory()) out.push(...files(p));
-    else out.push(p);
+    else if (!isBinary(p, readFileSync(p))) out.push(p);
   }
   return out;
 }
@@ -42,6 +52,12 @@ test('fixtures, src and the public sample carry no owner names, home paths or 40
     }
   }
   expect(hits).toEqual([]);
+});
+
+test('binary files are skipped by extension or a NUL byte; text with the same bytes is still read', () => {
+  expect(isBinary('public/playloop/beasts/heron/head.png', new TextEncoder().encode('eiri'))).toBe(true);
+  expect(isBinary('notes/blob', new Uint8Array([0x65, 0x69, 0x72, 0x69, 0]))).toBe(true);
+  expect(isBinary('src/x.ts', new TextEncoder().encode('const eiri = 1;'))).toBe(false);
 });
 
 test('the public sample manifest carries no absolute local path', () => {

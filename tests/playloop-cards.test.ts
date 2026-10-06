@@ -18,6 +18,7 @@ import { placePlate, PLATES } from '../src/ui/playloop/layout/geom';
 import { tableBoxes } from '../src/ui/playloop/layout/table';
 import { layout } from '../src/ui/playloop/geometry';
 import { sampleAgentsMd, sampleAnalysis, sampleClaudeMd } from './helpers';
+import { CHROME_FLAGS, chromePath } from './chrome';
 
 let fresh: () => A.PlayState;
 beforeAll(async () => {
@@ -201,7 +202,7 @@ describe('pure layout helpers', () => {
 
 // ------------------------------------------------------------------ the pixel check (headless Chrome, real fonts)
 
-const CHROME = process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const CHROME = chromePath();
 const FONTS =
   'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Lora:ital,wght@1,400;1,500&display=block';
 
@@ -289,7 +290,7 @@ async function renderPageOnce<T>(run: PageRun): Promise<T> {
     },
   });
   const profile = join(dir, 'profile');
-  const proc = Bun.spawn([CHROME, '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--force-device-scale-factor=1', 'about:blank'], { stdout: 'ignore', stderr: 'ignore' });
+  const proc = Bun.spawn([CHROME!, ...CHROME_FLAGS, '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { stdout: 'ignore', stderr: 'ignore' });
   let cdp: Cdp | null = null;
   try {
     // Chrome writes its port file once it listens; wait until both lines (port, browser socket path) are there.
@@ -392,7 +393,7 @@ window.__done = true;
 }
 
 describe('card faces by rendered pixels', () => {
-  const have = existsSync(CHROME);
+  const have = CHROME !== null;
   let faces: Face[] = [];
   let fonts: string[] = [];
   let drafts: CardView[] = [];
@@ -527,7 +528,7 @@ function gap(a: { x: number; y: number; w: number; h: number }, b: { x: number; 
 }
 
 describe('the Table by rendered pixels', () => {
-  const have = existsSync(CHROME);
+  const have = CHROME !== null;
   for (const [w, h] of [
     [1440, 900],
     [1024, 768],
@@ -583,7 +584,7 @@ interface InspectorRun {
 }
 
 describe('the inspector by rendered pixels', () => {
-  const have = existsSync(CHROME);
+  const have = CHROME !== null;
   test.skipIf(!have)(
     'mapping rows offer Accept only when eligible and not accepted; a case shows its room queue; two selections compare',
     async () => {
