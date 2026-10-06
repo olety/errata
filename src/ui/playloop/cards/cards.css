@@ -1,0 +1,183 @@
+/* Owner: cards/layout. The base layer's one stylesheet: the card box, the hand, the books, the piles, the inspector.
+   Every class is prefixed pl-cards-. Paper #FFF9EE, ink #41291F, rose #B86A74 at most once per view. No gradients,
+   no glass, no glow, never pure white or black. Mono figures render literally (no ligatures). */
+
+:root {
+  --pl-cards-paper: #fff9ee;
+  --pl-cards-paper-2: #f6ebd8;
+  --pl-cards-halo: #efddbb;
+  --pl-cards-ink: #41291f;
+  --pl-cards-ink-2: #69503f;
+  --pl-cards-ink-3: #a08672;
+  --pl-cards-line: #e4d3ba;
+  --pl-cards-line-2: #cfb89a;
+  --pl-cards-rose: #b86a74;
+  --pl-cards-gold: #b08a3e;
+  --pl-cards-sh: 58, 33, 22;
+  --pl-cards-f-title: 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+  --pl-cards-f-body: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif;
+  --pl-cards-f-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --pl-cards-f-voice: 'Lora', Georgia, serif;
+  --pl-cards-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --pl-cards-sh-card: 0 1px 0 rgba(var(--pl-cards-sh), 0.06), 0 3px 6px rgba(var(--pl-cards-sh), 0.16), 0 12px 26px rgba(var(--pl-cards-sh), 0.24);
+  --pl-cards-sh-lift: 0 2px 0 rgba(var(--pl-cards-sh), 0.05), 0 10px 16px rgba(var(--pl-cards-sh), 0.18), 0 28px 46px rgba(var(--pl-cards-sh), 0.28);
+  --pl-cards-sh-well: 0 1px 0 rgba(var(--pl-cards-sh), 0.05), 0 2px 5px rgba(var(--pl-cards-sh), 0.1), 0 14px 30px rgba(var(--pl-cards-sh), 0.16);
+}
+
+/* ================================================================ the card box (§10, §0a.20)
+   One box per size, five fixed zones: top band 11%, art 42%, title 10%, summary 23%, footer 14% (of the inner
+   height, in whole px so the fan lines up edge to edge). Type: title 16/20 · summary 14/17 · labels 12/14 at M. */
+
+.pl-cards-card {
+  --pl-cw: 176px;
+  --pl-ch: 246px;
+  --pl-rows: 26px 103px 25px 57px 33px;
+  --pl-art: 138px;
+  --pl-pad: 10px;
+  --pl-bleed: -4px;
+  --pl-tls: 0px;
+  --pl-mgap: 4px;
+  --pl-t: 16px;
+  --pl-tl: 20px;
+  --pl-s: 14px;
+  --pl-sl: 17px;
+  --pl-l: 12px;
+  --pl-ll: 14px;
+  --pl-clamp: 2;
+  position: relative;
+  flex: none;
+  width: var(--pl-cw);
+  height: var(--pl-ch);
+  color: var(--pl-cards-ink);
+  font-family: var(--pl-cards-f-body);
+  font-size: var(--pl-s);
+  line-height: var(--pl-sl);
+  text-align: left;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: grab;
+  translate: 0 0;
+  transition: translate 220ms var(--pl-cards-ease);
+}
+/* Insets from Astra's type-scale check (2026-10-07): the title plate and the footer run 7 px from the outer edge at
+   M (162 px), 6 px at S (136 px), 10 px at L (188 px); the summary keeps the padded width. S keeps the M floors
+   (summary 14/17, labels 12/14) and so shows two lines, or a marked excerpt. */
+.pl-cards-S { --pl-cw: 148px; --pl-ch: 207px; --pl-rows: 22px 86px 20px 48px 29px; --pl-art: 115px; --pl-pad: 7px; --pl-bleed: -2px; --pl-t: 14px; --pl-tl: 18px; --pl-tls: -0.3px; --pl-mgap: 0px; }
+.pl-cards-M { --pl-cw: 176px; --pl-ch: 246px; --pl-rows: 26px 103px 25px 57px 33px; --pl-art: 138px; }
+.pl-cards-L { --pl-cw: 208px; --pl-ch: 291px; --pl-rows: 32px 122px 29px 67px 39px; --pl-art: 163px; --pl-pad: 12px; --pl-bleed: -3px; --pl-t: 18px; --pl-tl: 22px; --pl-s: 16px; --pl-sl: 20px; }
+
+.pl-cards-face {
+  position: relative;
+  display: grid;
+  grid-template-rows: var(--pl-rows);
+  grid-template-columns: minmax(0, 1fr);
+  height: 100%;
+  padding: 0 var(--pl-pad);
+  background: var(--pl-cards-paper);
+  border: 1px solid var(--pl-cards-line-2);
+  border-radius: 8px;
+  box-shadow: var(--pl-cards-sh-card);
+  overflow: hidden;
+  transition: box-shadow 220ms ease;
+}
+.pl-cards-face::after { content: ''; position: absolute; inset: 4px; border: 1px solid var(--pl-cards-line); border-radius: 5px; pointer-events: none; }
+.pl-cards-face > * { position: relative; z-index: 1; min-width: 0; }
+
+.pl-cards-card:hover, .pl-cards-card.is-selected { translate: 0 -8px; z-index: 5; }
+.pl-cards-card:hover .pl-cards-face, .pl-cards-card.is-selected .pl-cards-face { box-shadow: var(--pl-cards-sh-lift); }
+.pl-cards-card.is-selected .pl-cards-face { outline: 2px solid var(--pl-cards-ink); outline-offset: 2px; }
+
+/* 1 · top band */
+.pl-cards-top { display: flex; align-items: center; gap: 5px; padding-top: 5px; font-size: var(--pl-l); line-height: var(--pl-ll); }
+.pl-cards-orb { display: inline-flex; align-items: baseline; gap: 3px; white-space: nowrap; color: var(--pl-cards-ink-2); }
+.pl-cards-num, .pl-cards-card code, .pl-cards-mono {
+  font-family: var(--pl-cards-f-mono);
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0, 'calt' 0;
+  font-variant-numeric: tabular-nums;
+}
+.pl-cards-num { font-weight: 600; color: var(--pl-cards-ink); font-size: var(--pl-l); }
+.pl-cards-orb small { font-size: var(--pl-l); }
+.pl-cards-sigils { display: inline-flex; gap: 2px; margin-left: 2px; }
+.pl-cards-sigil { display: inline-grid; place-items: center; width: 14px; height: 14px; color: var(--pl-cards-ink-3); }
+.pl-cards-sigil svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linejoin: round; stroke-linecap: round; }
+.pl-cards-sigil.is-on { color: var(--pl-cards-ink); }
+.pl-cards-sigil.is-on svg .is-fill { fill: currentColor; }
+.pl-cards-glyph { flex: none; width: 15px; height: 15px; margin-left: auto; margin-right: 8px; fill: none; stroke: var(--pl-cards-ink-2); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+.pl-cards-glyph .is-fill { fill: var(--pl-cards-paper-2); }
+/* The dog-ear: decoration only, never a control. */
+.pl-cards-face > .pl-cards-ear { position: absolute; top: 0; right: 0; width: 15px; height: 15px; z-index: 2; background: var(--pl-cards-line-2); clip-path: polygon(0 0, 100% 100%, 0 100%); border-bottom-left-radius: 3px; }
+
+/* 2 · art window: fixed panel, centred 4:3 image, scope ribbon lower-left */
+.pl-cards-art { justify-self: center; width: var(--pl-art); height: 100%; overflow: hidden; border: 1px solid var(--pl-cards-line); border-radius: 3px; background: var(--pl-cards-paper-2); }
+.pl-cards-art::before { content: ''; position: absolute; left: 50%; top: 54%; width: 72%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; background: var(--pl-cards-halo); }
+.pl-cards-art img { position: relative; display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.pl-cards-seal { position: relative; display: block; width: 60%; height: 100%; margin: 0 auto; fill: none; stroke: var(--pl-cards-ink-2); stroke-width: 1.4; }
+.pl-cards-seal .is-fill { fill: var(--pl-cards-halo); stroke: none; }
+.pl-cards-scope {
+  position: absolute; left: 0; bottom: 0; max-width: 80%;
+  padding: 1px 6px 1px 5px;
+  font-size: calc(var(--pl-l) - 1px); line-height: var(--pl-ll); font-weight: 500;
+  color: var(--pl-cards-ink); background: var(--pl-cards-paper);
+  border-top: 1px solid var(--pl-cards-line); border-right: 1px solid var(--pl-cards-line); border-top-right-radius: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* 3 · title plate: one line */
+.pl-cards-title {
+  align-self: end;
+  font-family: var(--pl-cards-f-title); font-weight: 600; font-size: var(--pl-t); line-height: var(--pl-tl);
+  letter-spacing: var(--pl-tls);
+  margin-inline: var(--pl-bleed);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* 4 · summary: up to three lines at the fixed reading size; an excerpt shows its mark */
+.pl-cards-summary { display: flex; flex-direction: column; gap: var(--pl-mgap); overflow: hidden; padding-top: 3px; }
+.pl-cards-text { margin: 0; font-size: var(--pl-s); line-height: var(--pl-sl); overflow-wrap: anywhere; }
+.pl-cards-text code { font-size: 0.86em; padding: 0 3px; background: var(--pl-cards-paper-2); border: 1px solid var(--pl-cards-line); border-radius: 2px; white-space: normal; }
+.pl-cards-card.is-excerpt .pl-cards-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--pl-clamp); line-clamp: var(--pl-clamp); overflow: hidden; }
+.pl-cards-mark { flex: none; margin: 0; font-size: var(--pl-l); line-height: var(--pl-ll); font-weight: 500; color: var(--pl-cards-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-cards-mark::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 4px; border: 1.2px solid var(--pl-cards-ink-2); border-radius: 1px; rotate: 45deg; translate: 0 -1px; }
+
+/* 5 · footer: provenance, then the room line on its own row at M */
+.pl-cards-foot {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr); grid-auto-rows: var(--pl-ll); align-content: start; column-gap: 4px;
+  margin-inline: var(--pl-bleed); padding: 2px 3px 0; font-size: var(--pl-l); line-height: var(--pl-ll); color: var(--pl-cards-ink-2);
+  box-shadow: inset 0 1px 0 var(--pl-cards-line);
+}
+.pl-cards-prov { white-space: nowrap; font-weight: 500; }
+.pl-cards-room { display: contents; }
+.pl-cards-room > span { white-space: nowrap; text-align: right; color: var(--pl-cards-ink); }
+.pl-cards-room > span:first-child { grid-column: 2; }
+.pl-cards-room > span + span { grid-column: 1 / -1; }
+/* At S the overview drops provenance (it stays in the inspector) and gives the room line both rows. */
+.pl-cards-S .pl-cards-foot.has-room .pl-cards-prov { display: none; }
+.pl-cards-S .pl-cards-room > span:first-child { grid-column: 1 / -1; }
+
+/* The external Inspect control: 44 px hit area outside the face, a small paper badge inside it */
+.pl-cards-card .pl-cards-inspect,
+.pl-cards-card .pl-cards-inspect:hover:not(:disabled) {
+  position: absolute; top: -22px; right: 32px; z-index: 3;
+  display: grid; place-items: center;
+  width: 44px; height: 44px; min-width: 0; padding: 0; margin: 0;
+  background: transparent; border: 0; border-radius: 50%; cursor: pointer;
+}
+.pl-cards-inspect::before { content: ''; position: absolute; inset: 9px; border-radius: 50%; background: var(--pl-cards-paper); border: 1px solid var(--pl-cards-line-2); box-shadow: 0 1px 3px rgba(var(--pl-cards-sh), 0.22); }
+.pl-cards-inspect svg { position: relative; width: 13px; height: 13px; fill: none; stroke: var(--pl-cards-ink); stroke-width: 1.6; stroke-linecap: round; }
+.pl-cards-card .pl-cards-inspect:hover:not(:disabled)::before { border-color: var(--pl-cards-ink-2); background: var(--pl-cards-paper-2); }
+.pl-cards-card .pl-cards-inspect:focus-visible { outline: none; }
+.pl-cards-card .pl-cards-inspect:focus-visible::before { outline: 2px solid var(--pl-cards-ink); outline-offset: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pl-cards-card, .pl-cards-face { transition: none; }
+}
+.pl-cards-still .pl-cards-card, .pl-cards-still .pl-cards-face { transition: none; }
+
+/* S: the 48 px summary holds two 17 px lines and the 14 px mark with no padding; the footer's two rows fill 28 px. */
+.pl-cards-S .pl-cards-summary { padding-top: 0; }
+.pl-cards-S .pl-cards-foot { padding-top: 0; }
+.pl-cards-S .pl-cards-mark::before { display: none; }
+/* S is 132 px wide: the sigils sit on the art panel's top-left corner so the orb keeps "estimated" beside it. */
+.pl-cards-art > .pl-cards-sigils { position: absolute; left: 0; top: 0; z-index: 2; border-top: 0 !important; border-left: 0 !important; border-radius: 0 0 3px 0 !important; margin: 0; padding: 1px 2px; background: var(--pl-cards-paper); border: 1px solid var(--pl-cards-line); border-radius: 3px; }
