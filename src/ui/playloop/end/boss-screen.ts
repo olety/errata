@@ -10,14 +10,10 @@ import { FILE_OF } from '../contract';
 import { Books, Card } from '../cards';
 import { ART } from './art';
 import { button, el, heron, INERT, receipt, rich, tag } from './dom';
-import { bookRows, bossPlan, fmt, PLATE, plateBox, type BossPlan, type HeadLook } from './model';
+import { bookRows, bossMotion, bossPlan, fmt, newBossMemory, PLATE, plateBox, type BossPlan, type HeadLook } from './model';
 
-/**
- * Presentation memory across repaints. The mount rebuilds the tree on every change, so each animation keys on what
- * the view says happened and plays once: a head rising, a stamp inking, a bind (once per effect id), a page tearing,
- * the score inking. Any input repaints, which drops the animation class: nothing waits.
- */
-const seen = { current: null as string | null, stamped: new Set<string>(), effect: -1, torn: new Set<string>(), score: '' };
+/** Presentation memory across repaints (see bossMotion): each animation plays once. */
+const seen = newBossMemory();
 
 const FACED_WORD: Record<HeadLook, string> = {
   rising: 'unstamped',
@@ -34,21 +30,8 @@ export function BossScreen(p: ScreenProps<BossView>): { stage: HTMLElement; wood
   const ui = p.ui;
   const b = ui.bands;
   const plan = bossPlan(v);
-  const motion = !ui.reducedMotion;
   const cur = plan.current;
-
-  // Once-only animation flags.
-  const rise = motion && !!cur && seen.current !== cur.caseId;
-  seen.current = cur?.caseId ?? null;
-  const ink = motion && !!cur && !!plan.chosen && !seen.stamped.has(cur.caseId);
-  if (cur && plan.chosen) seen.stamped.add(cur.caseId);
-  const e = ui.effect;
-  const freshEffect = !!e && e.id !== seen.effect;
-  if (e) seen.effect = e.id;
-  const bind = motion && freshEffect && e!.kind === 'boss-answer' && !!cur && e!.bound.includes(cur.caseId);
-  const scoreKey = v.turn === 'summary' ? `${plan.score.validity}|${plan.score.lines.join('|')}` : '';
-  const inkScore = motion && v.turn === 'summary' && seen.score !== scoreKey;
-  if (v.turn === 'summary') seen.score = scoreKey;
+  const { rise, ink, bind, inkScore, tear } = bossMotion(seen, plan, ui.effect, ui.reducedMotion);
 
   // ---------------------------------------------------------------- the stage: the lake at blue hour
   const stageH = b.sky.h + b.creature.h;
@@ -68,7 +51,7 @@ export function BossScreen(p: ScreenProps<BossView>): { stage: HTMLElement; wood
   const water = el('div', 'pl-end-water');
   paintPlate(water, plate, b.sky.y + lakeTop);
 
-  stage.append(body, facedRow(plan, p, motion), water);
+  stage.append(body, facedRow(plan, p, tear), water);
   if (plan.below > 0) stage.append(belowMarks(plan.below));
   if (cur) stage.append(currentHead(cur, plan, v, p, { rise, bind }));
   stage.append(slip(plan, v, p, { rise, ink, inkScore }));
@@ -115,11 +98,10 @@ function currentHead(h: BossHeadView, plan: BossPlan, v: BossView, p: ScreenProp
 }
 
 /** Heads already faced, along the water: bound, open, heron, sunk or wrapped. Each opens its receipt in the inspector. */
-function facedRow(plan: BossPlan, p: ScreenProps<BossView>, motion: boolean): HTMLElement {
+function facedRow(plan: BossPlan, p: ScreenProps<BossView>, tearing: ReadonlySet<string>): HTMLElement {
   const row = el('div', 'pl-end-faced');
   for (const { head, look } of plan.faced) {
-    const tear = motion && look === 'standing' && !seen.torn.has(head.caseId);
-    if (look === 'standing') seen.torn.add(head.caseId);
+    const tear = tearing.has(head.caseId);
     const art = look === 'heron' ? heron('pl-end-heronart') : head.source === 'open' ? el('div', 'pl-end-page pl-end-page-s') : sprite(ART.head(null), 'pl-end-headart');
     const word = head.disposition === 'unreviewed' ? 'unstamped' : FACED_WORD[look];
     const item = el(

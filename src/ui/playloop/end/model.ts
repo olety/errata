@@ -2,7 +2,7 @@
 // No DOM, no engine, no adapter: every number on screen comes from a view field; these helpers only decide what to
 // show, in which order, and which controls are live. Tested in tests/playloop-end.test.ts.
 
-import type { ApplyBlockerView, ApplyView, BookView, BossHeadView, BossView, CardView, Disposition, InkState, ReceiptView, RunSummaryView } from '../contract';
+import type { ApplyBlockerView, ApplyView, BookView, BossHeadView, BossView, CardView, CommitEffectView, Disposition, InkState, ReceiptView, RunSummaryView } from '../contract';
 import { AGENT_NAME, COPY, STAMPS } from '../contract';
 
 // ------------------------------------------------------------------ text
@@ -195,6 +195,54 @@ export function bookRows(books: readonly BookView[], cards: readonly CardView[],
   });
 }
 
+/**
+ * Presentation memory across repaints: the mount rebuilds the tree on every change, so each animation keys on what
+ * the view says happened and plays once (a head rising, a stamp inking, a bind once per effect id, a page tearing,
+ * the score inking). Memory advances under reduced motion too, so nothing replays when motion comes back.
+ */
+export interface BossMemory {
+  current: string | null;
+  stamped: Set<string>;
+  effect: number;
+  torn: Set<string>;
+  score: string;
+}
+
+export function newBossMemory(): BossMemory {
+  return { current: null, stamped: new Set(), effect: -1, torn: new Set(), score: '' };
+}
+
+export interface BossMotion {
+  rise: boolean;
+  ink: boolean;
+  bind: boolean;
+  inkScore: boolean;
+  /** Faced heads left standing whose page tears now. */
+  tear: ReadonlySet<string>;
+}
+
+export function bossMotion(m: BossMemory, plan: BossPlan, effect: CommitEffectView | null, reduced: boolean): BossMotion {
+  const cur = plan.current;
+  const rise = !!cur && m.current !== cur.caseId;
+  m.current = cur?.caseId ?? null;
+  const ink = !!cur && !!plan.chosen && !m.stamped.has(cur.caseId);
+  if (cur && plan.chosen) m.stamped.add(cur.caseId);
+  const freshEffect = !!effect && effect.id !== m.effect;
+  if (effect) m.effect = effect.id;
+  const bind = freshEffect && effect!.kind === 'boss-answer' && !!cur && effect!.bound.includes(cur.caseId);
+  const key = plan.turn === 'summary' ? `${plan.score.validity}|${plan.score.lines.join('|')}` : '';
+  const inkScore = plan.turn === 'summary' && m.score !== key;
+  if (plan.turn === 'summary') m.score = key;
+  const tear = new Set<string>();
+  for (const f of plan.faced) {
+    if (f.look !== 'standing' || m.torn.has(f.head.caseId)) continue;
+    m.torn.add(f.head.caseId);
+    tear.add(f.head.caseId);
+  }
+  if (reduced) return { rise: false, ink: false, bind: false, inkScore: false, tear: new Set() };
+  return { rise, ink, bind, inkScore, tear };
+}
+
 // ------------------------------------------------------------------ Apply
 
 export type InkKey = 'reviewed' | 'fits' | 'written';
@@ -209,6 +257,37 @@ export const INK_MEANING: Record<InkKey, string> = {
 /** The stamps that just turned inked, in order (Reviewed, Fits, Written): each inks once, only once verified. */
 export function inkFresh(prev: ApplyView['stamps'] | null, next: ApplyView['stamps']): InkKey[] {
   return INK_ORDER.filter((k) => next[k] === 'inked' && (!prev || prev[k] !== 'inked'));
+}
+
+/** Apply's presentation memory: the stamps last painted, the undo last painted, the player's pane, the folds opened. */
+export interface ApplyMemory {
+  stamps: ApplyView['stamps'] | null;
+  undo: string;
+  result: string;
+  chosen: 'diffs' | 'run' | null;
+  open: Set<string>;
+}
+
+export function newApplyMemory(): ApplyMemory {
+  return { stamps: null, undo: '', result: '', chosen: null, open: new Set() };
+}
+
+/**
+ * What animates on this paint: the stamps that just turned inked (each once, in order) and the seal cracking once
+ * after a successful Undo. A new write result resets the player's pane choice. Reduced motion: nothing animates.
+ */
+export function applyMotion(m: ApplyMemory, v: ApplyView, reduced: boolean): { fresh: InkKey[]; crack: boolean } {
+  const result = v.result ? `${v.result.status}|${v.result.bundle ?? ''}` : '';
+  if (result !== m.result) {
+    m.result = result;
+    m.chosen = null;
+  }
+  const fresh = inkFresh(m.stamps, v.stamps);
+  m.stamps = v.stamps;
+  const undo = v.undo?.status ?? '';
+  const crack = undo === 'done' && m.undo !== 'done';
+  m.undo = undo;
+  return reduced ? { fresh: [], crack: false } : { fresh, crack };
 }
 
 export function busyText(busy: ApplyView['busy']): string | null {

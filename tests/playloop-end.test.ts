@@ -11,7 +11,7 @@ import type { Root } from '../src/apply/types';
 import * as A from '../src/ui/playloop/adapter';
 import type { ApplyView, BossView } from '../src/ui/playloop/contract';
 import { COPY, STAMPS } from '../src/ui/playloop/contract';
-import { applyPlan, blockerActions, bookRows, bossPlan, busyText, diffRows, headLook, inkFresh, plateBox, PLATE, scoreNote, splitTicks, stampLabel, summaryPlan, tagText } from '../src/ui/playloop/end/model';
+import { applyMotion, applyPlan, blockerActions, bookRows, bossMotion, bossPlan, busyText, diffRows, headLook, inkFresh, newApplyMemory, newBossMemory, plateBox, PLATE, scoreNote, splitTicks, stampLabel, summaryPlan, tagText } from '../src/ui/playloop/end/model';
 import { SAMPLE_ROOT, sampleAgentsMd, sampleAnalysis, sampleClaudeMd } from './helpers';
 
 let fresh: () => A.PlayState;
@@ -333,6 +333,62 @@ describe('Apply', () => {
       { file: 'AGENTS.md', text: '33 → 96 of 1,200 · estimated', raised: null },
     ]);
     expect(plan.openCount).toBe(v.summary.openCount);
+  });
+});
+
+// ------------------------------------------------------------------ motion: once per event, never under reduced motion
+
+describe('motion', () => {
+  test('a head rises once, its stamp inks once, a bind plays once per effect id, a page tears once', () => {
+    let s = toBoss();
+    const m = newBossMemory();
+    const cur = A.selectBoss(s).current!;
+    expect(bossMotion(m, bossPlan(A.selectBoss(s)), null, false).rise).toBe(true);
+    // A repaint of the same view (a hover, a resize) replays nothing.
+    expect(bossMotion(m, bossPlan(A.selectBoss(s)), null, false)).toEqual({ rise: false, ink: false, bind: false, inkScore: false, tear: new Set<string>() });
+    s = A.actBossStamp(s, cur, 'issue');
+    expect(bossMotion(m, bossPlan(A.selectBoss(s)), null, false).ink).toBe(true);
+    expect(bossMotion(m, bossPlan(A.selectBoss(s)), null, false).ink).toBe(false);
+    const g = A.selectBoss(s).candidates.find((c) => c.glow)!;
+    s = A.actBossAnswer(s, g.cardId, cur);
+    const effect = { id: 7, kind: 'boss-answer' as const, bound: [cur], unbound: [] };
+    expect(bossMotion(m, bossPlan(A.selectBoss(s)), effect, false).bind).toBe(true);
+    expect(bossMotion(m, bossPlan(A.selectBoss(s)), effect, false).bind).toBe(false);
+    // The Codex head finds no eligible card; continuing past it leaves it standing, and its page tears once.
+    s = A.actBossNext(s);
+    const second = A.selectBoss(s).current!;
+    s = A.actBossNext(A.actBossStamp(s, second, 'issue'));
+    expect([...bossMotion(m, bossPlan(A.selectBoss(s)), effect, false).tear]).toEqual([second]);
+    expect(bossMotion(m, bossPlan(A.selectBoss(s)), effect, false).tear.size).toBe(0);
+  });
+
+  test('reduced motion: static states only, and memory still advances so nothing replays later', () => {
+    let s = toBoss();
+    const m = newBossMemory();
+    const quiet = { rise: false, ink: false, bind: false, inkScore: false, tear: new Set<string>() };
+    expect(bossMotion(m, bossPlan(A.selectBoss(s)), null, true)).toEqual(quiet);
+    expect(bossMotion(m, bossPlan(A.selectBoss(s)), null, false).rise).toBe(false);
+    s = A.actBossStamp(s, A.selectBoss(s).current!, 'not-a-problem');
+    expect(bossMotion(m, bossPlan(A.selectBoss(s)), null, true)).toEqual(quiet);
+    const am = newApplyMemory();
+    const v = A.selectApply(s);
+    const inked: ApplyView = { ...v, stamps: { reviewed: 'inked', fits: 'inked', written: 'inked' } };
+    expect(applyMotion(am, inked, true)).toEqual({ fresh: [], crack: false });
+    expect(applyMotion(am, inked, false)).toEqual({ fresh: [], crack: false });
+  });
+
+  test('Apply: the stamps ink in order once; Undo cracks once; a new result resets the pane choice', () => {
+    const v = A.selectApply(toBoss());
+    const m = newApplyMemory();
+    expect(applyMotion(m, v, false)).toEqual({ fresh: [], crack: false });
+    m.chosen = 'run';
+    const written: ApplyView = { ...v, stamps: { reviewed: 'inked', fits: 'inked', written: 'inked' }, result: { status: 'written', text: 'Written and read back.', bundle: 'b1', files: [] } };
+    expect(applyMotion(m, written, false)).toEqual({ fresh: ['reviewed', 'fits', 'written'], crack: false });
+    expect(m.chosen).toBeNull();
+    expect(applyMotion(m, written, false)).toEqual({ fresh: [], crack: false });
+    const undone: ApplyView = { ...written, undo: { status: 'done', files: [], text: null } };
+    expect(applyMotion(m, undone, false).crack).toBe(true);
+    expect(applyMotion(m, undone, false).crack).toBe(false);
   });
 });
 

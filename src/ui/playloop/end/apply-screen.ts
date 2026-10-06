@@ -9,36 +9,16 @@ import { COPY } from '../contract';
 import { Books } from '../cards';
 import { ART } from './art';
 import { button, el, INERT, receipt, rich } from './dom';
-import { applyPlan, diffRows, fmt, inkFresh, plateBox, summaryPlan, type ApplyPlan, type DiffRow } from './model';
+import { applyMotion, applyPlan, diffRows, fmt, newApplyMemory, plateBox, summaryPlan, type ApplyPlan, type DiffRow } from './model';
 
-/**
- * Presentation memory across repaints: which pane the player chose (reset when the write result changes), the stamps
- * last painted (so each inks once), the undo last painted (so the seal cracks once), and the folds the player opened.
- */
-const seen = {
-  chosen: null as 'diffs' | 'run' | null,
-  result: '',
-  stamps: null as ApplyView['stamps'] | null,
-  undo: '',
-  open: new Set<string>(),
-};
+/** Presentation memory across repaints (see applyMotion): the pane choice, each ink and the crack play once. */
+const seen = newApplyMemory();
 
 export function ApplyScreen(p: ScreenProps<ApplyView>): { stage: HTMLElement; wood: HTMLElement } {
   const v = p.view;
   const b = p.ui.bands;
   const plan = applyPlan(v);
-  const motion = !p.ui.reducedMotion;
-
-  const resultKey = v.result ? `${v.result.status}|${v.result.bundle ?? ''}` : '';
-  if (resultKey !== seen.result) {
-    seen.result = resultKey;
-    seen.chosen = null;
-  }
-  const fresh = motion ? inkFresh(seen.stamps, v.stamps) : [];
-  seen.stamps = v.stamps;
-  const undoKey = v.undo?.status ?? '';
-  const crack = motion && undoKey === 'done' && seen.undo !== 'done';
-  seen.undo = undoKey;
+  const { fresh, crack } = applyMotion(seen, v, p.ui.reducedMotion);
 
   // ---------------------------------------------------------------- the stage: the open books (diffs) and the run
   const plate = plateBox(b.viewport, b.shoreY);
