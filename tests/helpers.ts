@@ -21,4 +21,5 @@ export const CX = {
   desktop: 'codex/rollout-2026-09-30T07-00-00-0c0d0e0f-8888-7888-8888-000000000008.jsonl',
   cli: 'codex/rollout-2026-10-01T09-00-00-0c0d0e0f-9999-7999-8999-000000000009.jsonl',
   subagent: 'codex/rollout-2026-10-02T09-00-00-0c0d0e0f-aaaa-7aaa-8aaa-00000000000a.jsonl',
+  build: 'codex/rollout-2026-10-03T15-00-00-0c0d0e0f-bbbb-7bbb-8bbb-00000000000b.jsonl',
 };

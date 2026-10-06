@@ -112,6 +112,15 @@ describe('Codex parser', () => {
     expect(s.turns.map((t) => `${t.role}:${t.injected ?? ''}`)).toEqual(['injected:summary', 'human:']);
   });
 
+  test('app-injected wrappers inside user.text items are quarantined', () => {
+    const line = JSON.stringify({
+      timestamp: 't',
+      type: 'response_item',
+      payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: '<in-app-browser-context>page</in-app-browser-context>' }, { type: 'input_text', text: 'fix the header' }], internal_chat_message_metadata_passthrough: { content_item_kinds: ['user.text', 'user.text'] } },
+    });
+    expect(parseLines('codex', 'x.jsonl', [line]).turns.map((t) => t.role)).toEqual(['injected', 'human']);
+  });
+
   test('turn_aborted with a reason other than interrupted is not an interrupt', () => {
     const s = parseLines('codex', 'x.jsonl', [JSON.stringify({ timestamp: 't', type: 'event_msg', payload: { type: 'turn_aborted', turn_id: null, reason: 'replaced' } })]);
     expect(s.turns).toEqual([]);

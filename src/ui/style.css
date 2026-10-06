@@ -1,0 +1,62 @@
+/* Slice UI only. The real skin is co-designed elsewhere; these are the ruled tokens, nothing more. */
+:root {
+  --paper: #fff9ee;
+  --ink: #41291f;
+  --ink-soft: #6b5247;
+  --line: #e4d6c3;
+  --well: #f6eddd;
+  --rose: #b86a74;
+  --title: 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', Georgia, serif;
+  --body: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); }
+body { font: 16px/1.55 var(--body); }
+main { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+h1, h2, h3 { font-family: var(--title); font-weight: 800; line-height: 1.2; margin: 0 0 8px; }
+h1 { font-size: 30px; }
+h2 { font-size: 22px; margin-top: 24px; }
+h3 { font-size: 17px; }
+p { margin: 6px 0; }
+.sub { color: var(--ink-soft); }
+.num, code, pre, .mono { font-family: var(--mono); }
+code { font-size: 0.92em; }
+pre { background: var(--well); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; overflow-x: auto; font-size: 12.5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+button { font: 500 15px var(--body); color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+button:hover:not(:disabled) { background: var(--well); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+button.primary { background: var(--ink); color: var(--paper); }
+button.primary:hover:not(:disabled) { background: var(--ink-soft); }
+button.accent { border-color: var(--rose); color: var(--rose); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+.steps { display: flex; gap: 14px; font-size: 13px; color: var(--ink-soft); margin-bottom: 18px; flex-wrap: wrap; }
+.steps .on { color: var(--ink); font-weight: 700; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num { white-space: nowrap; }
+.receipt { border-left: 3px solid var(--ink); padding: 6px 12px; margin: 12px 0; background: var(--well); }
+.receipt .quote { font-size: 18px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 14px 0; }
+.card { border: 1.5px solid var(--ink); border-radius: 8px; padding: 12px; background: var(--paper); display: flex; flex-direction: column; gap: 8px; }
+.card.taken { outline: 3px solid var(--rose); outline-offset: 2px; }
+.card .chips { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+.chip { border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; color: var(--ink-soft); }
+.card textarea, .card select, input[type=text] { font: 15px var(--body); color: var(--ink); background: var(--paper); border: 1px solid var(--ink-soft); border-radius: 6px; padding: 6px 8px; width: 100%; }
+.deck { position: sticky; bottom: 0; background: var(--paper); border-top: 1.5px solid var(--ink); padding: 10px 0; margin-top: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.meter { font-size: 13px; }
+.bar { height: 8px; border: 1px solid var(--ink); border-radius: 4px; overflow: hidden; margin-top: 4px; }
+.bar > i { display: block; height: 100%; background: var(--ink); }
+.bar.over > i { background: var(--rose); }
+.drop { border: 1.5px dashed var(--ink-soft); border-radius: 8px; padding: 22px; text-align: center; color: var(--ink-soft); margin: 14px 0; }
+.drop.hot { border-color: var(--ink); color: var(--ink); }
+.add { color: #2f5d3a; }
+.del { color: var(--rose); }
+.warn { color: var(--rose); font-weight: 500; }
+.ok { font-weight: 700; }
+details { margin: 8px 0; }
+summary { cursor: pointer; }
+.turn { font-size: 13px; padding: 4px 0; border-bottom: 1px dotted var(--line); }
+.turn b { font-family: var(--mono); font-weight: 600; font-size: 12px; }
+footer { margin-top: 28px; font-size: 13px; color: var(--ink-soft); }
+@media (max-width: 560px) { .deck { grid-template-columns: 1fr; } }

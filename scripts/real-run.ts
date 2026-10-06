@@ -133,6 +133,11 @@ for (const s of sessions) {
   );
 }
 checks.push(`Pairing matches an independent raw count on every full session: ${pairingOk ? 'PASS' : 'FAIL'}`);
+// Roles: no genuine human turn may start with a quarantined opener, and agent-authored sessions have none.
+const OPENERS = /^\s*(<|This session is being continued|Another Claude session|\[Image|\[Request interrupted|# AGENTS\.md instructions)/;
+const leaked = sessions.flatMap((x) => x.turns.filter((t) => t.role === 'human' && OPENERS.test(t.text)));
+const agentHuman = sessions.filter((x) => x.agentAuthored && x.turns.some((t) => t.role === 'human')).length;
+checks.push(`Roles: no human turn starts with injected text (${leaked.length} found) and no agent-authored thread has a human turn (${agentHuman} found): ${leaked.length === 0 && agentHuman === 0 ? 'PASS' : 'FAIL'}`);
 checks.push(`Interrupt markers match an independent raw count on every full session: ${interruptOk ? 'PASS' : 'FAIL'}`);
 
 const episodes: Episode[] = sessions.flatMap(detectEpisodes);

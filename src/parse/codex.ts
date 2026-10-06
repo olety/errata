@@ -170,9 +170,10 @@ export class CodexParser {
           this.b.push('injected', ts, this.b.r(text, 300), { injected: 'context' });
           return;
         }
-        // A genuine user.text item can still be a pasted continuation summary or a wrapper; quarantine those too.
+        // A user.text item can still carry a pasted continuation summary or app-injected wrappers
+        // (measured: <image …>, <in-app-browser-context>); the same quarantine applies.
         const cls = classifyUserText(text);
-        if (cls.role === 'injected' && cls.injected !== 'tag') {
+        if (cls.role === 'injected') {
           this.b.push('injected', ts, this.b.r(text, 300), { injected: cls.injected });
           return;
         }

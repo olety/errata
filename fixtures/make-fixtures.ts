@@ -314,4 +314,27 @@ const DESKTOP_META = (id: string, cwd: string, extra: Row = {}): Row => ({
   write('codex/rollout-2026-10-02T09-00-00-0c0d0e0f-aaaa-7aaa-8aaa-00000000000a.jsonl', c.rows);
 }
 
+// 11. Codex Desktop, same project as fixture 4: the same build failing twice unchanged (cross-agent evidence)
+{
+  const c = new CX('2026-10-03T15:00:00.000Z');
+  const id = '0c0d0e0f-bbbb-7bbb-8bbb-00000000000b';
+  const err = "src/nets.ts(12,7): error TS2304: Cannot find name 'MeshSize'.";
+  const run = (n: number, code: number, out: string) =>
+    c
+      .row('response_item', { type: 'custom_tool_call', id: `ct${n}`, status: 'completed', call_id: `call_b${n}`, name: 'exec', input: 'const r = await tools.exec_command({cmd: "bun run build"});\ntext(r);' })
+      .row('event_msg', { type: 'item_completed', turn_id: 't1', item: { type: 'CommandExecution', id: `ceb${n}`, command: ['/bin/zsh', '-lc', 'bun run build'], cwd: LN, status: code === 0 ? 'completed' : 'failed', aggregated_output: out, exit_code: code } })
+      .row('response_item', { type: 'custom_tool_call_output', call_id: `call_b${n}`, output: [{ type: 'input_text', text: 'Script completed\n' }] });
+  c.row('session_meta', DESKTOP_META(id, LN))
+    .msg('user', [['user.text', 'The build is red after the merge, please fix it.']])
+    .msg('assistant', [[null, 'Running the build.']]);
+  run(1, 2, err);
+  c.msg('assistant', [[null, 'Running it again.']]);
+  run(2, 2, err);
+  c.row('response_item', { type: 'custom_tool_call', id: 'ctp', status: 'completed', call_id: 'call_bp', name: 'exec', input: `await tools.apply_patch(${JSON.stringify("*** Begin Patch\n*** Update File: src/nets.ts\n@@\n-import { Net } from './types';\n+import { Net, MeshSize } from './types';\n*** End Patch")});` })
+    .row('event_msg', { type: 'item_completed', turn_id: 't1', item: { type: 'FileChange', id: 'fcb', changes: { 'src/nets.ts': { type: 'update' } }, status: 'completed' } })
+    .row('response_item', { type: 'custom_tool_call_output', call_id: 'call_bp', output: [{ type: 'input_text', text: 'Script completed\n' }] });
+  run(3, 0, 'built in 1.1s');
+  write('codex/rollout-2026-10-03T15-00-00-0c0d0e0f-bbbb-7bbb-8bbb-00000000000b.jsonl', c.rows);
+}
+
 console.log('fixtures written');

@@ -102,10 +102,10 @@ describe('mirror and rooms', () => {
   test('counts carry their denominators', async () => {
     const all = await Promise.all([...Object.values(CC), ...Object.values(CX)].map(fixture));
     const m = mirror(all);
-    expect(m.sessions).toEqual({ total: 10, claude: 7, codex: 3, agentAuthored: 2, partial: 0 });
+    expect(m.sessions).toEqual({ total: 11, claude: 7, codex: 4, agentAuthored: 2, partial: 0 });
     expect(m.interrupts).toBe(5);
     expect(m.interruptPairs).toBe(5);
-    expect(m.repeatedCommand.episodes).toBe(2);
+    expect(m.repeatedCommand.episodes).toBe(3);
     expect(m.calls.withResult).toBe(m.calls.total - 1); // the exec cut off by the Codex abort
   });
 
@@ -114,5 +114,15 @@ describe('mirror and rooms', () => {
     const rooms = groupRooms(all.flatMap(detectEpisodes));
     expect(rooms.length).toBe(7);
     for (const r of rooms) expect(new Set(r.episodes.map((e) => e.projectKey)).size).toBe(1);
+    // The same failing build in the same project under both agents is one cross-agent room, first in line.
+    expect(rooms[0]).toMatchObject({ family: 'repeated-command', object: 'bun run build', sessions: 2 });
+    expect(rooms[0]!.agents.sort()).toEqual(['claude', 'codex']);
+  });
+
+  test('Codex code-mode: a failing build run twice unchanged, then patched and green', async () => {
+    const [e, ...rest] = repeatedCommandEpisodes(await fixture(CX.build));
+    expect(rest).toEqual([]);
+    expect(e).toMatchObject({ fingerprint: 'bun run build', laterSuccess: false });
+    expect(e!.failures.length).toBe(2);
   });
 });
