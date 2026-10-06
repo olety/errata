@@ -13,6 +13,8 @@ export const STACK_OFFSET = 22;
 /** The S card box, for the pair on phones (M comes from the bands). */
 export const CARD_S = { w: 148, h: 207 } as const;
 export const CARD_L = { w: 208, h: 291 } as const;
+/** The cards' external Inspect control hangs this far above the face; rows of cards leave room for it. */
+export const INSPECT_HEADROOM = 34;
 
 // ------------------------------------------------------------------ proposals
 
@@ -405,7 +407,7 @@ export function campfireGeometry(b: Bands): CampfireGeometry {
     const pad = 16;
     const row = W - 2 * pad;
     const half = Math.floor((row - b.touch.gap) / 2);
-    const top = 12;
+    const top = INSPECT_HEADROOM;
     const railY = top + b.card.h + 8 + b.touch.min + 8;
     fire = { x: pad + half + b.touch.gap, y: railY, w: row - half - b.touch.gap, h: b.touch.min };
     lane = { x: pad, w: row };

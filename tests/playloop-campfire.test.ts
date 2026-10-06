@@ -249,7 +249,7 @@ describe('geometry: the plate, the fire and the lane in the bands', () => {
         expect(g.pairCard.size).toBe('S');
         expect(2 * g.pairCard.w + 48).toBeLessThanOrEqual(w - 2 * g.stage.pad);
         // Lane carousel, book tabs, then the pile rail beside the fire, all inside the wood.
-        expect(g.fire.y).toBe(12 + b.card.h + 8 + b.touch.min + 8);
+        expect(g.fire.y).toBe(M.INSPECT_HEADROOM + b.card.h + 8 + b.touch.min + 8);
         expect(g.fire.x).toBeGreaterThanOrEqual(g.wood.pad + g.wood.piles + b.touch.gap);
         expect(g.fire.x + g.fire.w).toBeLessThanOrEqual(w - g.wood.pad);
       } else {

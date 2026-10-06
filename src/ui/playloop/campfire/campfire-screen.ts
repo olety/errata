@@ -305,7 +305,7 @@ export function CampfireScreen(p: ScreenProps<CampfireView>): { stage: HTMLEleme
     }
   }
   const stage = el('section', `pl-campfire-stage pl-campfire-${geo.mode}`);
-  const wood = el('div', `pl-wood pl-campfire-wood pl-campfire-wood-${geo.mode}`);
+  const wood = el('div', `pl-campfire-wood pl-campfire-wood-${geo.mode}`);
   for (const [node, off, h] of [[stage, geo.plate.stage, geo.stage.h] as const, [wood, geo.plate.wood, geo.wood.h] as const]) {
     node.style.height = px(h);
     node.style.backgroundImage = `url("${PLATE_URL}")`;
@@ -473,7 +473,8 @@ function pairVisual(L: Live): HTMLElement {
 function stackVisual(L: Live, order: string[], top: string, caption: Kid[], cls: string): HTMLElement {
   const size = L.geo.pairCard.size;
   const ch = L.geo.pairCard.h;
-  const room = L.geo.mode === 'phone' ? ch + 60 : L.geo.stage.h - L.geo.stage.bottom - 18 - (L.geo.mode === 'tablet' ? 0 : 96);
+  // Headroom for the cards' Inspect control above the face (it hangs 34 px over the top edge).
+  const room = L.geo.mode === 'phone' ? ch + 60 : L.geo.stage.h - L.geo.stage.bottom - 18 - M.INSPECT_HEADROOM - (L.geo.mode === 'tablet' ? 0 : 96);
   const off = M.stackOffset(order.length, room, ch);
   const box = el('div', `pl-campfire-stack ${cls}${L.snap ? ' is-snapping' : ''}`);
   box.style.width = px(L.geo.pairCard.w + off * (order.length - 1));
@@ -1019,15 +1020,19 @@ function fillWood(L: Live): void {
   refreshBooks(L);
   const piles = el('div', 'pl-campfire-piles', Piles({ piles: v.piles, layout: ui.bands.piles.mode, shelfTarget: false, api, drag }));
   if (geo.mode === 'phone') {
-    lane.style.height = px(ui.bands.card.h);
-    L.wood.style.padding = `12px ${px(geo.wood.pad)} 0`;
+    lane.style.height = px(ui.bands.card.h + M.INSPECT_HEADROOM);
+    lane.style.paddingTop = px(M.INSPECT_HEADROOM);
+    L.wood.style.padding = `0 ${px(geo.wood.pad)}`;
     L.wood.style.rowGap = px(8);
     L.wood.style.columnGap = px(geo.wood.gap);
     L.wood.style.gridTemplateColumns = `${px(geo.wood.piles)} minmax(0, 1fr)`;
-    L.wood.style.gridTemplateRows = `${px(ui.bands.card.h)} ${px(ui.bands.touch.min)} ${px(ui.bands.touch.min)}`;
+    L.wood.style.gridTemplateRows = `${px(ui.bands.card.h + M.INSPECT_HEADROOM)} ${px(ui.bands.touch.min)} ${px(ui.bands.touch.min)}`;
     fire.style.marginTop = '0';
     L.wood.replaceChildren(lane, L.booksHost, piles, fire);
   } else {
+    // The lane fills the band; the cards sit low enough for their Inspect control to show above them.
+    lane.style.height = px(geo.wood.h);
+    lane.style.paddingTop = px(Math.max(0, Math.min(M.INSPECT_HEADROOM, geo.wood.h - ui.bands.card.h - 4)));
     L.wood.style.padding = `0 ${px(geo.wood.pad)}`;
     L.wood.style.columnGap = px(geo.wood.gap);
     L.wood.style.gridTemplateColumns = `${px(geo.wood.books)} ${px(geo.fire.w)} minmax(0, 1fr) ${px(geo.wood.piles)}`;

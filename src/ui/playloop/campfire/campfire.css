@@ -909,3 +909,18 @@
   outline: 3px dashed var(--pl-campfire-ink);
   outline-offset: 3px;
 }
+
+/* the real Card hangs its 44 px Inspect control 34 px above the face: room above every row of cards */
+.pl-campfire-pair-row,
+.pl-campfire-stack,
+.pl-campfire-single {
+  margin-top: 26px;
+}
+.pl-campfire-shelf {
+  padding-top: 36px;
+}
+.pl-campfire-wood > .pl-campfire-lane {
+  align-self: start;
+  align-items: flex-start;
+  padding-bottom: 0;
+}
