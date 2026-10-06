@@ -256,8 +256,19 @@ interface PageRun {
   fullPage?: boolean;
 }
 
-/** Bundle a page with Bun, serve it with the repo's public folder, render it in an isolated headless Chrome. */
+/** Render a page; a Chrome that never opens its debugging port (a cold-start miss) is launched once more. */
 async function renderPage<T>(run: PageRun): Promise<T> {
+  try {
+    return await renderPageOnce<T>(run);
+  } catch (e) {
+    if (!String((e as Error).message).includes('debugging port')) throw e;
+    console.warn('headless Chrome missed its start; launching once more');
+    return renderPageOnce<T>(run);
+  }
+}
+
+/** Bundle a page with Bun, serve it with the repo's public folder, render it in an isolated headless Chrome. */
+async function renderPageOnce<T>(run: PageRun): Promise<T> {
   const dir = mkdtempSync(join(tmpdir(), 'pl-cards-'));
   const entry = join(dir, 'entry.ts');
   writeFileSync(entry, run.entry);
@@ -284,7 +295,7 @@ async function renderPage<T>(run: PageRun): Promise<T> {
     // Chrome writes its port file once it listens; wait until both lines (port, browser socket path) are there.
     const portFile = join(profile, 'DevToolsActivePort');
     let lines: string[] = [];
-    for (let i = 0; i < 150 && lines.length < 2; i++) {
+    for (let i = 0; i < 100 && lines.length < 2; i++) {
       await Bun.sleep(100);
       if (existsSync(portFile)) lines = readFileSync(portFile, 'utf8').split('\n').filter((l) => l.trim().length > 0);
     }
