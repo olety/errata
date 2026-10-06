@@ -11,6 +11,7 @@ import { isFocusedTest, isTestCommand } from './noise';
 import { commandPrefixOf, fingerprint } from './parse/common';
 import type { Case, CaseFacts, Disposition, Family } from './deck/types';
 import { FAMILY_KEYS } from './deck/types';
+import { opposed, suggestClaims } from './deck/claims';
 
 export const NEAR_DUPLICATE = 0.72;
 /** Up to this many later distinct-session cases are withheld for the boss. */
@@ -109,6 +110,13 @@ export function proposeConstraint(text: string): string {
  * Cluster directive candidates across sessions: exact-normalised equality or content-token Jaccard ≥ 0.72.
  * Returns clusters that span at least two distinct sessions. The cluster key is the earliest member's norm.
  */
+const claimCache = new WeakMap<DirectiveEpisode, ReturnType<typeof suggestClaims>>();
+function claimsOf(d: DirectiveEpisode) {
+  let c = claimCache.get(d);
+  if (!c) claimCache.set(d, (c = suggestClaims(d.text)));
+  return c;
+}
+
 export function clusterDirectives(cands: DirectiveEpisode[]): DirectiveEpisode[][] {
   const parent = cands.map((_, i) => i);
   const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i]!)));
@@ -117,7 +125,12 @@ export function clusterDirectives(cands: DirectiveEpisode[]): DirectiveEpisode[]
       const a = cands[i]!;
       const b = cands[j]!;
       if (a.sessionId === b.sessionId) continue;
-      if (a.norm === b.norm || jaccard(a.tokens, b.tokens) >= NEAR_DUPLICATE) parent[find(i)] = find(j);
+      if (!(a.norm === b.norm || jaccard(a.tokens, b.tokens) >= NEAR_DUPLICATE)) continue;
+      // The same words can carry opposite instructions ("npm instead of bun" / "bun instead of npm"): never one cluster.
+      const ca = claimsOf(a);
+      const cb = claimsOf(b);
+      if (ca.some((x) => cb.some((y) => opposed(x, y)))) continue;
+      parent[find(i)] = find(j);
     }
   }
   const groups = new Map<number, DirectiveEpisode[]>();
@@ -169,7 +182,10 @@ export function buildRooms(sessions: Session[], episodes: Episode[]): Room[] {
   // 1. Repeated directives (type 4). A member that answered an interrupt brings its interrupt episode (the receipt
   //    keeps the cut-off action); that interrupt then belongs here, not to a stop room.
   const consumed = new Set<string>();
-  for (const cluster of clusterDirectives(episodes.filter((e): e is DirectiveEpisode => e.type === 'directive'))) {
+  // A message that answered a stop as a change of plan stays a neutral event; it never feeds a directive.
+  const pivotTurns = new Set(interrupts.filter((e) => e.reply === 'pivot').map((e) => `${e.sessionId}#${e.humanTurn}`));
+  const cands = episodes.filter((e): e is DirectiveEpisode => e.type === 'directive' && !pivotTurns.has(`${e.sessionId}#${e.humanTurn}`));
+  for (const cluster of clusterDirectives(cands)) {
     const key = cluster[0]!.norm;
     const perSession = new Map<string, DirectiveEpisode>();
     for (const d of cluster) if (!perSession.has(d.sessionId)) perSession.set(d.sessionId, d);
@@ -232,11 +248,16 @@ function finalizeRoom(g: Group): Room | null {
   const order: string[] = [];
   for (const e of eps) if (!order.includes(e.sessionId)) order.push(e.sessionId);
   if (g.family === 'workflow' && order.length < 2) return null;
-  const family: Family = g.family === 'stop' ? (order.length >= 2 ? 'directive' : 'boundary') : g.family;
+  const ieAll = eps.filter((e): e is InterruptEpisode => e.type === 'interrupt');
+  const narrowedAll = ieAll.length > 0 && ieAll.length === eps.length && ieAll.every((e) => !!e.followUp && isNarrowing(e));
+  // Stops on one object across sessions are the same line only when the evidence shows it (every stop narrowed the
+  // same run); otherwise the room stays a boundary room with several sessions and the player confirms each case.
+  const family: Family = g.family === 'stop' ? (order.length >= 2 && narrowedAll ? 'directive' : 'boundary') : g.family;
   const withholdN = g.kind === 'encounter' && order.length > MIN_IN_ROOM ? Math.min(MAX_WITHHELD, order.length - MIN_IN_ROOM) : 0;
   const held = new Set(order.slice(order.length - withholdN));
   const inRoom = eps.filter((e) => !held.has(e.sessionId));
-  const withheld = eps.filter((e) => held.has(e.sessionId));
+  // One boss case per withheld session (its first); other episodes from those sessions stay out of the room.
+  const withheld = order.slice(order.length - withholdN).map((sid) => eps.find((e) => e.sessionId === sid)!);
   const anchor = [...inRoom].sort((a, b) => anchorScore(b) - anchorScore(a) || tsOf(a) - tsOf(b))[0]!;
   const projKeys = [...new Set(eps.map((e) => e.projectKey))];
   const projects = projKeys.map((k) => ({ key: k, label: eps.find((e) => e.projectKey === k)?.projectLabel ?? null }));
@@ -261,11 +282,15 @@ function finalizeRoom(g: Group): Room | null {
           : `You stopped the agent during ${g.object.label} and drew the same line · ${times(n, nSessions)}`;
       break;
     default:
-      subtitle = g.kind === 'event' ? 'You stopped the agent and changed the plan. Not a problem unless you say so.' : `You stopped the agent during ${g.object.label}, then drew a line · ${times(n, nSessions)}`;
+      subtitle =
+        g.kind === 'event'
+          ? 'You stopped the agent and changed the plan. Not a problem unless you say so.'
+          : nSessions > 1
+            ? `You stopped the agent during ${g.object.label} in ${nSessions} sessions; check each case is the same line · ${times(n, nSessions)}`
+            : `You stopped the agent during ${g.object.label}, then drew a line · ${times(n, nSessions)}`;
   }
   const quote = g.kind !== 'event' && (anchor.type === 'interrupt' || anchor.type === 'directive') ? anchor.receipt.quote : null;
-  const ie = eps.filter((e): e is InterruptEpisode => e.type === 'interrupt');
-  const narrowedTests = ie.length > 0 && ie.every((e) => !!e.followUp && isNarrowing(e));
+  const narrowedTests = ieAll.length > 0 && ieAll.every((e) => !!e.followUp && isNarrowing(e));
   const projectPart = g.projectBound ? anchor.projectKey ?? '' : single ? single.key ?? '' : '*';
   return {
     key: `${g.kind === 'event' ? 'event' : family}|${g.object.key}|${projectPart}`,
@@ -352,6 +377,7 @@ export function caseFor(e: Episode, room: Room, confirmedConstraint?: string): C
     agent: e.agent,
     projectKey: e.projectKey,
     projectLabel: e.projectLabel,
+    family: room.family,
     facts,
     eligibleResponseKeys: FAMILY_KEYS[room.family],
     disposition: 'unreviewed',
@@ -450,7 +476,8 @@ export function buildRoute(rooms: Room[], opts: { importedCards: number } = { im
     const n2 = take(pool[0]);
     if (n2) nodes.push({ slot: 2, kind: 'encounter', rooms: [n2.key] });
   }
-  if (nodes.length) nodes.push({ slot: 3, kind: 'campfire', rooms: [] });
+  // A campfire needs something to work on: the first campfire follows an encounter (an event yields no card).
+  if (n1) nodes.push({ slot: 3, kind: 'campfire', rooms: [] });
   const elite = pool.find((r) => r.totalSessions >= ELITE_SESSIONS);
   if (elite) {
     take(elite);

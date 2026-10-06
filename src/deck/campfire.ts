@@ -32,8 +32,7 @@ export function preservedTokens(text: string): Set<string> {
   const out = new Set<string>();
   const toks = contentTokens(text);
   for (const t of toks) if (NEGATIONS.has(t) || /\d/.test(t) || t.includes('/') || /\.[a-z0-9]{1,5}$/.test(t)) out.add(t);
-  const m = /\b(?:except|unless|other than|but only)\b[^.;]*/i.exec(text);
-  if (m) for (const t of contentTokens(m[0])) out.add(t);
+  for (const m of text.matchAll(/\b(?:except|unless|other than|but only)\b[^.;]*/gi)) for (const t of contentTokens(m[0])) out.add(t);
   return out;
 }
 
@@ -78,7 +77,8 @@ function stripUnless(cs: readonly Claim[] = []): Claim[] {
 function autoText(cards: Card[]): string | null {
   const keys = cards.map((c) => new Set(stripUnless(c.claims).map(claimKey)));
   const allExact = cards.every((c) => normText(c.text) === normText(cards[0]!.text));
-  const claimsMatch = keys.every((k) => k.size === keys[0]!.size && [...k].every((x) => keys[0]!.has(x)));
+  // Structured instructions match only when every member has claims and they are the same set; empty claims prove nothing.
+  const claimsMatch = keys[0]!.size > 0 && keys.every((k) => k.size === keys[0]!.size && [...k].every((x) => keys[0]!.has(x)));
   if (allExact) return cards[0]!.text; // the same words: keep the first line as written
   if (!claimsMatch) return null;
   const need = new Set<string>();
@@ -147,8 +147,15 @@ function targetsUnion(cards: Card[]): Targets {
 
 function exceptionsUnion(cards: Card[]): CardException[] {
   const out: CardException[] = [];
-  for (const c of cards) for (const e of c.exceptions) if (!out.some((x) => x.text === e.text)) out.push({ ...e, when: { ...e.when } });
+  const key = (e: CardException) => `${e.text}\u0000${JSON.stringify(Object.entries(e.when).sort())}`;
+  for (const c of cards) for (const e of c.exceptions) if (!out.some((x) => key(x) === key(e))) out.push({ ...e, when: { ...e.when } });
   return out;
+}
+
+function evidenceUnion(cards: Card[]): Card['evidenceRefs'] {
+  const out: Card['evidenceRefs'][number][] = [];
+  for (const c of cards) for (const r of c.evidenceRefs) if (!out.some((x) => x.sessionId === r.sessionId && x.turn === r.turn && x.callId === r.callId)) out.push(r);
+  return Object.freeze(out);
 }
 
 /** Perform a fuse. Prose stays prose: one survivor line per file is rewritten in place, the others are cut. */
@@ -158,6 +165,7 @@ export function applyFuse(d: DeckState, s: FuseSuggestion, text: string): DeckSt
   const present = presentCards(d);
   const members = s.members.map((id) => present.find((c) => c.id === id)).filter((c): c is Card => !!c);
   if (members.length !== s.members.length) throw new Error('The stack changed; rebuild the suggestion.');
+  if (members.some((a, x) => members.some((b, y) => x < y && !compatible(a, b)))) throw new Error('These cards no longer fit together (scope, trigger or claims changed); rebuild the suggestion.');
   let next = d;
   const games = members.filter((c) => !isProse(c));
   if (games.length === 0) {
@@ -173,7 +181,7 @@ export function applyFuse(d: DeckState, s: FuseSuggestion, text: string): DeckSt
   }
   // A game card is involved: the result is a game card (managed line); prose members are cut.
   const base = games.find((c) => d.cards.some((g) => g.id === c.id)) ?? games[0]!;
-  const fused = updateCard({ ...base, taken: true } as Card, { text: t, targets: targetsUnion(members), exceptions: exceptionsUnion(members) });
+  const fused = Object.freeze({ ...updateCard({ ...base, taken: true } as Card, { text: t, targets: targetsUnion(members), exceptions: exceptionsUnion(members) }), evidenceRefs: evidenceUnion(members) });
   const removed = new Set(d.removedManaged);
   for (const m of members) {
     if (isProse(m)) next = withEdit(next, m.id, { kind: 'cut' });
@@ -187,7 +195,7 @@ export function applyFuse(d: DeckState, s: FuseSuggestion, text: string): DeckSt
 
 export interface Preview {
   before: { id: string; text: string; targets: Targets; scope: Scope }[];
-  after: { text: string; targets: Targets; scope: Scope; trigger: Card['trigger'] | null; exceptions: CardException[] } | null;
+  after: { text: string; targets: Targets; scope: Scope; trigger: Card['trigger'] | null; exceptions: CardException[]; retainedEvidence?: number } | null;
   weight: { claude: { before: number; after: number }; codex: { before: number; after: number } };
   /** Reviewed issue cases addressed before and after, and which ones the change opens or newly addresses. */
   cases: { before: number; after: number; confirmed: number; opened: string[]; addressed: string[] };
@@ -227,7 +235,7 @@ export function previewFuse(d: DeckState, s: FuseSuggestion, text: string, cases
   const members = presentCards(d).filter((c) => s.members.includes(c.id));
   const pa = presentCards(after);
   const result = pa.find((c) => s.members.includes(c.id) || (!members.some((m) => m.id === c.id) && !presentCards(d).some((x) => x.id === c.id))) ?? null;
-  p.after = { text: sanitizeLine(text), targets: targetsUnion(members), scope: members[0]!.scope, trigger: result && result.family !== 'imported' ? result.trigger : null, exceptions: exceptionsUnion(members) };
+  p.after = { text: sanitizeLine(text), targets: targetsUnion(members), scope: members[0]!.scope, trigger: result && result.family !== 'imported' ? result.trigger : null, exceptions: exceptionsUnion(members), retainedEvidence: evidenceUnion(members).length };
   return p;
 }
 
@@ -255,8 +263,16 @@ function scopesMeet(a: Card, b: Card): boolean {
 
 /** An exception on one card that removes the other card's project. */
 function separated(a: Card, b: Card): boolean {
-  const cut = (x: Card, y: Card) => y.scope.kind === 'project' && x.exceptions.some((e) => e.when.projectKey === (y.scope as { projectKey: string }).projectKey);
+  // Only an exception whose whole predicate is the project removes that project; extra conditions leave an overlap.
+  const cut = (x: Card, y: Card) =>
+    y.scope.kind === 'project' && x.exceptions.some((e) => e.when.projectKey === (y.scope as { projectKey: string }).projectKey && e.when.pathPrefix === undefined && e.when.commandPrefix === undefined);
   return cut(a, b) || cut(b, a);
+}
+
+/** A written exception resolves a red link only for the two cards exactly as they were when it was written. */
+function resolutionKey(a: Card, b: Card): string {
+  const [x, y] = [a, b].sort((p, q) => p.id.localeCompare(q.id));
+  return `${x.id}@${cardDigest(x)}×${y.id}@${cardDigest(y)}`;
 }
 
 /** Red links: opposed actions under overlapping conditions, for the same agent, in overlapping scopes. */
@@ -268,7 +284,7 @@ export function conflicts(d: DeckState): Conflict[] {
       const a = cards[i]!;
       const b = cards[j]!;
       if (!targetsMeet(a.targets, b.targets) || !scopesMeet(a, b) || separated(a, b)) continue;
-      if (d.resolvedPairs?.includes([a.id, b.id].sort().join('×'))) continue;
+      if (d.resolvedPairs?.includes(resolutionKey(a, b))) continue;
       const pair = anyOpposed(a.claims, b.claims);
       if (!pair) continue;
       const [x, y] = pair;
@@ -324,7 +340,9 @@ export function resolveConflict(d: DeckState, c: Conflict, r: Resolution): DeckS
       const bound = r.bind === A.id ? A : B;
       const other = bound === A ? B : A;
       const scope: Scope = { kind: 'project', projectKey: r.projectKey, label: r.projectLabel };
-      const boundText = /^In \S+, /.test(bound.text) ? bound.text : `In ${r.projectLabel}, ${lowerFirst(bound.text)}`;
+      // Any earlier project clause is replaced, so the exported text always names the scope the card now has.
+      const bare = bound.text.replace(/^In [^,]{1,80}, /, '');
+      const boundText = `In ${r.projectLabel}, ${lowerFirst(bare)}`;
       let next = withText(d, bound, boundText, { scope });
       const ex: CardException = { text: `except in ${r.projectLabel}`, when: { projectKey: r.projectKey } };
       next = withText(next, presentCards(next).find((x) => x.id === other.id)!, `${stripStop(other.text)}, except in ${r.projectLabel}.`, { exceptions: [...other.exceptions, ex] });
@@ -335,7 +353,9 @@ export function resolveConflict(d: DeckState, c: Conflict, r: Resolution): DeckS
       const on = r.on === A.id ? A : B;
       const ex: CardException = { text: sanitizeLine(r.text), when: { ...r.when } };
       const next = withText(d, on, `${stripStop(on.text)}, ${lowerFirst(stripStop(ex.text))}.`, { exceptions: [...on.exceptions, ex] });
-      return Object.freeze({ ...next, resolvedPairs: Object.freeze([...(next.resolvedPairs ?? []), c.id]) });
+      const pa = presentCards(next).find((x) => x.id === A.id)!;
+      const pb = presentCards(next).find((x) => x.id === B.id)!;
+      return Object.freeze({ ...next, resolvedPairs: Object.freeze([...(next.resolvedPairs ?? []), resolutionKey(pa, pb)]) });
     }
     case 'cancel': {
       const fresh = [A, B].find((x) => d.cards.some((g) => g.id === x.id));

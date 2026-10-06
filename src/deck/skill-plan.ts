@@ -84,7 +84,12 @@ export async function applyTargets(
   const targets: Target[] = [];
   const skills: RenderedSkill[] = [];
   for (const c of presentCards(d).filter((x) => x.type === 'skill' && x.taken && x.family !== 'imported')) {
-    const room = rooms.find((r) => r.family === 'workflow') ?? null;
+    // The skill is built from the workflow room its card was drafted from (matched by evidence), never another room.
+    const room = rooms.find((r) => r.family === 'workflow' && r.episodes.some((e) => c.evidenceRefs.some((x) => x.sessionId === e.sessionId && x.turn === e.turn))) ?? null;
+    if (!room && rooms.some((r) => r.family === 'workflow')) {
+      problems.push(`${c.skillSlug ?? c.id}: the workflow this Skill was drafted from is not in this run; take it again from its Workshop.`);
+      continue;
+    }
     const r = renderSkill(skillSpecFor(c, room));
     skills.push(r);
     if (r.problems.length) {

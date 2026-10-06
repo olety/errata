@@ -185,7 +185,8 @@ function markExpectedRed(s: Session): void {
       const e = evs[j]!;
       if (e.humanBefore) break;
       if (editsOf(e.c).some((f) => !isTestPath(f))) implEdit = true;
-      if (implEdit && e.c.kind === 'shell' && isTestCommand(e.c.command) && e.c.result?.status === 'ok') {
+      // Only a pass of the same test command closes the red phase; another test passing proves nothing about this one.
+      if (implEdit && e.c.kind === 'shell' && e.c.command && fingerprint(e.c.command) === fingerprint(c.command!) && e.c.result?.status === 'ok') {
         green = true;
         break;
       }

@@ -98,3 +98,16 @@ test('coverage counts confirmed issues only', () => {
   expect(cov.confirmed).toBe(3);
   expect(cov.addressed).toBe(2);
 });
+
+test('coverage counts one pip per family per session', () => {
+  const card = accepted(accepted(accepted(baseCard), 'c2'), 'c3');
+  const ref = (sessionId: string) => [{ sessionId, agent: 'claude' as const, turn: 1, callId: null }];
+  const cases: Case[] = [
+    { ...baseCase, family: 'repeated-command', evidenceRefs: ref('s1') },
+    { ...baseCase, id: 'c2', family: 'repeated-command', evidenceRefs: ref('s1') },
+    { ...baseCase, id: 'c3', family: 'repeated-command', evidenceRefs: ref('s2'), facts: { event: 'command_failed', fingerprint: 'make' } },
+  ];
+  const cov = coverage([card], cases, BOTH);
+  expect(cov.confirmed).toBe(2);
+  expect(cov.addressed).toBe(1);
+});

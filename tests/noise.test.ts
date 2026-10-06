@@ -106,3 +106,24 @@ describe('helpers', () => {
     expect(observablePass('done')).toBe(false);
   });
 });
+
+test('expected red needs a pass of the same test command; another test passing does not close it', () => {
+  const a = (id: string, name: string, input: object) => JSON.stringify({ type: 'assistant', sessionId: 's', message: { role: 'assistant', content: [{ type: 'tool_use', id, name, input }] } });
+  const r = (id: string, err: boolean, text: string) => JSON.stringify({ type: 'user', sessionId: 's', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, is_error: err, content: err ? `Error: Exit code 1\n${text}` : text }] } });
+  const rows = [
+    JSON.stringify({ type: 'user', sessionId: 's', cwd: '/w', message: { role: 'user', content: 'fix the api' } }),
+    a('e1', 'Edit', { file_path: '/w/tests/test_api.py', old_string: 'a', new_string: 'b' }),
+    r('e1', false, 'ok'),
+    a('t1', 'Bash', { command: 'pytest tests/test_api.py' }),
+    r('t1', true, '1 failed'),
+    a('t2', 'Bash', { command: 'pytest tests/test_api.py' }),
+    r('t2', true, '1 failed'),
+    a('e2', 'Edit', { file_path: '/w/src/api.py', old_string: 'a', new_string: 'b' }),
+    r('e2', false, 'ok'),
+    a('t3', 'Bash', { command: 'pytest tests/test_ui.py' }),
+    r('t3', false, '3 passed'),
+  ];
+  const s = parseLines('claude', 's.jsonl', rows);
+  expect(allCalls(s).filter((c) => c.result?.negative === 'expected-red')).toEqual([]);
+  expect(repeatedCommandEpisodes(s).length).toBe(1);
+});

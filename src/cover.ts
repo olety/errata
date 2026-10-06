@@ -103,17 +103,23 @@ export function cover(card: Card, c: Case, exported: ExportMap): CoverResult {
   return { covers: CHECKS.every((k) => checks[k] === 'true'), checks };
 }
 
-/** "N of M reviewed cases addressed by the proposed instructions". Only confirmed issues count. */
+/**
+ * "N of M reviewed cases addressed by the proposed instructions". Only confirmed issues count, and each pip is capped
+ * at one case per family per session: a group counts once, and is addressed when any of its confirmed cases is.
+ * Cases without a family or session count on their own.
+ */
 export function coverage(cards: readonly Card[], cases: readonly Case[], exported: ExportMap): { addressed: number; confirmed: number; byCase: Map<string, string[]> } {
   const byCase = new Map<string, string[]>();
-  let addressed = 0;
-  let confirmed = 0;
+  const groups = new Map<string, boolean>();
   for (const c of cases) {
     if (c.disposition !== 'issue') continue;
-    confirmed++;
     const hits = cards.filter((k) => cover(k, c, exported).covers).map((k) => k.id);
     byCase.set(c.id, hits);
-    if (hits.length > 0) addressed++;
+    const session = c.evidenceRefs[0]?.sessionId;
+    const key = c.family && session ? `${session}|${c.family}` : `case|${c.id}`;
+    groups.set(key, (groups.get(key) ?? false) || hits.length > 0);
   }
-  return { addressed, confirmed, byCase };
+  let addressed = 0;
+  for (const v of groups.values()) if (v) addressed++;
+  return { addressed, confirmed: groups.size, byCase };
 }

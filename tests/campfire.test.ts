@@ -40,11 +40,32 @@ describe('fuse suggestions', () => {
     expect(conflicts(d).length).toBe(1);
   });
 
-  test('numbers and paths are protected words: the auto text keeps them or the player writes it', () => {
+  test('numbers, paths and every exception clause are protected words; without matching claims the player writes the text', () => {
     expect([...preservedTokens('Keep functions under 40 lines in src/core.')].sort()).toEqual(['40', 'src/core']);
+    expect([...preservedTokens('Use npm unless offline; except in staging.')].sort()).toEqual(['offline', 'staging', 'unless', 'except'].sort());
     const d = newDeck(bytes('Keep functions under 40 lines in src/core.\nKeep functions under 40 lines in src/core please.\n'), null);
     const [s] = fuseSuggestions(d);
-    expect(s!.autoText).toBe('Keep functions under 40 lines in src/core.');
+    expect(s!.kind).toBe('near');
+    expect(s!.autoText).toBeNull();
+    // Opposite instructions in the same words never stack with auto text.
+    const swap = newDeck(bytes('Archive release logs and delete temporary reports.\nDelete release logs and archive temporary reports.\n'), null);
+    expect(fuseSuggestions(swap).every((x) => x.autoText === null)).toBe(true);
+    // A second exception clause survives: the longer line is the only one that keeps it.
+    const two = newDeck(bytes('Use npm unless offline; except in staging.\nUse npm unless offline.\n'), null);
+    const [t] = fuseSuggestions(two);
+    expect(t!.autoText).toBe('Use npm unless offline; except in staging.');
+  });
+
+  test('a stale suggestion is refused when a member changed scope; fused game cards keep every evidence ref', () => {
+    const d0 = newDeck(bytes('# Mine\n'), null);
+    const g = (id: string, ref: string, over: Partial<Card> = {}) =>
+      setTaken(Object.freeze({ id, type: 'rule', family: 'repeated-command', title: 't', targets: 'claude', scope: { kind: 'global' }, trigger: { event: 'command_failed', commandPrefix: 'make' }, responseKey: 'inspect_error_before_retry', exceptions: [], exceptionsReviewed: true, text: 'When `make` fails, read its error first.', textRevision: 1, acceptedMappings: {}, evidenceRefs: [{ sessionId: ref, agent: 'claude', turn: 1, callId: null }], taken: false, claims: [{ polarity: 'do', act: 'read-error', object: 'cmd:make', when: 'after-failure' }], ...over }) as Card, true);
+    const d = withCards(d0, [g('r_a', 's1'), g('r_b', 's2')]);
+    const [s] = fuseSuggestions(d);
+    const fused = presentCards(applyFuse(d, s!, s!.autoText!)).find((c) => c.family === 'repeated-command')!;
+    expect(fused.evidenceRefs.map((r) => r.sessionId).sort()).toEqual(['s1', 's2']);
+    const changed = withCards(d0, [g('r_a', 's1'), g('r_b', 's2', { scope: { kind: 'project', projectKey: 'p', label: 'api' } })]);
+    expect(() => applyFuse(changed, s!, s!.autoText!)).toThrow();
   });
 
   test('different scopes are declined; a game card with a different trigger is not fused', () => {
@@ -105,6 +126,29 @@ describe('conflicts', () => {
     expect(a.text).toBe('Run the full test suite before reporting done, unless the user names a test file.');
     expect(a.exceptions[0]!.text).toBe('unless the user names a test file');
     expect(conflicts(next)).toEqual([]);
+    // The resolution holds for the cards as they were; changing either one brings the red link back.
+    const changed = sharpen(next, c!.b, 'Only run the focused test file; never the full test suite, not even at the end.');
+    expect(conflicts(changed).length).toBe(1);
+  });
+
+  test('a project exception with extra conditions does not separate the projects', () => {
+    const d0 = newDeck(bytes('- Run the full test suite before reporting done.\n'), null);
+    const p = presentCards(d0)[0]!;
+    const g = setTaken(Object.freeze({ ...p, id: 'r_q', family: 'directive', type: 'rule', source: undefined, scope: { kind: 'project', projectKey: 'pp', label: 'api' }, text: 'In api, never run the full test suite.', claims: suggestClaims('never run the full test suite') }) as Card, true);
+    const d = withCards(withEdit(d0, p.id, { kind: 'replace', text: p.text, exceptions: [{ text: 'except for generated files in api', when: { projectKey: 'pp', pathPrefix: 'generated/' } }] }), [g]);
+    expect(conflicts(d).length).toBe(1);
+  });
+
+  test('separating twice replaces the project clause instead of keeping the old one', () => {
+    const d = files();
+    const [c] = conflicts(d);
+    const once = resolveConflict(d, c!, { kind: 'separate', bind: c!.b, projectKey: 'p1', projectLabel: 'old' });
+    const b1 = presentCards(once).find((x) => x.id === c!.b)!;
+    expect(b1.text).toStartWith('In old, ');
+    const again = resolveConflict(once, { ...c! }, { kind: 'separate', bind: c!.b, projectKey: 'p2', projectLabel: 'new' });
+    const b2 = presentCards(again).find((x) => x.id === c!.b)!;
+    expect(b2.text).toStartWith('In new, ');
+    expect(b2.text).not.toContain('In old');
   });
 
   test('cancel puts a card taken this run back on the shelf; prose alone stays red', () => {
@@ -199,6 +243,17 @@ describe('skill planning', () => {
     expect(text(t.lanes.claude.next)).toContain('`verify-change`');
     expect(text(t.lanes.codex.next)).not.toContain('verify-change');
     expect(t.notes.length).toBe(1);
+  });
+
+  test('a Skill is built from the workflow room its card came from, never another one', async () => {
+    const card = Object.freeze({ ...skillCard(), evidenceRefs: [{ sessionId: 'sB', agent: 'codex', turn: 2, callId: null }] }) as Card;
+    const room = (sid: string, test: string, agent: 'claude' | 'codex') => ({ family: 'workflow', episodes: [{ type: 'workflow', sessionId: sid, turn: 2, agent, test, testProgram: test.split(' ')[0], workflowKey: 'focused-test>diff-review>report' }] }) as unknown as import('../src/rooms').Room;
+    const d = withCards(newDeck(bytes('# Mine\n'), bytes('# Codex\n')), [card]);
+    const t = await applyTargets(d, [room('sA', 'pytest tests/a.py', 'claude'), room('sB', 'bun test tests/b.ts', 'codex')], { claude: true, codex: true }, read);
+    expect(t.skills[0]!.text).toContain('bun test tests/b.ts');
+    expect(t.skills[0]!.text).not.toContain('pytest');
+    const lost = await applyTargets(d, [room('sA', 'pytest tests/a.py', 'claude')], { claude: true, codex: true }, read);
+    expect(lost.problems.some((p) => p.includes('not in this run'))).toBe(true);
   });
 
   test('a different skill with the same name is never overwritten', async () => {

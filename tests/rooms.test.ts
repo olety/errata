@@ -109,7 +109,8 @@ describe('stop replies', () => {
     const ss = [stopDuring(1, 'git push --force origin main', 'no force push, ever'), stopDuring(2, 'git push -f origin dev', 'git push without force please'), stopDuring(4, 'pytest', 'one file.', 'pytest tests/test_a.py -q')];
     const rooms = buildRooms(ss, ss.flatMap(detectEpisodes));
     const push = rooms.find((r) => r.object.key === 'cmd:git push')!;
-    expect(push.family).toBe('directive');
+    // The same command in two sessions is not proof of the same line: a boundary room the player confirms case by case.
+    expect(push.family).toBe('boundary');
     expect(push.sessions).toBe(2);
     const narrowed = rooms.find((r) => r.object.key === 'cmd:pytest')!;
     expect(narrowed.family).toBe('boundary');
@@ -135,12 +136,53 @@ describe('route', () => {
     expect(new Set(placed).size).toBe(placed.length);
   });
 
+  test('an event-only run gets no campfire', () => {
+    const s = parseLines('claude', 'p.jsonl', [
+      JSON.stringify({ type: 'user', sessionId: 'p', cwd: '/home/dev/web', message: { role: 'user', content: 'go' } }),
+      JSON.stringify({ type: 'user', sessionId: 'p', message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] } }),
+      JSON.stringify({ type: 'user', sessionId: 'p', message: { role: 'user', content: 'actually, do the docs first' } }),
+    ]);
+    expect(buildRoute(buildRooms([s], detectEpisodes(s))).nodes.map((n) => n.kind)).toEqual(['event', 'audit', 'apply']);
+  });
+
+  test('withholding keeps one boss case per later session', () => {
+    const many = WORDS.slice(0, 4).map((w, i) => stopSession(i + 1, i + 1, '/home/dev/web', w));
+    const extra = stopSession(4, 4, '/home/dev/web', 'only the one file again');
+    const sessions = [...many.slice(0, 3), (() => { const s = many[3]!; s.turns.push(...extra.turns.map((t, k) => ({ ...t, i: s.turns.length + k }))); return s; })()];
+    const r = buildRooms(sessions, sessions.flatMap(detectEpisodes)).find((x) => x.object.key === 'cmd:pytest')!;
+    expect(r.withheld.length).toBe(1);
+  });
+
   test('thin evidence: the act gets shorter, never padded', () => {
     const one = [stopSession(1, 1, '/home/dev/web', WORDS[0]!)];
     const route = buildRoute(buildRooms(one, one.flatMap(detectEpisodes)));
     expect(route.nodes.map((n) => n.kind)).toEqual(['encounter', 'campfire', 'audit', 'apply']);
     expect(buildRoute([]).nodes.map((n) => n.kind)).toEqual(['audit', 'apply']);
     expect(buildRoute([], { importedCards: 2 }).nodes.map((n) => n.kind)).toEqual(['card-review', 'campfire', 'audit', 'apply']);
+  });
+});
+
+describe('directive clusters', () => {
+  const said = (n: number, text: string) =>
+    parseLines('claude', `d${n}.jsonl`, [JSON.stringify({ type: 'user', sessionId: `d${n}`, cwd: '/home/dev/web', timestamp: `2026-10-0${n}T10:00:00.000Z`, message: { role: 'user', content: text } })]);
+
+  test('the same words with opposite instructions never form one directive', () => {
+    const ss = [said(1, 'please use npm instead of bun here'), said(2, 'please use bun instead of npm here')];
+    expect(buildRooms(ss, ss.flatMap(detectEpisodes)).filter((r) => r.family === 'directive')).toEqual([]);
+    const same = [said(1, 'please use npm instead of bun here'), said(2, 'please use npm instead of bun here!')];
+    expect(buildRooms(same, same.flatMap(detectEpisodes)).filter((r) => r.family === 'directive').length).toBe(1);
+  });
+
+  test('a change of plan repeated in two sessions stays two neutral events', () => {
+    const pivot = (n: number) =>
+      parseLines('claude', `v${n}.jsonl`, [
+        JSON.stringify({ type: 'user', sessionId: `v${n}`, cwd: '/home/dev/web', timestamp: `2026-10-0${n}T10:00:00.000Z`, message: { role: 'user', content: 'go' } }),
+        JSON.stringify({ type: 'user', sessionId: `v${n}`, message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] } }),
+        JSON.stringify({ type: 'user', sessionId: `v${n}`, timestamp: `2026-10-0${n}T10:01:00.000Z`, message: { role: 'user', content: "actually, let's use the docs first, then the code" } }),
+      ]);
+    const ss = [pivot(1), pivot(2)];
+    const rooms = buildRooms(ss, ss.flatMap(detectEpisodes));
+    expect(rooms.map((r) => r.kind)).toEqual(['event', 'event']);
   });
 });
 

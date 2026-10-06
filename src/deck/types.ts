@@ -145,6 +145,8 @@ export interface Case {
   projectKey: string | null;
   /** Display label for the project chip. */
   projectLabel: string | null;
+  /** The family of the room the case was reviewed in: coverage counts one pip per family per session. */
+  family?: Family;
   facts: CaseFacts;
   eligibleResponseKeys: ResponseKey[];
   disposition: Disposition;
