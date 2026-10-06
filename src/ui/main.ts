@@ -25,8 +25,11 @@ import { claudeCandidates, codexCandidates, droppedCandidates, selectRun, type C
 import { resetSample, sampleDirs, sampleFiles, SAMPLE_LABEL } from './sample';
 import type { ParseReply, ParseRequest } from './worker';
 import { NEGATIVE_LABELS, type NegativeKind } from '../noise';
+import { createPlayState, type ApplyPort } from './playloop/adapter';
+import { Controller } from './playloop/controller';
+import { mountDebug } from './playloop/debug';
 
-type Step = 'import' | 'reading' | 'mirror' | 'act' | 'receipt';
+type Step = 'import' | 'reading' | 'mirror' | 'act' | 'receipt' | 'play';
 
 interface Progress {
   file: string;
@@ -252,6 +255,7 @@ async function startRun(files: { rel: string; blob: Blob; agent?: Agent }[]): Pr
     S.deck = newDeck(claudeMd, codexMd, override);
     rebuild(analyse(done.sessions, { episodes: done.episodes, importedCards: S.deck.imported.length, dispositions: S.disp }));
     set({ step: 'mirror', node: 0, sub: 0 });
+    if (location.hash === '#play') startPlayLoop();
   } catch (e) {
     set({ step: 'import' });
     fail(e);
@@ -429,6 +433,31 @@ async function forceRestore(rel: string, root: Root['id'], seenSha: string | nul
   render();
 }
 
+// ---------------------------------------------------------------- the play loop (debug render until the workers land)
+/** The play loop writes through the same roots and grants as the slice; the engine's write protocol does the rest. */
+function playPort(): ApplyPort {
+  return {
+    roots: () => rootsFor(),
+    needs: () => ({ claude: !S.dirs.claudeLoaded || (S.mode === 'real' && !S.dirs.claude), codex: !S.dirs.codexLoaded || (S.mode === 'real' && !S.dirs.codex), agents: !S.dirs.agents }),
+    readSkill: (root, rel) => {
+      const byId = new Map((rootsFor() ?? []).map((r) => [r.id, r]));
+      if (root === 'codex-legacy-skills') return S.dirs.codex ? prefixedRoot(fsaRoot('codex', S.dirs.codex, 'codex'), 'codex', 'skills', '~/.codex/skills').read(rel) : Promise.resolve(null);
+      return byId.get(root)?.read(rel) ?? Promise.resolve(null);
+    },
+    ensureWritable: async () => S.mode !== 'real' || ((await ensureWritable(S.dirs.claude!)) && (await ensureWritable(S.dirs.codex!)) && (!S.dirs.agents || (await ensureWritable(S.dirs.agents)))),
+  };
+}
+
+let unmountPlay: (() => void) | null = null;
+function startPlayLoop(): void {
+  if (!S.A) return;
+  const state = createPlayState({ analysis: S.A, deck: S.deck, sample: S.mode === 'sample', loaded: { claude: S.dirs.claudeLoaded, codex: S.dirs.codexLoaded }, disp: S.disp.toJSON().dispositions });
+  const ctl = new Controller(state, playPort(), { viewport: { w: window.innerWidth, h: window.innerHeight }, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+  S.step = 'play';
+  unmountPlay?.();
+  unmountPlay = mountDebug(app, ctl);
+}
+
 // ---------------------------------------------------------------- views: import and reading
 function steps(): HTMLElement {
   const names: [Step, string][] = [
@@ -567,7 +596,7 @@ function viewMirror(): HTMLElement {
       'Remember my reviews on this device (stored only in this browser).',
     ),
     S.mode === 'real' && !S.dirs.codexLoaded && hasFSA && h('div', { class: 'row' }, h('span', { class: 'sub' }, 'Optional: load AGENTS.md now so its weight and any disagreements show during the act. Read only; write access is asked at Apply.'), h('button', { onclick: () => void grant('codex', 'read') }, 'Choose ~/.codex')),
-    h('div', { class: 'row' }, h('button', { class: 'primary', onclick: () => set({ step: 'act', node: 0, sub: 0 }) }, 'Start the act')),
+    h('div', { class: 'row' }, h('button', { class: 'primary', onclick: () => set({ step: 'act', node: 0, sub: 0 }) }, 'Start the act'), h('button', { onclick: () => startPlayLoop() }, 'Play loop (preview)')),
   );
 }
 
@@ -1096,6 +1125,8 @@ function render(): void {
 }
 
 function paint(): void {
+  // The play loop owns #app while it runs.
+  if (S.step === 'play') return;
   const view = S.step === 'import' ? viewImport() : S.step === 'reading' ? viewReading() : S.step === 'mirror' ? viewMirror() : S.step === 'act' ? viewAct() : viewReceipt();
   app.replaceChildren(steps(), S.error ? h('p', { class: 'warn' }, S.error) : '', S.busy ? h('p', { class: 'sub' }, S.busy) : '', view);
 }
@@ -1105,3 +1136,5 @@ function paint(): void {
 
 loadRemembered();
 render();
+// "#play" opens the play loop on the synthetic sample (the slice stays the default route until P1 replaces it).
+if (location.hash === '#play') void startSample();

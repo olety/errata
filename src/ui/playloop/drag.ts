@@ -190,9 +190,18 @@ export class DragCore {
     this.feed({ type: 'cancel' });
   }
 
+  /** A press or drag is in progress (renderers should not rebuild the card under the pointer). */
+  active(): boolean {
+    return this.g.kind === 'pressed' || this.g.kind === 'dragging';
+  }
+
+  /** Tear down without firing any hook: unmounting is not the player's cancel. */
   destroy(): void {
-    this.cancel();
+    this.g = IDLE;
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
     for (const f of this.off) f();
+    this.off = [];
     this.regs.clear();
   }
 
