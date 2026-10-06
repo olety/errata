@@ -3,7 +3,8 @@
 // Writes only under --out, which must be outside this repository. Everything printed or written has passed
 // through the parse-time redactor; the raw cross-check prints counts only.
 //
-//   bun scripts/real-run.ts --out <dir outside the repo> [--days 14] [--per-agent 12]
+//   bun scripts/real-run.ts --out <dir outside the repo> [--days 14] [--per-agent 12] [--wide]
+// Every file is read in full (no tail window). The wall-clock of the read is measured and reported.
 
 import { Glob } from 'bun';
 import { mkdir, stat, writeFile } from 'node:fs/promises';
@@ -11,10 +12,13 @@ import { homedir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 import { parseSessionFile } from '../src/parse/index';
 import type { Session } from '../src/model';
-import { allCalls } from '../src/model';
-import { detectEpisodes, mirror, type Episode } from '../src/episodes';
-import { draftCards, groupRooms, type Room } from '../src/deck/templates';
+import { allCalls, MAX_LINE_BYTES } from '../src/model';
+import type { Episode } from '../src/episodes';
+import { draftCards } from '../src/deck/templates';
 import { lineWeight } from '../src/deck/file';
+import { analyse } from '../src/pipeline';
+import type { Room } from '../src/rooms';
+import { isGenuineFailure } from '../src/noise';
 
 const args = process.argv.slice(2);
 const arg = (k: string, d?: string) => {
@@ -51,14 +55,28 @@ const ccFiles = await newest(CLAUDE_PROJECTS, '*/*.jsonl', (rel) => rel.split('/
 // Codex: rollouts only.
 const cxFiles = await newest(CODEX_SESSIONS, '**/rollout-*.jsonl', (rel) => /(^|\/)rollout-[^/]*\.jsonl$/.test(rel));
 
-async function pick(files: { abs: string; rel: string }[], n: number): Promise<{ sessions: Session[]; skippedAgentAuthored: number; considered: number }> {
+const timing = { bytes: 0, ms: 0, files: 0, slowest: [] as { ms: number; mib: number; agent: string }[] };
+
+async function timedParse(f: { abs: string; rel: string; size: number }): Promise<Session> {
+  const t0 = performance.now();
+  const s = await parseSessionFile({ rel: f.rel, blob: Bun.file(f.abs) });
+  const ms = performance.now() - t0;
+  timing.ms += ms;
+  timing.bytes += f.size;
+  timing.files++;
+  timing.slowest.push({ ms: Math.round(ms), mib: +(f.size / 1048576).toFixed(1), agent: s.agent });
+  timing.slowest.sort((a, b) => b.ms - a.ms).splice(5);
+  return s;
+}
+
+async function pick(files: { abs: string; rel: string; size: number }[], n: number): Promise<{ sessions: Session[]; skippedAgentAuthored: number; considered: number }> {
   const sessions: Session[] = [];
   let skipped = 0;
   let considered = 0;
   for (const f of files) {
     if (sessions.length >= n) break;
     considered++;
-    const s = await parseSessionFile({ rel: f.rel, blob: Bun.file(f.abs) });
+    const s = await timedParse(f);
     if (s.agentAuthored) {
       skipped++;
       continue;
@@ -68,16 +86,18 @@ async function pick(files: { abs: string; rel: string }[], n: number): Promise<{
   return { sessions, skippedAgentAuthored: skipped, considered };
 }
 
+const wall0 = performance.now();
 const cc = await pick(ccFiles, PER);
 const cx = await pick(cxFiles, PER);
 const sessions = [...cc.sessions, ...cx.sessions];
+const wallMs = performance.now() - wall0;
 
 // ---- independent raw cross-check (counts only): call ids and result ids straight from the JSON rows
 type Raw = { calls: Set<string>; results: Set<string>; paired: number; interrupts: number; userRows: number };
 // One snapshot of the bytes feeds both the parser and the raw count, so a live session that grows between two
 // reads cannot fake a mismatch.
 async function rawCounts(s: Session, abs: string): Promise<{ raw: Raw; parsed: Session } | null> {
-  if (s.partial) return null; // tail windows are not comparable
+  if (s.partial) return null; // a cut last line is not comparable
   const bytes = await Bun.file(abs).bytes();
   const parsed = await parseSessionFile({ rel: s.file, blob: new Blob([bytes]) }, s.agent);
   const calls = new Set<string>();
@@ -87,6 +107,8 @@ async function rawCounts(s: Session, abs: string): Promise<{ raw: Raw; parsed: S
   const text = new TextDecoder().decode(bytes);
   for (const line of text.split('\n')) {
     if (!line) continue;
+    // The same row bound as the parser: an oversized row is dropped and reported there, so it is skipped here too.
+    if (Buffer.byteLength(line) > MAX_LINE_BYTES) continue;
     let o: any;
     try {
       o = JSON.parse(line);
@@ -131,11 +153,17 @@ for (const s0 of sessions) {
   const interrupts = s.turns.filter((t) => t.role === 'interrupt').length;
   const roles = (['human', 'assistant', 'injected', 'interrupt'] as const).map((r) => `${{ human: 'h', assistant: 'a', injected: 'q', interrupt: 'x' }[r]}${s.turns.filter((t) => t.role === r).length}`).join(' ');
   if (raw) {
-    if (raw.paired !== parsedPaired || raw.calls.size !== top.length) pairingOk = false;
+    if (raw.paired !== parsedPaired || raw.calls.size !== top.length) {
+      pairingOk = false;
+      if (args.includes('--debug-pairing')) {
+        const parsedIds = calls.map((c) => c.callId);
+        console.error(JSON.stringify({ file: s.file.slice(0, 12), agent: s.agent, parsedCalls: calls.length, inRaw: top.length, raw: raw.calls.size, parsedSample: parsedIds.slice(0, 3).map((x) => x.slice(0, 14)), rawSample: [...raw.calls].slice(0, 3).map((x) => String(x).slice(0, 14)), missing: [...raw.calls].filter((x) => !parsedIds.includes(x)).slice(0, 3).map((x) => String(x).slice(0, 14)) }));
+      }
+    }
     if (raw.interrupts !== interrupts) interruptOk = false;
   }
   perSession.push(
-    `| ${s.agent} | ${s.client ?? '?'} | ${s.partial ? s.partialReason : 'full'} | ${roles} | ${top.length}/${raw?.calls.size ?? '–'} | ${parsedPaired}/${raw?.paired ?? '–'} | ${s.stats.orphanResults} | ${interrupts}/${raw?.interrupts ?? '–'} | ${Object.values(s.stats.redactions).reduce((a, b) => a + b, 0)} |`,
+    `| ${s.agent} | ${s.client ?? '?'} | ${s.partial ? s.partialReason : 'full'} | ${roles} | ${top.length}/${raw?.calls.size ?? '–'} | ${parsedPaired}/${raw?.paired ?? '–'} | ${s.stats.orphanResults} | ${s.stats.oversizedRows} | ${interrupts}/${raw?.interrupts ?? '–'} | ${Object.values(s.stats.redactions).reduce((a, b) => a + b, 0)} |`,
   );
 }
 checks.push(`Pairing matches an independent raw count on every full session: ${pairingOk ? 'PASS' : 'FAIL'}`);
@@ -146,84 +174,79 @@ const agentHuman = sessions.filter((x) => x.agentAuthored && x.turns.some((t) =>
 checks.push(`Roles: no human turn starts with injected text (${leaked.length} found) and no agent-authored thread has a human turn (${agentHuman} found): ${leaked.length === 0 && agentHuman === 0 ? 'PASS' : 'FAIL'}`);
 checks.push(`Interrupt markers match an independent raw count on every full session: ${interruptOk ? 'PASS' : 'FAIL'}`);
 
-const episodes: Episode[] = sessions.flatMap(detectEpisodes);
-const m = mirror(sessions);
-const rooms = groupRooms(episodes);
-
-// ---- candidate cards: up to five. Rooms with typed (not pasted) words first, then support.
-const PLACEHOLDER = '«the constraint, in your words»';
-function bestEpisode(r: Room): Episode {
-  const score = (e: Episode) => (e.type === 'interrupt' ? (e.receipt.quote ? (e.pasted ? 1 : 3) : 0) : 2);
-  return [...r.episodes].sort((a, b) => score(b) - score(a))[0]!;
-}
-function rank(rs: Room[]): Room[] {
-  const typed = (r: Room) => (r.family === 'repeated-command' ? 1 : r.episodes.some((e) => e.type === 'interrupt' && e.receipt.quote && !e.pasted) ? 1 : 0);
-  return [...rs].sort((a, b) => typed(b) - typed(a) || b.sessions - a.sessions || b.episodes.length - a.episodes.length);
-}
-function pickRooms(rs: Room[], n: number): Room[] {
-  const ranked = rank(rs);
-  const cmd = ranked.filter((r) => r.family === 'repeated-command').slice(0, 2);
-  const stops = ranked.filter((r) => r.family === 'boundary');
-  return rank([...cmd, ...stops]).slice(0, n);
-}
-const boundaryRooms = rooms.filter((r) => r.family === 'boundary');
+const A = analyse(sessions);
+const m = A.mirror;
+const rooms = A.rooms;
+const boundaryRooms = rooms.filter((r) => r.family === 'boundary' || r.family === 'directive');
 const commandRooms = rooms.filter((r) => r.family === 'repeated-command');
-const chosen = pickRooms(rooms, 5);
 
-// ---- wider search (script only): every top-level session in the window, read in full, for candidate supply.
+// ---- wider search (script only): every top-level session in the window, read in full.
 const WIDE = args.includes('--wide');
-let wide: { sessions: Session[]; rooms: Room[]; mirror: ReturnType<typeof mirror>; skipped: number; considered: number } | null = null;
+let wide: { analysis: ReturnType<typeof analyse>; skipped: number; considered: number; ms: number; bytes: number } | null = null;
 if (WIDE) {
-  const picked = new Set(sessions.map((x) => x.file));
-  const all: Session[] = [...sessions.filter((x) => !x.partial)];
+  const all: Session[] = [...sessions];
   let skipped = 0;
   let considered = 0;
+  const w0 = performance.now();
+  let bytes = 0;
   for (const f of [...ccFiles, ...cxFiles]) {
     const name = f.rel.split('/').pop()!;
-    const already = sessions.find((x) => x.file === name);
-    if (already && !already.partial) continue;
+    if (sessions.some((x) => x.file === name)) continue;
     considered++;
     if (name.startsWith('rollout-')) {
-      // Header check first: subagent threads are skipped without reading the whole rollout.
       const head = await Bun.file(f.abs).slice(0, 1 << 20).text();
-      const first = head.split('\n')[0] ?? '';
       try {
-        const o = JSON.parse(first);
-        const src = o?.payload?.source;
+        const src = JSON.parse(head.split('\n')[0] ?? '')?.payload?.source;
         if (src && typeof src === 'object' && 'subagent' in src) {
           skipped++;
           continue;
         }
       } catch {
-        /* fall through to a full parse */
+        /* parse it */
       }
     }
-    const x = await parseSessionFile({ rel: f.rel, blob: Bun.file(f.abs) }, undefined, { fullRead: true });
+    const x = await parseSessionFile({ rel: f.rel, blob: Bun.file(f.abs) });
+    bytes += f.size;
     if (x.agentAuthored) {
       skipped++;
       continue;
     }
     all.push(x);
-    picked.add(name);
   }
-  const eps = all.flatMap(detectEpisodes);
-  wide = { sessions: all, rooms: groupRooms(eps), mirror: mirror(all), skipped, considered };
+  wide = { analysis: analyse(all), skipped, considered, ms: performance.now() - w0, bytes };
+}
+
+// ---- noise census: heads of genuine failures and of named negatives (redacted at parse time), for tuning the filter.
+function census(ss: Session[]): { genuine: [string, number][]; negatives: [string, number][] } {
+  const g = new Map<string, number>();
+  const n = new Map<string, number>();
+  for (const s of ss)
+    for (const c of allCalls(s)) {
+      if (!c.result) continue;
+      const head = c.result.text.replace(/\s+/g, ' ').replace(/\/(?:Users|home)\/[^\s/]+/g, '~').replace(/[0-9a-f]{8,}/g, '#').slice(0, 70);
+      if (isGenuineFailure(c)) g.set(head, (g.get(head) ?? 0) + 1);
+      else if (c.result.negative) n.set(`${c.result.negative}: ${head}`, (n.get(`${c.result.negative}: ${head}`) ?? 0) + 1);
+    }
+  const top = (x: Map<string, number>) => [...x.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25);
+  return { genuine: top(g), negatives: top(n) };
 }
 
 function candidateBlock(md: string[], list: Room[], startAt: number): void {
   list.forEach((r, i) => {
-    const e = bestEpisode(r);
+    const e = r.anchor;
     const scope = r.projectLabel ? `global (seen in ${r.projectLabel})` : 'global';
-    const cards = draftCards(r, { boundary: r.family === 'boundary' ? PLACEHOLDER : null });
+    const cards = draftCards(r);
     md.push('');
-    md.push(`### ${startAt + i}. ${r.name} — ${r.family === 'boundary' ? 'Boundary intervention' : 'Repeated unsuccessful command'}`);
+    md.push(`### ${startAt + i}. ${r.name} — ${r.family}`);
     md.push('');
-    md.push(`${r.subtitle}. Agents: ${r.agents.join(', ')}. Supporting sessions: ${r.sessions}. Scope: ${scope}.`);
+    md.push(`${r.subtitle}. Agents: ${r.agents.join(', ')}. Supporting sessions: ${r.sessions} (withheld for the boss: ${r.withheld.length}). Scope: ${scope}.`);
     md.push('');
     const pasted = e.type === 'interrupt' && e.pasted ? ' (pasted text, shortened)' : '';
     md.push(`- **Your words:** ${e.receipt.quote ? `“${e.receipt.quote}”${pasted}` : 'Tool evidence only'}`);
     md.push(`- **The action:** ${e.receipt.action ?? 'none recorded'}`);
     md.push(`- **The result:** ${e.receipt.result ?? 'none recorded'}`);
+    if (e.receipt.then) md.push(`- **Then:** ${e.receipt.then}`);
+    if (r.proposedConstraint) md.push(`- **Proposed line (editable):** ${r.proposedConstraint}`);
     if (r.episodes.length > 1) {
       const others = r.episodes.filter((x) => x !== e && x.receipt.quote).slice(0, 2);
       for (const o of others) md.push(`- **Another case:** “${o.receipt.quote!.slice(0, 120)}”`);
@@ -237,63 +260,63 @@ function candidateBlock(md: string[], list: Room[], startAt: number): void {
 
 const md: string[] = [];
 const ts = new Date().toISOString();
-md.push(`# Real-card candidates (read-only run, ${ts})`);
+const mib = (b: number) => (b / 1048576).toFixed(1);
+md.push(`# Real-log run (read-only, ${ts})`);
 md.push('');
-md.push('Aggregates and short redacted quotes only. Each card is a draft from the deterministic templates. Accept or reject in words; the boundary drafts take your own wording of the constraint.');
+md.push('Aggregates and short redacted quotes only. Every file read in full; no tail window.');
+md.push('');
+md.push('## Import timing (Bun, this machine)');
+md.push('');
+md.push('| Measure | Value |');
+md.push('|---|---|');
+md.push(`| Files parsed while picking the run | ${timing.files} (${mib(timing.bytes)} MiB) |`);
+md.push(`| Parse time, summed per file | ${(timing.ms / 1000).toFixed(1)} s (${(timing.bytes / 1048576 / (timing.ms / 1000)).toFixed(0)} MiB/s) |`);
+md.push(`| Wall-clock for the run's import | ${(wallMs / 1000).toFixed(1)} s |`);
+md.push(`| Slowest files | ${timing.slowest.map((x) => `${x.agent} ${x.mib} MiB in ${x.ms} ms`).join('; ')} |`);
+if (wide) md.push(`| Wider search, remaining files | ${wide.considered} files, ${mib(wide.bytes)} MiB in ${(wide.ms / 1000).toFixed(1)} s |`);
 md.push('');
 md.push('## Mirror (with denominators)');
 md.push('');
-md.push(`| Measure | Value |`);
-md.push(`|---|---|`);
+md.push('| Measure | Value |');
+md.push('|---|---|');
 md.push(`| Sessions in the run | ${m.sessions.total} of the newest top-level sessions in ${DAYS} days (Claude Code ${m.sessions.claude} of ${ccFiles.length}, Codex ${m.sessions.codex} of ${cxFiles.length}) |`);
-md.push(`| Agent-authored threads skipped while picking | Claude Code ${cc.skippedAgentAuthored} of ${cc.considered} considered, Codex ${cx.skippedAgentAuthored} of ${cx.considered} considered |`);
-md.push(`| Partial sessions (tail window or cut line) | ${m.sessions.partial} of ${m.sessions.total} |`);
-const mix = new Map<string, number>();
-for (const x of cx.sessions) mix.set(`${x.client ?? '?'} / source ${x.source ?? '?'}`, (mix.get(`${x.client ?? '?'} / source ${x.source ?? '?'}`) ?? 0) + 1);
-md.push(`| Codex sessions by originator / source | ${[...mix.entries()].map(([k, v]) => `${k}: ${v}`).join('; ')} (of ${cx.sessions.length}) |`);
-md.push(`| Genuine human turns | ${m.humanTurns} (injected user-role turns quarantined: ${m.injectedTurns}) |`);
-md.push(`| Interrupts paired with your next message | ${m.interruptPairs} of ${m.interrupts} interrupts |`);
-md.push(`| Repeated unchanged failing commands | ${m.repeatedCommand.episodes} episodes in ${m.repeatedCommand.sessionsWith} of ${m.sessions.total} sessions (failed shell runs: ${m.repeatedCommand.failedShellCalls} of ${m.repeatedCommand.shellCalls}) |`);
-md.push(`| Calls with a paired result | ${m.calls.withResult} of ${m.calls.total} (orphan results: ${m.calls.orphanResults}) |`);
+md.push(`| Agent-authored threads skipped while picking | Claude Code ${cc.skippedAgentAuthored} of ${cc.considered}, Codex ${cx.skippedAgentAuthored} of ${cx.considered} |`);
+md.push(`| Partial sessions (cut last line) | ${m.sessions.partial} of ${m.sessions.total} |`);
+md.push(`| Dates | ${m.dates.from} to ${m.dates.to} |`);
+md.push(`| Projects | ${m.projects.total} (sessions with a project: ${m.projects.sessionsWithProject} of ${m.sessions.total}) |`);
+md.push(`| Genuine human turns | ${m.humanTurns} |`);
+md.push(`| Excluded system text | ${m.excluded.total} turns (${Object.entries(m.excluded.byKind).map(([k, v]) => `${k} ${v}`).join(', ')}) |`);
+md.push(`| Interventions (stop → your next message) | ${m.interventions.total} of ${m.interrupts} stops; ${m.interventions.lines} drew a line, ${m.interventions.pivots} read as a change of plan |`);
+md.push(`| Repeated unchanged failing commands | ${m.repeatedCommand.episodes} in ${m.repeatedCommand.sessionsWith} of ${m.sessions.total} sessions (genuine failed shell runs ${m.repeatedCommand.genuineFailures} of ${m.repeatedCommand.shellCalls}) |`);
+md.push(`| Not failures (named negatives) | ${Object.entries(m.negatives).map(([k, v]) => `${k} ${v}`).join(', ')} |`);
+md.push(`| Same-file edit sequences | ${m.editSequences.candidates} candidates in ${m.editSequences.sessionsWith} sessions; ${m.editSequences.promoted} promoted by a stop |`);
+md.push(`| Repeated directives | ${m.directives.repeated} instructions across ${m.directives.sessions} sessions |`);
+md.push(`| Verify workflow | ${m.workflows.occurrences} occurrences in ${m.workflows.sessions} sessions; verified rooms ${m.workflows.verified} |`);
+md.push(`| Calls with a paired result | ${m.calls.withResult} of ${m.calls.total} (orphans ${m.calls.orphanResults}) |`);
 md.push(`| Secrets redacted at parse time | ${m.redactions} |`);
-md.push(`| Projects seen | ${m.projects.length} |`);
-md.push(`| Rooms (family + object + project) | ${rooms.length}: ${boundaryRooms.length} stop rooms, ${commandRooms.length} retry rooms |`);
+md.push(`| Character card | ${m.character ? `${m.character.name}: ${m.character.line}` : 'not enough evidence'} |`);
+md.push(`| Rooms | ${rooms.length}: ${[...rooms.map((r) => r.family + (r.kind === 'event' ? ' (event)' : '')).reduce((acc, f) => acc.set(f, (acc.get(f) ?? 0) + 1), new Map<string, number>()).entries()].map(([k, v]) => `${k} ${v}`).join(', ')} |`);
+md.push(`| Route | ${A.route.nodes.map((n) => `${n.slot}:${n.kind}${n.rooms.length ? `(${n.rooms.length})` : ''}`).join(' · ')}; leftovers ${A.route.leftovers.length} |`);
 md.push('');
-md.push('Every case below starts unreviewed. Nothing is a problem until you say so; a change of mind is a pivot, not a correction.');
-md.push('');
-// Five candidates in total. Retry rooms carry their own evidence. Stops grouped by the interrupted tool mix
-// unrelated messages, so stop candidates are single anchored episodes whose typed reply states a constraint
-// (negation / "only" words: a discovery aid for ranking, never a problem verdict).
-const pool = wide ? wide.rooms : rooms;
-const retry = rank(pool.filter((r) => r.family === 'repeated-command')).slice(0, 2);
-const DIRECTIVE = /\b(don'?t|dont|never|only|stop|without|not|no,|leave|keep|instead)\b/i;
-const stopEps = pool
-  .filter((r) => r.family === 'boundary')
-  .flatMap((r) => r.episodes)
-  .filter((e): e is Extract<Episode, { type: 'interrupt' }> => e.type === 'interrupt' && !!e.receipt.quote && !e.pasted && DIRECTIVE.test(e.receipt.quote))
-  .sort((a, b) => (b.receipt.quote!.match(new RegExp(DIRECTIVE, 'gi'))?.length ?? 0) - (a.receipt.quote!.match(new RegExp(DIRECTIVE, 'gi'))?.length ?? 0) || a.receipt.quote!.length - b.receipt.quote!.length);
-const stopRooms: Room[] = stopEps.slice(0, 5 - retry.length).map((e) => ({
-  family: 'boundary',
-  object: e.interruptedCall?.name ?? 'a reply',
-  projectKey: e.projectKey,
-  projectLabel: e.projectLabel,
-  agents: [e.agent],
-  episodes: [e],
-  sessions: 1,
-  name: 'The stop',
-  subtitle: `You stopped the agent${e.interruptedCall ? ` during ${e.interruptedCall.name}` : ''}, then stated a constraint`,
-}));
-md.push('## Candidates');
-md.push('');
-md.push(`Drawn from ${wide ? 'the wider search' : 'the 24-session run'}. ${stopEps.length} typed stop replies carried constraint words (don't, never, only, stop, without, keep, instead…) out of ${pool.flatMap((r) => r.episodes).filter((e) => e.type === 'interrupt').length} paired stops. For a stop card, option A takes your own wording of the constraint; B and C are generic and need your approval as generic.`);
-candidateBlock(md, [...retry, ...stopRooms], 1);
+md.push('## Candidates (the route\'s rooms, first five)');
+const routed = A.route.nodes.flatMap((n) => n.rooms).filter((k, i, a) => a.indexOf(k) === i).map((k) => rooms.find((r) => r.key === k)!).filter((r) => r.kind !== 'event');
+candidateBlock(md, routed.slice(0, 5), 1);
 if (wide) {
-  const wm = wide.mirror;
+  const wm = wide.analysis.mirror;
   md.push('');
   md.push(`## Wider search: every top-level session in ${DAYS} days, read in full`);
   md.push('');
-  md.push(`The browser reads big sessions through an 8 MiB tail window; this script read them whole for candidate supply. Sessions: ${wm.sessions.total} (Claude Code ${wm.sessions.claude}, Codex ${wm.sessions.codex}; agent-authored threads skipped: ${wide.skipped} of ${wide.considered} considered). Interrupts paired with your next message: ${wm.interruptPairs} of ${wm.interrupts}. Repeated unchanged failing commands: ${wm.repeatedCommand.episodes} episodes in ${wm.repeatedCommand.sessionsWith} of ${wm.sessions.total} sessions. Rooms by family + object + project: ${wide.rooms.length}.`);
+  md.push(`Sessions ${wm.sessions.total} (Claude Code ${wm.sessions.claude}, Codex ${wm.sessions.codex}; agent-authored skipped ${wide.skipped} of ${wide.considered} considered). Interventions ${wm.interventions.total} of ${wm.interrupts} stops (${wm.interventions.lines} lines, ${wm.interventions.pivots} plan changes). Repeated failing commands ${wm.repeatedCommand.episodes} in ${wm.repeatedCommand.sessionsWith} sessions. Edit sequences ${wm.editSequences.candidates} (${wm.editSequences.promoted} promoted). Repeated directives ${wm.directives.repeated}. Verify workflow ${wm.workflows.occurrences} in ${wm.workflows.sessions} sessions. Negatives ${Object.entries(wm.negatives).map(([k, v]) => `${k} ${v}`).join(', ')}. Rooms ${wide.analysis.rooms.length}. Character ${wm.character ? `${wm.character.name}: ${wm.character.line}` : 'none'}.`);
 }
+const cen = census(wide ? wide.analysis.sessions : sessions);
+md.push('');
+md.push('## Noise census (heads of results, home paths and hex runs masked)');
+md.push('');
+md.push('Genuine failures, most frequent first:');
+for (const [h, n] of cen.genuine) md.push(`- ${n} × ${h.replace(/\|/g, '/')}`);
+md.push('');
+md.push('Named negatives:');
+for (const [h, n] of cen.negatives) md.push(`- ${n} × ${h.replace(/\|/g, '/')}`);
 md.push('');
 md.push('## Hour-12 checks on this run');
 md.push('');
@@ -301,13 +324,12 @@ for (const c of checks) md.push(`- ${c}`);
 md.push('');
 md.push('## Per-session pairing (parsed / raw)');
 md.push('');
-md.push('| Agent | Client | Read | Turns (h human, a assistant, q quarantined, x interrupt) | Calls | Paired | Orphans | Interrupts | Redactions |');
-md.push('|---|---|---|---|---|---|---|---|---|');
+md.push('| Agent | Client | Read | Turns (h human, a assistant, q quarantined, x interrupt) | Calls | Paired | Orphans | Oversized rows | Interrupts | Redactions |');
+md.push('|---|---|---|---|---|---|---|---|---|---|');
 md.push(...perSession);
 
 await mkdir(OUT, { recursive: true });
-await writeFile(join(OUT, 'real-cards.md'), md.join('\n') + '\n');
-await writeFile(join(OUT, 'mirror.json'), JSON.stringify({ ts, mirror: m, checks, rooms: rooms.map((r) => ({ family: r.family, sessions: r.sessions, episodes: r.episodes.length, agents: r.agents })) }, null, 2));
+await writeFile(join(OUT, 'real-run.md'), md.join('\n') + '\n');
+await writeFile(join(OUT, 'real-files.txt'), [...cc.sessions, ...cx.sessions].map((x) => absOf.get(x.file)!).join('\n') + '\n');
 console.log(checks.join('\n'));
-if (wide) console.log('wide', JSON.stringify({ sessions: wide.mirror.sessions, interrupts: wide.mirror.interrupts, pairs: wide.mirror.interruptPairs, repeated: wide.mirror.repeatedCommand, rooms: wide.rooms.length }));
-console.log(JSON.stringify({ sessions: m.sessions, interrupts: m.interrupts, pairs: m.interruptPairs, repeated: m.repeatedCommand, calls: m.calls, redactions: m.redactions, rooms: rooms.length }));
+console.log(JSON.stringify({ import: { files: timing.files, mib: +mib(timing.bytes), parseSec: +(timing.ms / 1000).toFixed(2), wallSec: +(wallMs / 1000).toFixed(2) }, wide: wide ? { files: wide.considered, mib: +mib(wide.bytes), sec: +(wide.ms / 1000).toFixed(2), sessions: wide.analysis.mirror.sessions.total } : null, sessions: m.sessions, interventions: m.interventions, repeated: m.repeatedCommand.episodes, negatives: m.negatives, edits: m.editSequences, directives: m.directives, workflows: m.workflows, rooms: rooms.length, route: A.route.nodes.map((n) => n.kind), character: m.character?.name ?? null }));
