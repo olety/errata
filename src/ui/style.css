@@ -21,7 +21,9 @@ h3 { font-size: 17px; }
 p { margin: 6px 0; }
 .sub { color: var(--ink-soft); }
 .num, code, pre, .mono { font-family: var(--mono); }
-code { font-size: 0.92em; }
+/* Mono text renders literally: no ligatures, so "<!--", "-->", "!=" and "=>" show as typed. */
+code, pre, .mono, .num, textarea { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
+code { font-size: 0.92em; background: var(--well); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; white-space: break-spaces; }
 pre { background: var(--well); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; overflow-x: auto; font-size: 12.5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
 button { font: 500 15px var(--body); color: var(--ink); background: var(--paper); border: 1.5px solid var(--ink); border-radius: 6px; padding: 7px 14px; cursor: pointer; }
 button:hover:not(:disabled) { background: var(--well); }
@@ -59,4 +61,9 @@ summary { cursor: pointer; }
 .turn { font-size: 13px; padding: 4px 0; border-bottom: 1px dotted var(--line); }
 .turn b { font-family: var(--mono); font-weight: 600; font-size: 12px; }
 footer { margin-top: 28px; font-size: 13px; color: var(--ink-soft); }
+.character { border: 1.5px solid var(--ink); border-radius: 8px; padding: 12px 16px; margin: 14px 0; max-width: 520px; }
+.character h2 { margin: 2px 0 4px; }
+.card.conflict { border-color: var(--rose); }
+ol.route { padding-left: 22px; }
+ol.route li { margin: 3px 0; }
 @media (max-width: 560px) { .deck { grid-template-columns: 1fr; } }

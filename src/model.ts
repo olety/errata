@@ -194,3 +194,21 @@ export function projectKeyOf(rawCwd: string | null | undefined): string | null {
 export function gapBetween(s: Session, a: number, b: number): boolean {
   return s.gaps.some((g) => g.afterSeq >= a && g.afterSeq < b);
 }
+
+/** Result text kept after detection (bulk tool output is cut back once the detectors have seen it). */
+export const COMPACT_LIMITS = { result: 400, input: 300 } as const;
+
+/**
+ * Drop bulk tool output after detection: every result head and input summary is cut to COMPACT_LIMITS with the cut
+ * marker. Human and assistant text (already ≤ 4 KB) and every status, exit code and negative stay. In place.
+ */
+export function compactSession(s: Session): Session {
+  const cut = (t: string, n: number) => (t.length > n ? t.slice(0, n) + CUT_MARKER : t);
+  for (const t of s.turns)
+    for (const c of t.calls) {
+      c.input = cut(c.input, COMPACT_LIMITS.input);
+      if (c.command) c.command = cut(c.command, COMPACT_LIMITS.input + 200);
+      if (c.result) c.result.text = cut(c.result.text, COMPACT_LIMITS.result);
+    }
+  return s;
+}

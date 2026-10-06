@@ -121,9 +121,19 @@ export function fuseSuggestions(d: DeckState): FuseSuggestion[] {
     const kinds = idx.flatMap((i) => why.get(i) ?? []);
     const order: FuseKind[] = ['subsumed', 'same-claims', 'near', 'exact'];
     const kind = order.find((k) => kinds.some((w) => w.kind === k)) ?? 'exact';
-    out.push({ id: members.map((c) => c.id).sort().join('+'), kind, members: members.map((c) => c.id), autoText: autoText(members), why: [...new Set(kinds.map((w) => w.why))].join('; ') });
+    const sug: FuseSuggestion = { id: members.map((c) => c.id).sort().join('+'), kind, members: members.map((c) => c.id), autoText: autoText(members), why: [...new Set(kinds.map((w) => w.why))].join('; ') };
+    // The same words already in each file (one line per file) are one shared card: merging would change nothing.
+    if (sug.autoText !== null && isNoOp(d, sug)) continue;
+    out.push(sug);
   }
   return out;
+}
+
+function isNoOp(d: DeckState, s: FuseSuggestion): boolean {
+  const before = renderLanes(d);
+  const after = renderLanes(applyFuse(d, s, s.autoText!));
+  const same = (a: Uint8Array, b: Uint8Array) => a.length === b.length && a.every((x, i) => x === b[i]);
+  return same(before.claude.next, after.claude.next) && same(before.codex.next, after.codex.next);
 }
 
 function targetsUnion(cards: Card[]): Targets {

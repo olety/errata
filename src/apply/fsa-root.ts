@@ -70,3 +70,19 @@ export async function ensureWritable(handle: DirHandle): Promise<boolean> {
   if ((await h.queryPermission?.(opts)) === 'granted') return true;
   return (await h.requestPermission?.(opts)) === 'granted';
 }
+
+/**
+ * A root that lives under a prefix of another root (e.g. ~/.claude/skills inside the granted ~/.claude).
+ * Paths are validated by the base root; the identity names the prefix so Undo refuses a different place.
+ */
+export function prefixedRoot(base: Root, id: RootId, prefix: string, label: string): Root {
+  const p = prefix.replace(/\/+$/, '');
+  return {
+    id,
+    label,
+    identity: `${base.identity}/${p}`,
+    read: (rel) => base.read(`${p}/${rel}`),
+    write: (rel, bytes) => base.write(`${p}/${rel}`, bytes),
+    remove: (rel) => base.remove(`${p}/${rel}`),
+  };
+}

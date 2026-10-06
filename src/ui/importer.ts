@@ -2,7 +2,7 @@
 // under the Codex sessions folder only rollout-*.jsonl. Nothing else is opened.
 
 import type { Agent } from '../model';
-import { MAX_IMPORT_BYTES } from '../model';
+import { READ_BYTES_PER_SEC, SOFT_IMPORT_BYTES } from '../model';
 import { agentForFirstLine } from '../parse/index';
 
 export interface Candidate {
@@ -37,12 +37,26 @@ export async function claudeCandidates(root: FileSystemDirectoryHandle): Promise
   return out;
 }
 
-/** The player picked ~/.codex/sessions. Only rollout-*.jsonl is read. */
-export async function codexCandidates(root: FileSystemDirectoryHandle): Promise<Candidate[]> {
+/** A Codex rollout's first line names a subagent thread in session_meta.source. Read only that line's head. */
+async function codexSubagent(file: File): Promise<boolean> {
+  try {
+    const head = await file.slice(0, 64 * 1024).text();
+    const first = head.split('\n')[0] ?? '';
+    const src = (JSON.parse(first) as { payload?: { source?: unknown } })?.payload?.source;
+    return !!src && typeof src === 'object' && 'subagent' in (src as object);
+  } catch {
+    return false; // an unreadable or very long first line: read it in full later; the parser decides
+  }
+}
+
+/** The player picked ~/.codex/sessions. Only rollout-*.jsonl is read; recent files are checked for subagent threads. */
+export async function codexCandidates(root: FileSystemDirectoryHandle, recentDays = 30, now = Date.now()): Promise<Candidate[]> {
   const out: Candidate[] = [];
   const accept = (rel: string) => /(^|\/)rollout-[^/]*\.jsonl$/.test(rel);
   for await (const { rel, handle } of walk(root, '', 0, accept, () => true)) {
-    out.push({ rel, agent: 'codex', file: await handle.getFile(), subagent: false });
+    const file = await handle.getFile();
+    const recent = file.lastModified >= now - recentDays * 86400_000;
+    out.push({ rel, agent: 'codex', file, subagent: recent ? await codexSubagent(file) : false });
   }
   return out;
 }
@@ -61,14 +75,20 @@ export async function droppedCandidates(files: File[]): Promise<Candidate[]> {
 
 export interface Selection {
   chosen: Candidate[];
-  excluded: { tooOld: number; subagent: number; overBudget: number; overPerAgent: number };
+  excluded: { tooOld: number; subagent: number; overPerAgent: number };
   window: { days: number; perAgent: number };
+  /** Total bytes the run will read in full. */
+  bytes: number;
+  /** Over the 128 MiB guide: a warning with a time estimate, never a stop. */
+  overSoftBound: boolean;
+  estimateSec: number;
+  dates: { from: number | null; to: number | null };
 }
 
-/** Last 14 days, newest first, up to 12 per agent (24 total), subagent threads out, 128 MiB budget. */
+/** Last 14 days, newest first, up to 12 per agent (24 total), subagent threads out. Size is a warning, never a cut. */
 export function selectRun(all: Candidate[], days = 14, perAgent = 12, now = Date.now()): Selection {
   const since = now - days * 86400_000;
-  const ex = { tooOld: 0, subagent: 0, overBudget: 0, overPerAgent: 0 };
+  const ex = { tooOld: 0, subagent: 0, overPerAgent: 0 };
   const chosen: Candidate[] = [];
   let bytes = 0;
   const per: Record<Agent, number> = { claude: 0, codex: 0 };
@@ -85,14 +105,18 @@ export function selectRun(all: Candidate[], days = 14, perAgent = 12, now = Date
       ex.overPerAgent++;
       continue;
     }
-    const cost = Math.min(c.file.size, 8 * 1024 * 1024 + (1 << 20));
-    if (bytes + cost > MAX_IMPORT_BYTES) {
-      ex.overBudget++;
-      continue;
-    }
-    bytes += cost;
+    bytes += c.file.size;
     per[c.agent]++;
     chosen.push(c);
   }
-  return { chosen, excluded: ex, window: { days, perAgent } };
+  const times = chosen.map((c) => c.file.lastModified);
+  return {
+    chosen,
+    excluded: ex,
+    window: { days, perAgent },
+    bytes,
+    overSoftBound: bytes > SOFT_IMPORT_BYTES,
+    estimateSec: Math.ceil(bytes / READ_BYTES_PER_SEC),
+    dates: { from: times.length ? Math.min(...times) : null, to: times.length ? Math.max(...times) : null },
+  };
 }

@@ -13,8 +13,9 @@ export interface Analysis {
   mirror: Mirror;
 }
 
-export function analyse(sessions: Session[], opts: { importedCards?: number; dispositions?: Dispositions } = {}): Analysis {
-  const episodes = sessions.flatMap(detectEpisodes);
+/** Episodes may come precomputed (the worker detects per session before it drops bulk tool output). */
+export function analyse(sessions: Session[], opts: { importedCards?: number; dispositions?: Dispositions; episodes?: Episode[] } = {}): Analysis {
+  const episodes = opts.episodes ?? sessions.flatMap(detectEpisodes);
   const rooms = buildRooms(sessions, episodes);
   const route = buildRoute(rooms, { importedCards: opts.importedCards ?? 0 });
   const mirror = buildMirror(sessions, episodes, rooms, opts.dispositions);

@@ -234,6 +234,9 @@ describe('manifest: deck assertions (campfire, Apply, Undo)', () => {
     expect((manifest.deck_assertions.fused_uv_targets as string[]).sort()).toEqual(['claude', 'codex']);
     expect(p.weight.claude.after).toBeLessThan(p.weight.claude.before);
     expect(p.weight.codex.after).toBeLessThanOrEqual(p.weight.codex.before);
+    // Once merged, the same words in each file are one shared card: no further suggestion for them.
+    const next = applyFuse(d, uv, uv.autoText!);
+    expect(fuseSuggestions(next).some((s) => presentCards(next).filter((c) => s.members.includes(c.id)).every((c) => /\buv\b/.test(c.text)))).toBe(false);
   });
 
   test('the two force-push lines fuse and the exception survives as visible text', () => {
