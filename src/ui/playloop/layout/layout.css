@@ -1,0 +1,120 @@
+/* Owner: cards/layout. The Table, the header band and the status bar. Every class is prefixed pl-layout-.
+   The page's <main> is the slice's centred column; the Table fills the viewport above it and scrolls only when the
+   bands ask for it (Bands.scroll). */
+
+/* Own box model: these components never rely on the page's global reset. */
+:where([class^="pl-layout-"], [class*=" pl-layout-"]), :where([class^="pl-layout-"], [class*=" pl-layout-"])::before, :where([class^="pl-layout-"], [class*=" pl-layout-"])::after,
+:where([class^="pl-layout-"], [class*=" pl-layout-"]) :where(*) { box-sizing: border-box; }
+
+.pl-layout-table {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  overflow: hidden auto;
+  background: #3a2418;
+  color: var(--pl-cards-ink, #41291f);
+  font-family: var(--pl-cards-f-body, 'Zen Kaku Gothic New', system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 1.45;
+  overscroll-behavior: none;
+}
+.pl-layout-table:not(.is-scroll) { overflow: hidden; }
+.pl-layout-canvas { position: relative; width: 100%; overflow: hidden; }
+
+/* the painted world */
+.pl-layout-world { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.pl-layout-plate { position: absolute; display: block; max-width: none; user-select: none; }
+.pl-layout-woodband { position: absolute; left: 0; right: 0; background-repeat: no-repeat; }
+.pl-layout-woodband.is-flip { transform: scaleY(-1); }
+
+/* bands: exact boxes, never overlapping; content may lean over a band edge (a lifted card, a head) but owns no space there */
+.pl-layout-band { position: absolute; left: 0; right: 0; box-sizing: border-box; }
+.pl-layout-stage { z-index: 1; }
+.pl-layout-wood { z-index: 2; }
+.pl-layout-header { z-index: 3; pointer-events: none; }
+.pl-layout-header > * { pointer-events: auto; }
+.pl-layout-status { z-index: 4; }
+.pl-layout-band > :where(*) { box-sizing: border-box; height: 100%; }
+
+/* the room's wood (the mount's .pl-wood): books left, the hand centred, piles right; gaps and margins from Bands */
+.pl-layout-wood > .pl-wood {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pl-layout-group-gap);
+  padding: 0 var(--pl-layout-margin);
+}
+.pl-layout-phone .pl-layout-wood > .pl-wood {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0 16px;
+}
+
+/* ------------------------------------------------------------------ header band: route, name, subtitle */
+.pl-layout-head { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 2px 16px 0; text-align: center; }
+.pl-layout-routebar { position: relative; display: flex; align-items: center; justify-content: center; gap: 10px; height: 44px; max-width: 100%; }
+.pl-layout-route { display: flex; align-items: center; margin: 0; padding: 0; list-style: none; }
+.pl-layout-knot-li { position: relative; display: flex; }
+.pl-layout-knot-li + .pl-layout-knot-li::before {
+  content: ''; position: absolute; top: 50%; left: -13px; width: 26px;
+  border-top: 1.5px dotted var(--pl-cards-ink-3, #a08672); pointer-events: none;
+}
+.pl-layout-knot-li.is-done + .pl-layout-knot-li::before, .pl-layout-knot-li.is-done + .pl-layout-knot-li.is-current::before { border-top-style: solid; border-top-color: var(--pl-cards-ink-2, #69503f); }
+.pl-layout-table .pl-layout-knot,
+.pl-layout-table .pl-layout-knot:hover:not(:disabled),
+.pl-layout-table .pl-layout-knot:disabled {
+  position: relative; display: grid; place-items: center;
+  width: 44px; height: 44px; min-width: 0; margin: 0; padding: 0;
+  background: transparent; border: 0; border-radius: 50%; opacity: 1;
+  color: var(--pl-cards-ink, #41291f); cursor: pointer;
+}
+.pl-layout-table .pl-layout-knot:disabled { cursor: default; }
+.pl-layout-knot-glyph { position: relative; z-index: 1; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+.pl-layout-knot-glyph .is-fill { fill: currentColor; }
+.pl-layout-knot.is-ahead { color: var(--pl-cards-ink-3, #a08672) !important; }
+.pl-layout-knot.is-done { color: var(--pl-cards-ink-2, #69503f) !important; }
+.pl-layout-knot::before { content: ''; position: absolute; inset: 10px; border-radius: 50%; background: var(--pl-cards-paper, #fff9ee); opacity: 0.86; }
+.pl-layout-knot.is-current::after { content: ''; position: absolute; inset: 8px; border: 1.5px solid var(--pl-cards-ink, #41291f); border-radius: 50%; }
+.pl-layout-table .pl-layout-knot:hover:not(:disabled)::before { opacity: 1; background: var(--pl-cards-paper-2, #f6ebd8); }
+.pl-layout-table .pl-layout-knot:focus-visible { outline: none; }
+.pl-layout-table .pl-layout-knot:focus-visible::after { content: ''; position: absolute; inset: 6px; border: 2px solid var(--pl-cards-ink, #41291f); border-radius: 50%; }
+.pl-layout-marks { position: absolute; left: 27px; top: 4px; display: flex; gap: 2px; z-index: 2; }
+.pl-layout-marks > span {
+  min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px;
+  font: 600 10px/14px var(--pl-cards-f-mono, ui-monospace, monospace); font-variant-numeric: tabular-nums;
+}
+.pl-layout-mark-open { background: var(--pl-cards-ink, #41291f); color: var(--pl-cards-paper, #fff9ee); }
+.pl-layout-mark-unrev { background: var(--pl-cards-paper, #fff9ee); color: var(--pl-cards-ink, #41291f); box-shadow: inset 0 0 0 1.2px var(--pl-cards-ink, #41291f); }
+.pl-layout-sealed {
+  display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; white-space: nowrap;
+  font-size: 12px; color: var(--pl-cards-ink, #41291f);
+  background: var(--pl-cards-paper, #fff9ee); border: 1px solid var(--pl-cards-line-2, #cfb89a); border-radius: 13px;
+}
+.pl-layout-num { font-family: var(--pl-cards-f-mono, ui-monospace, monospace); font-weight: 600; font-variant-ligatures: none; font-variant-numeric: tabular-nums; }
+.pl-layout-title {
+  margin: 0; font-family: var(--pl-cards-f-title, serif); font-weight: 800; font-size: 26px; line-height: 28px;
+  color: var(--pl-cards-ink, #41291f); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+.pl-layout-sub { margin: 1px 0 0; font-size: 13px; line-height: 16px; color: var(--pl-cards-ink, #41291f); max-width: 46em; }
+.pl-layout-phone .pl-layout-title { font-size: 22px; line-height: 24px; }
+.pl-layout-phone .pl-layout-sub { font-size: 12px; line-height: 14px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.pl-layout-phone .pl-layout-routebar { gap: 4px; justify-content: flex-start; width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.pl-layout-phone .pl-layout-routebar::-webkit-scrollbar { display: none; }
+.pl-layout-phone .pl-layout-route, .pl-layout-phone .pl-layout-sealed { flex: none; }
+.pl-layout-phone .pl-layout-knot-li + .pl-layout-knot-li::before { left: -9px; width: 18px; }
+
+/* ------------------------------------------------------------------ status bar: paper, never a drop target */
+.pl-layout-statusbar {
+  margin: 0;
+  display: flex; align-items: center; gap: 16px; padding: 0 24px;
+  background: var(--pl-cards-paper, #fff9ee); border-top: 1px solid var(--pl-cards-line-2, #cfb89a);
+  box-shadow: 0 -8px 22px rgba(58, 33, 22, 0.22);
+  font-size: 12.5px; color: var(--pl-cards-ink-2, #69503f);
+}
+.pl-layout-status-text { white-space: nowrap; }
+.pl-layout-statusbar.is-sample .pl-layout-status-text::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border: 1.3px solid var(--pl-cards-ink-2, #69503f); border-radius: 2px; rotate: 45deg; }
+.pl-layout-notice { margin-left: auto; padding-left: 12px; border-left: 2px solid var(--pl-cards-ink, #41291f); color: var(--pl-cards-ink, #41291f); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.pl-layout-phone .pl-layout-statusbar { padding: 0 16px; gap: 10px; font-size: 12px; }
+.pl-layout-phone .pl-layout-notice { white-space: normal; line-height: 14px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
