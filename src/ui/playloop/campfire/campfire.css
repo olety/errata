@@ -1,0 +1,865 @@
+/* Owner: campfire. Every class is prefixed pl-campfire-. Paper #FFF9EE, ink #41291F, rose #B86A74 once per view (the
+   red thread), gold ink for gold threads. No gradients, no glass, no glow. Every animation is interruptible and
+   disappears under reduced motion (the screen adds no animated class then). */
+
+.pl-campfire-stage,
+.pl-campfire-wood {
+  --pl-campfire-paper: #fff9ee;
+  --pl-campfire-ink: #41291f;
+  --pl-campfire-soft: #6b5247;
+  --pl-campfire-line: #e4d6c3;
+  --pl-campfire-well: #f6eddd;
+  --pl-campfire-rose: #b86a74;
+  --pl-campfire-gold: #a37c2f;
+  --pl-campfire-shadow: 0 6px 18px rgba(33, 20, 12, 0.28);
+  position: relative;
+  box-sizing: border-box;
+  background-repeat: no-repeat;
+  background-color: #3b261b;
+  color: var(--pl-campfire-ink);
+  font: 14px/1.45 'Zen Kaku Gothic New', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif;
+  overflow: hidden;
+}
+.pl-campfire-stage *,
+.pl-campfire-wood * {
+  box-sizing: border-box;
+}
+
+/* ------------------------------------------------------------------ stage */
+
+.pl-campfire-cols {
+  display: grid;
+  column-gap: 24px;
+  align-items: stretch;
+}
+.pl-campfire-tablet .pl-campfire-cols {
+  column-gap: 16px;
+}
+.pl-campfire-panel {
+  background: var(--pl-campfire-paper);
+  border: 1px solid rgba(65, 41, 31, 0.22);
+  border-radius: 8px;
+  box-shadow: var(--pl-campfire-shadow);
+  padding: 12px 14px;
+  min-height: 0;
+  overflow: auto;
+}
+.pl-campfire-h {
+  font: 800 17px/1.25 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', Georgia, serif;
+  margin: 0 0 8px;
+}
+.pl-campfire-sect-h {
+  font: 700 12px/14px 'Zen Kaku Gothic New', system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pl-campfire-soft);
+  margin: 12px 0 4px;
+}
+.pl-campfire-label {
+  display: block;
+  font-size: 12px;
+  line-height: 14px;
+  color: var(--pl-campfire-soft);
+  margin: 10px 0 6px;
+}
+.pl-campfire-muted {
+  color: var(--pl-campfire-soft);
+  font-size: 13px;
+  margin: 6px 0;
+}
+.pl-campfire-mono,
+.pl-campfire-reading,
+.pl-campfire-editor,
+.pl-campfire-stage code,
+.pl-campfire-wood code {
+  font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0, 'calt' 0;
+}
+.pl-campfire-stage code {
+  font-size: 0.92em;
+  background: var(--pl-campfire-well);
+  border: 1px solid var(--pl-campfire-line);
+  border-radius: 4px;
+  padding: 0 3px;
+}
+.pl-campfire-reading {
+  font-size: 14px;
+  line-height: 20px;
+  background: var(--pl-campfire-well);
+  border-left: 3px solid var(--pl-campfire-ink);
+  padding: 8px 10px;
+  margin: 6px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.pl-campfire-coach {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--pl-campfire-ink);
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* buttons: 44 px targets, 8 px apart */
+.pl-campfire-btn {
+  font: 500 14px/1.2 'Zen Kaku Gothic New', system-ui, sans-serif;
+  color: var(--pl-campfire-ink);
+  background: var(--pl-campfire-paper);
+  border: 1.5px solid var(--pl-campfire-ink);
+  border-radius: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 6px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.pl-campfire-btn:hover:not(:disabled) {
+  background: var(--pl-campfire-well);
+}
+.pl-campfire-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.pl-campfire-btn:focus-visible {
+  outline: 3px solid var(--pl-campfire-ink);
+  outline-offset: 2px;
+}
+.pl-campfire-btn[aria-pressed='true'] {
+  background: var(--pl-campfire-ink);
+  color: var(--pl-campfire-paper);
+}
+.pl-campfire-btn[aria-pressed='true'] code {
+  color: var(--pl-campfire-ink);
+}
+.pl-campfire-small {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+.pl-campfire-small.is-primary {
+  background: var(--pl-campfire-ink);
+  color: var(--pl-campfire-paper);
+}
+.pl-campfire-actions,
+.pl-campfire-choices,
+.pl-campfire-slots,
+.pl-campfire-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0;
+}
+.pl-campfire-actions .pl-campfire-btn,
+.pl-campfire-choices .pl-campfire-btn {
+  flex: 0 1 auto;
+}
+.pl-campfire-quoted {
+  font-style: normal;
+}
+
+/* threads */
+.pl-campfire-thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pl-campfire-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  border-left-width: 6px;
+}
+.pl-campfire-thread.is-gold {
+  border-left-color: var(--pl-campfire-gold);
+}
+.pl-campfire-thread.is-red {
+  border-left-color: var(--pl-campfire-rose);
+}
+.pl-campfire-thread-kind {
+  font-size: 12px;
+  font-weight: 700;
+}
+.pl-campfire-thread-reason {
+  font-size: 13px;
+}
+.pl-campfire-thread-members {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* centre: the pair and the stack */
+.pl-campfire-centre {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  overflow: auto;
+}
+.pl-campfire-reason {
+  margin: 0;
+  max-width: 100%;
+  background: var(--pl-campfire-paper);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  box-shadow: var(--pl-campfire-shadow);
+}
+.pl-campfire-reason.is-gold,
+.pl-campfire-stack.is-gold ~ .pl-campfire-reason {
+  border-left: 4px solid var(--pl-campfire-gold);
+}
+.pl-campfire-reason.is-red {
+  border-left: 4px solid var(--pl-campfire-rose);
+}
+.pl-campfire-hint,
+.pl-campfire-also,
+.pl-campfire-hover {
+  margin: 0;
+  max-width: 100%;
+  background: var(--pl-campfire-paper);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 13px;
+  color: var(--pl-campfire-soft);
+}
+.pl-campfire-hover {
+  color: var(--pl-campfire-ink);
+  border: 1.5px solid var(--pl-campfire-ink);
+  font-weight: 500;
+}
+.pl-campfire-hover.is-refused {
+  border-style: dashed;
+}
+.pl-campfire-also-card {
+  display: block;
+}
+.pl-campfire-pair {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.pl-campfire-pair-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.pl-campfire-thread-svg {
+  width: 48px;
+  height: 120px;
+  flex: 0 0 48px;
+}
+.pl-campfire-thread-svg path {
+  fill: none;
+  stroke: var(--pl-campfire-paper);
+  stroke-width: 3;
+  stroke-dasharray: 2 5;
+}
+.pl-campfire-thread-svg.is-gold path {
+  stroke: var(--pl-campfire-gold);
+  stroke-dasharray: none;
+  stroke-width: 4;
+}
+.pl-campfire-thread-svg.is-red path {
+  stroke: var(--pl-campfire-rose);
+  stroke-dasharray: none;
+  stroke-width: 4;
+}
+.pl-campfire-slot {
+  position: relative;
+  flex: 0 0 auto;
+}
+.pl-campfire-slot.is-eligible > :first-child {
+  outline: 3px solid var(--pl-campfire-gold);
+  outline-offset: 2px;
+}
+.pl-campfire-flag {
+  position: absolute;
+  left: 6px;
+  bottom: -10px;
+  background: var(--pl-campfire-paper);
+  border: 1px solid var(--pl-campfire-gold);
+  border-radius: 99px;
+  padding: 0 8px;
+  font-size: 11px;
+  line-height: 18px;
+}
+.pl-campfire-stackwrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.pl-campfire-stack {
+  position: relative;
+}
+.pl-campfire-stack > .pl-campfire-slot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(var(--pl-campfire-dx, 0), var(--pl-campfire-dy, 0));
+}
+.pl-campfire-stack > .pl-campfire-slot > :first-child {
+  box-shadow: var(--pl-campfire-shadow);
+}
+.pl-campfire-stack.is-snapping > .pl-campfire-slot {
+  animation: pl-campfire-snap 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+@keyframes pl-campfire-snap {
+  from {
+    transform: translate(0, 0);
+  }
+}
+.pl-campfire-single.is-over-fire > .pl-campfire-slot > :first-child {
+  outline: 3px dashed var(--pl-campfire-ink);
+  outline-offset: 3px;
+}
+.pl-campfire-single.is-snapping {
+  animation: pl-campfire-lift 180ms ease-out;
+}
+@keyframes pl-campfire-lift {
+  from {
+    transform: translateY(14px);
+  }
+}
+.pl-campfire-cancel {
+  background: var(--pl-campfire-paper);
+}
+
+/* the side panel and the seal preview */
+.pl-campfire-side {
+  display: flex;
+  flex-direction: column;
+}
+.pl-campfire-proposal {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.pl-campfire-previewhost {
+  flex: 1 1 auto;
+}
+.pl-campfire-lines,
+.pl-campfire-caselist,
+.pl-campfire-ash,
+.pl-campfire-cands,
+.pl-campfire-openlist {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pl-campfire-linerow,
+.pl-campfire-lines > li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pl-campfire-linerow .pl-campfire-mono,
+.pl-campfire-lines .pl-campfire-mono {
+  font-size: 13px;
+  line-height: 19px;
+  overflow-wrap: anywhere;
+}
+.pl-campfire-line-title {
+  font-size: 12px;
+  color: var(--pl-campfire-soft);
+}
+.is-struck .pl-campfire-mono,
+.pl-campfire-mono.is-struck {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  color: var(--pl-campfire-soft);
+}
+.pl-campfire-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0;
+}
+.pl-campfire-chip {
+  border: 1px solid var(--pl-campfire-line);
+  border-radius: 99px;
+  padding: 1px 8px;
+  font-size: 12px;
+  color: var(--pl-campfire-soft);
+  background: var(--pl-campfire-paper);
+}
+.pl-campfire-chip.is-kept {
+  border-color: var(--pl-campfire-ink);
+  color: var(--pl-campfire-ink);
+  font-weight: 700;
+}
+.pl-campfire-weights {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.pl-campfire-weights th {
+  text-align: left;
+  font-weight: 500;
+  padding: 2px 12px 2px 0;
+}
+.pl-campfire-weights td {
+  padding: 2px 10px 2px 0;
+  white-space: nowrap;
+}
+.pl-campfire-est {
+  font-size: 12px;
+  color: var(--pl-campfire-soft);
+}
+.pl-campfire-cases {
+  margin: 2px 0;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-variant-ligatures: none;
+  font-size: 13px;
+}
+.pl-campfire-case {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.pl-campfire-case > span:first-child {
+  flex: 1 1 160px;
+}
+.pl-campfire-done {
+  font-weight: 700;
+}
+.pl-campfire-refused {
+  margin: 4px 0;
+  padding: 6px 10px;
+  border: 1.5px dashed var(--pl-campfire-ink);
+  border-radius: 6px;
+  font-weight: 500;
+}
+.pl-campfire-field {
+  display: block;
+  margin: 6px 0;
+}
+.pl-campfire-editor,
+.pl-campfire-input {
+  width: 100%;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--pl-campfire-ink);
+  background: var(--pl-campfire-paper);
+  border: 1.5px solid var(--pl-campfire-soft);
+  border-radius: 6px;
+  padding: 8px 10px;
+  min-height: 44px;
+}
+.pl-campfire-input {
+  font-family: 'Zen Kaku Gothic New', system-ui, sans-serif;
+}
+.pl-campfire-input.pl-campfire-mono {
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+}
+.pl-campfire-editor:focus,
+.pl-campfire-input:focus {
+  outline: 3px solid var(--pl-campfire-ink);
+  outline-offset: 1px;
+}
+.pl-campfire-detail {
+  margin: 4px 0 8px;
+}
+.pl-campfire-slots .pl-campfire-slotbtn {
+  flex: 1 1 calc(50% - 8px);
+}
+
+/* the seal bar: a wax press held for 0.6 s */
+.pl-campfire-sealbar {
+  position: sticky;
+  bottom: -12px;
+  margin: 10px -14px -12px;
+  padding: 10px 14px 12px;
+  background: var(--pl-campfire-paper);
+  border-top: 1px solid var(--pl-campfire-line);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.pl-campfire-sealbar.is-row {
+  position: static;
+  margin: 0;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  flex-wrap: nowrap;
+  height: 100%;
+}
+.pl-campfire-sealbar.is-row .pl-campfire-why {
+  display: none;
+}
+.pl-campfire-sealbtn {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  column-gap: 8px;
+  align-items: center;
+  text-align: left;
+  font: 700 14px/1.15 'Zen Kaku Gothic New', system-ui, sans-serif;
+  color: var(--pl-campfire-paper);
+  background: var(--pl-campfire-ink);
+  border: 1.5px solid var(--pl-campfire-ink);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.pl-campfire-sealbtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.pl-campfire-sealbtn:focus-visible {
+  outline: 3px solid var(--pl-campfire-ink);
+  outline-offset: 2px;
+}
+.pl-campfire-wax {
+  grid-row: span 2;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--pl-campfire-paper);
+  position: relative;
+  overflow: hidden;
+}
+.pl-campfire-wax::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--pl-campfire-paper);
+  transform: scale(0);
+}
+.pl-campfire-sealbtn.is-holding .pl-campfire-wax::after {
+  animation: pl-campfire-press 600ms linear forwards;
+}
+.pl-campfire-sealbtn.is-static.is-holding .pl-campfire-wax::after {
+  animation: none;
+  transform: scale(0.6);
+}
+@keyframes pl-campfire-press {
+  to {
+    transform: scale(1);
+  }
+}
+.pl-campfire-seal-sub,
+.pl-campfire-seal-hold {
+  font-weight: 400;
+  font-size: 12px;
+  opacity: 0.85;
+}
+.pl-campfire-seal-hold,
+.pl-campfire-sealbtn.is-holding .pl-campfire-seal-sub {
+  display: none;
+}
+.pl-campfire-sealbtn.is-holding .pl-campfire-seal-hold {
+  display: block;
+}
+.pl-campfire-why {
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--pl-campfire-soft);
+}
+.pl-campfire-why.is-flagged {
+  color: var(--pl-campfire-ink);
+  font-weight: 700;
+}
+
+/* side tabs, shelf, ash, pinned page */
+.pl-campfire-tab {
+  flex: 1 1 auto;
+}
+.pl-campfire-shelf {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 2px 10px;
+}
+.pl-campfire-ashrow,
+.pl-campfire-openrow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px dotted var(--pl-campfire-line);
+}
+.pl-campfire-tag {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+.pl-campfire-quote {
+  font-family: 'Lora', Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.4;
+  margin: 4px 0;
+}
+.pl-campfire-quote.is-short {
+  font-size: 14px;
+}
+.pl-campfire-cand {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-left: 3px solid var(--pl-campfire-line);
+}
+.pl-campfire-cand.is-glow {
+  border-left-color: var(--pl-campfire-gold);
+}
+.pl-campfire-cand-why {
+  font-size: 12px;
+  color: var(--pl-campfire-soft);
+}
+.pl-campfire-reopened {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--pl-campfire-ink);
+  border-radius: 6px;
+}
+.pl-campfire-free {
+  margin-top: 12px;
+}
+
+/* the bottom row: lane tabs over the lane strip, Leave on the right */
+.pl-campfire-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+}
+.pl-campfire-lanetabs {
+  position: absolute;
+  top: 0;
+  display: flex;
+  gap: 8px;
+}
+.pl-campfire-lanetab {
+  min-width: 96px;
+  text-align: center;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.pl-campfire-leave {
+  position: absolute;
+  top: 0;
+}
+
+/* phone: one scroll column, tabs and Leave share the bottom row */
+.pl-campfire-phone .pl-campfire-scroll {
+  overflow-y: auto;
+  padding: 10px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pl-campfire-phone .pl-campfire-panel {
+  overflow: visible;
+}
+.pl-campfire-phone .pl-campfire-sealbar:not(.is-row) {
+  position: static;
+}
+.pl-campfire-phone .pl-campfire-bottom {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 0 16px;
+}
+.pl-campfire-phone .pl-campfire-lanetabs {
+  position: static;
+  flex: 1 1 auto;
+}
+.pl-campfire-phone .pl-campfire-lanetab {
+  min-width: 0;
+  flex: 1 1 0;
+  padding: 6px 4px;
+}
+.pl-campfire-phone .pl-campfire-leave {
+  position: static;
+  flex: 0 0 auto;
+  max-width: 104px;
+  font-size: 13px;
+  line-height: 1.1;
+}
+
+/* ------------------------------------------------------------------ wood */
+
+.pl-campfire-wood {
+  display: grid;
+  align-items: start;
+}
+.pl-campfire-books,
+.pl-campfire-piles {
+  min-width: 0;
+  align-self: center;
+}
+.pl-campfire-wood-phone .pl-campfire-lane,
+.pl-campfire-wood-phone .pl-campfire-books {
+  grid-column: 1 / -1;
+}
+.pl-campfire-wood-phone .pl-campfire-books,
+.pl-campfire-wood-phone .pl-campfire-piles {
+  align-self: stretch;
+}
+.pl-campfire-lane {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-self: center;
+  min-width: 0;
+  padding: 6px 2px 8px;
+  scroll-snap-type: x proximity;
+}
+.pl-campfire-wood-tablet .pl-campfire-lane {
+  gap: 8px;
+}
+.pl-campfire-wood-phone .pl-campfire-lane {
+  padding: 0;
+  scroll-snap-type: x mandatory;
+}
+.pl-campfire-lane > .pl-campfire-slot {
+  scroll-snap-align: start;
+}
+.pl-campfire-empty {
+  margin: auto;
+  max-width: 320px;
+  background: var(--pl-campfire-paper);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+/* the fire: an ink ring on the candle's pool; the drop target */
+.pl-campfire-fire {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding-bottom: 8px;
+  cursor: pointer;
+}
+.pl-campfire-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.pl-campfire-ring ellipse {
+  fill: none;
+  stroke: var(--pl-campfire-paper);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.85;
+}
+.pl-campfire-fire.is-hot .pl-campfire-ring ellipse,
+.pl-campfire-fire.is-lit .pl-campfire-ring ellipse {
+  stroke-dasharray: none;
+  stroke-width: 3;
+  opacity: 1;
+}
+.pl-campfire-fire-label,
+.pl-campfire-fire-ash {
+  position: relative;
+  background: var(--pl-campfire-paper);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: var(--pl-campfire-shadow);
+}
+.pl-campfire-fire-ash {
+  font-weight: 400;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-variant-ligatures: none;
+}
+.pl-campfire-fire.is-hot .pl-campfire-fire-label,
+.pl-campfire-fire.is-lit .pl-campfire-fire-label {
+  background: var(--pl-campfire-ink);
+  color: var(--pl-campfire-paper);
+}
+.pl-campfire-fire.is-burning .pl-campfire-ring ellipse {
+  animation: pl-campfire-burn 520ms ease-out;
+}
+@keyframes pl-campfire-burn {
+  0% {
+    stroke-width: 8;
+    opacity: 1;
+  }
+  100% {
+    stroke-width: 1.2;
+    opacity: 0.85;
+  }
+}
+.pl-campfire-wood-phone .pl-campfire-fire {
+  flex-direction: row;
+  justify-content: center;
+  padding: 0;
+  gap: 8px;
+  border-radius: 6px;
+}
+.pl-campfire-wood-phone .pl-campfire-fire-label,
+.pl-campfire-wood-phone .pl-campfire-fire-ash {
+  box-shadow: none;
+}
+
+/* exactly-once wax on the card a seal left (fuse, sharpen, swap, re-target) */
+.pl-campfire-slot.is-fuse::after,
+.pl-campfire-slot.is-sharpen::after,
+.pl-campfire-slot.is-swap::after,
+.pl-campfire-slot.is-retarget::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  bottom: 30px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid var(--pl-campfire-ink);
+  animation: pl-campfire-wax 420ms ease-out forwards;
+  pointer-events: none;
+}
+@keyframes pl-campfire-wax {
+  0% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.95);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pl-campfire-stage *,
+  .pl-campfire-wood * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
