@@ -1,5 +1,5 @@
-/* Owner: campfire. Every class is prefixed pl-campfire-. Paper #FFF9EE, ink #41291F, rose #B86A74 once per view (the
-   red thread), gold ink for gold threads. No gradients, no glass, no glow. Every animation is interruptible and
+/* Owner: campfire. Every class is prefixed pl-campfire-. Paper #FFF9EE, ink #41291F, rose #B86A74 once per view: the
+   red thread itself (its stripe in the list and its line between the pair), gold ink for gold threads. No gradients, no glass, no glow. Every animation is interruptible and
    disappears under reduced motion (the screen adds no animated class then). */
 
 .pl-campfire-stage,
@@ -215,7 +215,7 @@
   border-left: 4px solid var(--pl-campfire-gold);
 }
 .pl-campfire-reason.is-red {
-  border-left: 4px solid var(--pl-campfire-rose);
+  border-left: 4px solid var(--pl-campfire-ink);
 }
 .pl-campfire-hint,
 .pl-campfire-also,
@@ -490,8 +490,9 @@
 }
 .pl-campfire-sealbar.is-row {
   position: static;
+  flex: 1 1 auto;
   margin: 0;
-  padding: 0 16px;
+  padding: 0;
   border: 0;
   background: transparent;
   flex-wrap: nowrap;
@@ -893,4 +894,10 @@
 .pl-campfire-after > .pl-campfire-btn,
 .pl-campfire-reopened .pl-campfire-btn:last-child {
   align-self: flex-start;
+}
+.pl-campfire-phone .pl-campfire-scroll > * {
+  flex: 0 0 auto;
+}
+.pl-campfire-phone .pl-campfire-centre {
+  overflow: visible;
 }

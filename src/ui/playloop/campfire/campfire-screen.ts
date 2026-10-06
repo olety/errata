@@ -417,20 +417,22 @@ function pairVisual(L: Live): HTMLElement {
   const a = L.cards.get(fp.a);
   const b = L.cards.get(fp.b);
   const others = t ? t.members.filter((m) => m !== fp.a && m !== fp.b) : [];
+  // On tablets the stage is too short for a caption over M cards; the threads panel beside the pair prints the reason.
+  const roomy = L.geo.mode !== 'tablet';
   return el(
     'div',
     'pl-campfire-pair',
-    t ? el('p', `pl-campfire-reason is-${t.color}`, el('b', '', t.color === 'gold' ? 'Gold thread' : 'Red thread'), ` · ${t.reason}`) : el('p', 'pl-campfire-reason', 'No thread joins these two.'),
+    !roomy ? null : t ? el('p', `pl-campfire-reason is-${t.color}`, el('b', '', t.color === 'gold' ? 'Gold thread' : 'Red thread'), ` · ${t.reason}`) : el('p', 'pl-campfire-reason', 'No thread joins these two.'),
     el('div', 'pl-campfire-pair-row', a ? cardSlot(L, a, 'pair', { size, source: true, target: true }) : null, threadLine(t?.color ?? null), b ? cardSlot(L, b, 'pair', { size, source: true, target: true }) : null),
-    others.length ? el('p', 'pl-campfire-also', 'Also on this thread: ', ...others.map((id) => el('span', 'pl-campfire-also-card', summaryOf(L, id)))) : null,
-    t ? el('p', 'pl-campfire-hint', t.color === 'gold' ? 'Drag one card onto the other to see the merge. Nothing changes until you seal.' : 'Drag one card onto the other to choose how to settle them. Cancel leaves the thread.') : null,
+    others.length && roomy ? el('p', 'pl-campfire-also', 'Also on this thread: ', ...others.map((id) => el('span', 'pl-campfire-also-card', summaryOf(L, id)))) : null,
+    t && roomy ? el('p', 'pl-campfire-hint', t.color === 'gold' ? 'Drag one card onto the other to see the merge. Nothing changes until you seal.' : 'Drag one card onto the other to choose how to settle them. Cancel leaves the thread.') : null,
   );
 }
 
 function stackVisual(L: Live, order: string[], top: string, caption: Kid[], cls: string): HTMLElement {
   const size = L.geo.pairCard.size;
   const ch = L.geo.pairCard.h;
-  const room = L.geo.mode === 'phone' ? ch + 60 : L.geo.stage.h - L.geo.stage.bottom - 12 - 96;
+  const room = L.geo.mode === 'phone' ? ch + 60 : L.geo.stage.h - L.geo.stage.bottom - 18 - (L.geo.mode === 'tablet' ? 0 : 96);
   const off = M.stackOffset(order.length, room, ch);
   const box = el('div', `pl-campfire-stack ${cls}${L.snap ? ' is-snapping' : ''}`);
   box.style.width = px(L.geo.pairCard.w + off * (order.length - 1));
@@ -444,7 +446,8 @@ function stackVisual(L: Live, order: string[], top: string, caption: Kid[], cls:
     s.style.setProperty('--pl-campfire-dy', px(i * off));
     box.append(s);
   });
-  const wrap = el('div', 'pl-campfire-stackwrap', el('p', 'pl-campfire-reason', ...caption), box, button('Pull apart', 'pl-campfire-cancel', cancelProposal, { fk: 'pull-apart' }));
+  const roomy = L.geo.mode !== 'tablet';
+  const wrap = el('div', 'pl-campfire-stackwrap', roomy ? el('p', 'pl-campfire-reason', ...caption) : null, box, roomy ? button('Pull apart', 'pl-campfire-cancel', cancelProposal, { fk: 'pull-apart' }) : null);
   wrap.style.maxWidth = px(Math.max(L.geo.pairCard.w + off * (order.length - 1), 200) + 40);
   return wrap;
 }
@@ -453,7 +456,8 @@ function proposalVisual(L: Live, p: M.Proposal): HTMLElement {
   const size = L.geo.pairCard.size;
   const one = (id: string, caption: Kid, cls: string) => {
     const c = L.cards.get(id);
-    const w = el('div', 'pl-campfire-stackwrap', el('p', 'pl-campfire-reason', caption), c ? el('div', `pl-campfire-single ${cls}${L.snap ? ' is-snapping' : ''}`, cardSlot(L, c, 'single', { size, source: true, target: false })) : null, button('Pull back', 'pl-campfire-cancel', cancelProposal, { fk: 'pull-apart' }));
+    const roomy = L.geo.mode !== 'tablet';
+    const w = el('div', 'pl-campfire-stackwrap', roomy ? el('p', 'pl-campfire-reason', caption) : null, c ? el('div', `pl-campfire-single ${cls}${L.snap ? ' is-snapping' : ''}`, cardSlot(L, c, 'single', { size, source: true, target: false })) : null, roomy ? button('Pull back', 'pl-campfire-cancel', cancelProposal, { fk: 'pull-apart' }) : null);
     w.style.maxWidth = px(L.geo.pairCard.w + 60);
     return w;
   };
