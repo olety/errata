@@ -2,149 +2,149 @@
   "positives": [
     {
       "id": "openai-at-start",
-      "input": "sk-zbII5ch4R4H4rl75pKg2O6640Z4ejiltOOJN2ZaX begins this captured stdout",
+      "input": "sk-TEST_zbII5ch4R4H4rl75pKg2O6640Z4ejiltOOJ begins this captured stdout",
       "secrets": [
-        "sk-zbII5ch4R4H4rl75pKg2O6640Z4ejiltOOJN2ZaX"
+        "sk-TEST_zbII5ch4R4H4rl75pKg2O6640Z4ejiltOOJ"
       ]
     },
     {
       "id": "openai-at-end",
-      "input": "Captured stderr ends with sk-proj-Mkir4t4q6UyPwKd9RkfPp6I7qSki6kZUkejzUR60DrPJxA2G",
+      "input": "Captured stderr ends with sk-proj-TEST_Mkir4t4q6UyPwKd9RkfPp6I7qSki6kZUkejzUR60DrP",
       "secrets": [
-        "sk-proj-Mkir4t4q6UyPwKd9RkfPp6I7qSki6kZUkejzUR60DrPJxA2G"
+        "sk-proj-TEST_Mkir4t4q6UyPwKd9RkfPp6I7qSki6kZUkejzUR60DrP"
       ]
     },
     {
       "id": "openai-shell-export",
-      "input": "export OPENAI_API_KEY=\"sk-svcacct-vWtcW2WpvJ4AVsACLUQUQJN33LjUUYJheyoB5KuCzh\"",
+      "input": "export OPENAI_API_KEY=\"sk-svcacct-TEST_vWtcW2WpvJ4AVsACLUQUQJN33LjUUYJheyoB5\"",
       "secrets": [
-        "sk-svcacct-vWtcW2WpvJ4AVsACLUQUQJN33LjUUYJheyoB5KuCzh"
+        "sk-svcacct-TEST_vWtcW2WpvJ4AVsACLUQUQJN33LjUUYJheyoB5"
       ]
     },
     {
       "id": "openai-markdown",
-      "input": "```sh\ncurl -H \"X-Api-Key: sk-189A6j7auDLS4Y7RIaVbl1pa\" https://example.invalid/v1\n```",
+      "input": "```sh\ncurl -H \"X-Api-Key: sk-TEST_189A6j7auDLS4Y7RIaVbl1\" https://example.invalid/v1\n```",
       "secrets": [
-        "sk-189A6j7auDLS4Y7RIaVbl1pa"
+        "sk-TEST_189A6j7auDLS4Y7RIaVbl1"
       ]
     },
     {
       "id": "anthropic-json",
-      "input": "{\"request\":{\"credential\":\"sk-ant-Ql7RRJhB5NtgydLrat45rSbN7JxVKogHausX\"}}",
+      "input": "{\"request\":{\"credential\":\"sk-ant-TEST_Ql7RRJhB5NtgydLrat45rSbN7JxVKog\"}}",
       "secrets": [
-        "sk-ant-Ql7RRJhB5NtgydLrat45rSbN7JxVKogHausX"
+        "sk-ant-TEST_Ql7RRJhB5NtgydLrat45rSbN7JxVKog"
       ]
     },
     {
       "id": "anthropic-env",
-      "input": "ANTHROPIC_API_KEY=sk-ant-api03-eG1FwCym8YfsmGmo1cYmnTI9TJ2xovSRHu9hPq25vsoBTcIOQl1XJ2\nLOG_LEVEL=info",
+      "input": "ANTHROPIC_API_KEY=sk-ant-TEST_api03-eG1FwCym8YfsmGmo1cYmnTI9TJ2xovSRHu9hPq25vsoBTcIOQ\nLOG_LEVEL=info",
       "secrets": [
-        "sk-ant-api03-eG1FwCym8YfsmGmo1cYmnTI9TJ2xovSRHu9hPq25vsoBTcIOQl1XJ2"
+        "sk-ant-TEST_api03-eG1FwCym8YfsmGmo1cYmnTI9TJ2xovSRHu9hPq25vsoBTcIOQ"
       ]
     },
     {
       "id": "anthropic-stack",
-      "input": "Traceback (most recent call last):\n  RuntimeError: refused credential sk-ant-fXAnK7pd4UZsW2zeORDHm4Et",
+      "input": "Traceback (most recent call last):\n  RuntimeError: refused credential sk-ant-TEST_fXAnK7pd4UZsW2zeORDHm4",
       "secrets": [
-        "sk-ant-fXAnK7pd4UZsW2zeORDHm4Et"
+        "sk-ant-TEST_fXAnK7pd4UZsW2zeORDHm4"
       ]
     },
     {
       "id": "github-ghp",
-      "input": "git credential helper emitted ghp_XTZaFDAKKLCRdqGRdl9nuXcTUSDcyusC1RXu",
+      "input": "git credential helper emitted ghp_TESTXTZaFDAKKLCRdqGRdl9nuXcTUS",
       "secrets": [
-        "ghp_XTZaFDAKKLCRdqGRdl9nuXcTUSDcyusC1RXu"
+        "ghp_TESTXTZaFDAKKLCRdqGRdl9nuXcTUS"
       ]
     },
     {
       "id": "github-gho",
-      "input": "git credential helper emitted gho_lrk3qStuftfFyVq8b49UCtdRiFSAAJgMiAk8",
+      "input": "git credential helper emitted gho_TESTlrk3qStuftfFyVq8b49UCtdRiF",
       "secrets": [
-        "gho_lrk3qStuftfFyVq8b49UCtdRiFSAAJgMiAk8"
+        "gho_TESTlrk3qStuftfFyVq8b49UCtdRiF"
       ]
     },
     {
       "id": "github-ghu",
-      "input": "git credential helper emitted ghu_O8s5k7XjDdGp3BAZhsmVizpuOmAHpFzKoTLk",
+      "input": "git credential helper emitted ghu_TESTO8s5k7XjDdGp3BAZhsmVizpuOm",
       "secrets": [
-        "ghu_O8s5k7XjDdGp3BAZhsmVizpuOmAHpFzKoTLk"
+        "ghu_TESTO8s5k7XjDdGp3BAZhsmVizpuOm"
       ]
     },
     {
       "id": "github-github_pat",
-      "input": "git credential helper emitted github_pat_ehc6Cgt2pCX9cXdtR237rVT1sUGpkZOAtRb4",
+      "input": "git credential helper emitted github_pat_TESTehc6Cgt2pCX9cXdtR237rVT1sU",
       "secrets": [
-        "github_pat_ehc6Cgt2pCX9cXdtR237rVT1sUGpkZOAtRb4"
+        "github_pat_TESTehc6Cgt2pCX9cXdtR237rVT1sU"
       ]
     },
     {
       "id": "github-ts-source",
-      "input": "const credential = \"ghp_XTZaFDAKKLCRdqGRdl9nuXcTUSDcyusC1RXu\";",
+      "input": "const credential = \"ghp_TESTXTZaFDAKKLCRdqGRdl9nuXcTUS\";",
       "secrets": [
-        "ghp_XTZaFDAKKLCRdqGRdl9nuXcTUSDcyusC1RXu"
+        "ghp_TESTXTZaFDAKKLCRdqGRdl9nuXcTUS"
       ]
     },
     {
       "id": "aws-env",
-      "input": "AWS_ACCESS_KEY_ID=AKIAGZRPM2GC2EVQNJR8",
+      "input": "AWS_ACCESS_KEY_ID=AKIATESTGZRPM2GC2E",
       "secrets": [
-        "AKIAGZRPM2GC2EVQNJR8"
+        "AKIATESTGZRPM2GC2E"
       ]
     },
     {
       "id": "aws-yaml",
-      "input": "credentials:\n  accessKeyId: AKIAQY4UJU5CHKCNIS7G",
+      "input": "credentials:\n  accessKeyId: AKIATESTQY4UJU5CHK",
       "secrets": [
-        "AKIAQY4UJU5CHKCNIS7G"
+        "AKIATESTQY4UJU5CHK"
       ]
     },
     {
       "id": "aws-trace",
-      "input": "Error: AWS request rejected\n  at sign (AKIAYUBRS6V35QSNEVOU):27:9",
+      "input": "Error: AWS request rejected\n  at sign (AKIATESTYUBRS6V35Q):27:9",
       "secrets": [
-        "AKIAYUBRS6V35QSNEVOU"
+        "AKIATESTYUBRS6V35Q"
       ]
     },
     {
       "id": "slack-xoxa",
-      "input": "export SLACK_TOKEN=xoxa-026071007357-HEJ9UnjdiYC2fgnJANSa8O1X",
+      "input": "export SLACK_TOKEN=xoxa-02A071007357-HEJ9UnjdiYC2fgnJANSa8O1X",
       "secrets": [
-        "xoxa-026071007357-HEJ9UnjdiYC2fgnJANSa8O1X"
+        "xoxa-02A071007357-HEJ9UnjdiYC2fgnJANSa8O1X"
       ]
     },
     {
       "id": "slack-xoxb",
-      "input": "curl -H \"Authorization: Bearer xoxb-135779003525-u4WkfL5TEsNiEwhUfknRGv2d\" https://example.invalid/slack",
+      "input": "curl -H \"Authorization: Bearer xoxb-13A779003525-u4WkfL5TEsNiEwhUfknRGv2d\" https://example.invalid/slack",
       "secrets": [
-        "xoxb-135779003525-u4WkfL5TEsNiEwhUfknRGv2d"
+        "xoxb-13A779003525-u4WkfL5TEsNiEwhUfknRGv2d"
       ]
     },
     {
       "id": "slack-xoxp",
-      "input": "```yaml\nslack:\n  credential: xoxp-301117512433-fKwkhXegc0IkRlOki0eVjZW0\n```",
+      "input": "```yaml\nslack:\n  credential: xoxp-30A117512433-fKwkhXegc0IkRlOki0eVjZW0\n```",
       "secrets": [
-        "xoxp-301117512433-fKwkhXegc0IkRlOki0eVjZW0"
+        "xoxp-30A117512433-fKwkhXegc0IkRlOki0eVjZW0"
       ]
     },
     {
       "id": "google-ts",
-      "input": "const mapsCredential = \"AIzaNwFE9RO1owPm-f-h3Vx-z7FYT3DBUTlJiZq\";",
+      "input": "const mapsCredential = \"AIzaTESTNwFE9RO1owPm-f-h3Vx-z7FYT3DB\";",
       "secrets": [
-        "AIzaNwFE9RO1owPm-f-h3Vx-z7FYT3DBUTlJiZq"
+        "AIzaTESTNwFE9RO1owPm-f-h3Vx-z7FYT3DB"
       ]
     },
     {
       "id": "google-query",
-      "input": "GET https://example.invalid/maps?key=AIzaP85ekLMyH9IXl_Ry_aM7IkQdn6tN_RE1ezQ",
+      "input": "GET https://example.invalid/maps?key=AIzaTESTP85ekLMyH9IXl_Ry_aM7IkQdn6tN",
       "secrets": [
-        "AIzaP85ekLMyH9IXl_Ry_aM7IkQdn6tN_RE1ezQ"
+        "AIzaTESTP85ekLMyH9IXl_Ry_aM7IkQdn6tN"
       ]
     },
     {
       "id": "google-json",
-      "input": "{\"input\":\"maps auth failed for AIza4YYvfA_MYyDACHWqq6U0TNV96Qmbe74CAyn\"}",
+      "input": "{\"input\":\"maps auth failed for AIzaTEST4YYvfA_MYyDACHWqq6U0TNV96Qmb\"}",
       "secrets": [
-        "AIza4YYvfA_MYyDACHWqq6U0TNV96Qmbe74CAyn"
+        "AIzaTEST4YYvfA_MYyDACHWqq6U0TNV96Qmb"
       ]
     },
     {
@@ -630,10 +630,10 @@
     },
     {
       "id": "two-vendor-secrets",
-      "input": "first=sk-ZKHSmf8fEJg3yR1HvqNOEEOy3CoxzmDq; second=ghp_PTu0YgE9HHv0zjZ4T8CvASAZibmX6aioMv",
+      "input": "first=sk-TEST_ZKHSmf8fEJg3yR1HvqNOEEOy3Co; second=ghp_TESTPTu0YgE9HHv0zjZ4T8CvASAZib",
       "secrets": [
-        "sk-ZKHSmf8fEJg3yR1HvqNOEEOy3CoxzmDq",
-        "ghp_PTu0YgE9HHv0zjZ4T8CvASAZibmX6aioMv"
+        "sk-TEST_ZKHSmf8fEJg3yR1HvqNOEEOy3Co",
+        "ghp_TESTPTu0YgE9HHv0zjZ4T8CvASAZib"
       ]
     },
     {
@@ -778,12 +778,12 @@
     },
     {
       "id": "midword-sk-3",
-      "input": "task-0qrBVPMFRMjmqSlK5e5FNaYLICm5X8GH9cV0",
+      "input": "task-TEST_0qrBVPMFRMjmqSlK5e5FNaYLICm5X8G",
       "note": "sk- occurs inside a word, not at a secret prefix boundary."
     },
     {
       "id": "midword-sk-4",
-      "input": "prefixsk-vRju1S2iKNFkGedo0XA7BvyGtG1k5J",
+      "input": "prefixsk-TEST_vRju1S2iKNFkGedo0XA7BvyGt",
       "note": "sk- occurs inside a word, not at a secret prefix boundary."
     },
     {

@@ -54,3 +54,33 @@ test('.gitignore keeps backups, local traces and scratch out of the repo', () =>
   const gi = readFileSync(join(ROOT, '.gitignore'), 'utf8').split('\n');
   for (const want of ['.deck-backups/', '*.local.jsonl', 'scratch/']) expect(gi).toContain(want);
 });
+
+/**
+ * Test fakes must be caught by our redactor without looking like real tokens to secret scanners (GitHub push
+ * protection flagged a Slack-shaped fake once). These are the common real shapes; no file in the repo may contain one.
+ */
+const REAL_TOKEN_SHAPES: [string, RegExp][] = [
+  ['slack', /xox[abposr]-[0-9]{10,13}-/],
+  ['github classic', /gh[pousr]_[A-Za-z0-9]{36}/],
+  ['github fine-grained', /github_pat_[A-Za-z0-9]{22}_[A-Za-z0-9]{59}/],
+  ['aws access key id', /(?:AKIA|ASIA)[0-9A-Z]{16}/],
+  ['google api key', /AIza[0-9A-Za-z_-]{35}/],
+  ['openai-style key', /sk-[A-Za-z0-9]{20,}/],
+];
+
+test('no test fake, fixture or sample string has a real token shape', () => {
+  const hits: string[] = [];
+  for (const dir of ['tests', 'fixtures', 'src', 'public', 'scripts', 'bench']) {
+    let list: string[] = [];
+    try {
+      list = files(join(ROOT, dir));
+    } catch {
+      continue;
+    }
+    for (const f of list) {
+      const text = readFileSync(f, 'utf8');
+      for (const [name, re] of REAL_TOKEN_SHAPES) if (re.test(text)) hits.push(`${f.slice(ROOT.length)}: ${name}`);
+    }
+  }
+  expect(hits).toEqual([]);
+});

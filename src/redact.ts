@@ -43,7 +43,8 @@ const RULES: Rule[] = [
   { kind: 'anthropic-key', re: /\bsk-ant-[A-Za-z0-9_-]{16,}/g },
   { kind: 'openai-key', re: /\bsk-(?:proj-|svcacct-|admin-|live-|test-)?[A-Za-z0-9_-]{20,}/g },
   { kind: 'github-token', re: /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g },
-  { kind: 'aws-key', re: /\b(?:AKIA|ASIA|AGPA|AIDA|AROA)[A-Z0-9]{16}\b/g },
+  // Real access key ids have 16 characters after the prefix; the range also catches test fakes that avoid the exact shape.
+  { kind: 'aws-key', re: /\b(?:AKIA|ASIA|AGPA|AIDA|AROA)[A-Z0-9]{12,24}\b/g },
   { kind: 'slack-token', re: /\bxox[abposr]-[A-Za-z0-9-]{10,}/g },
   { kind: 'google-key', re: /\bAIza[0-9A-Za-z_-]{30,}/g },
   { kind: 'bearer', re: /(\bBearer[ \t]+)([A-Za-z0-9._~+/=-]+)/gi, group: 2 },
