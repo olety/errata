@@ -100,14 +100,20 @@ function Ink(r: PlayResultView | null): HTMLElement | null {
 /** The buckle: which lane's raise panel is open, and the step picked (presentation memory across repaints). */
 const buckle = new Map<Agent, number | null>();
 
-/** The buckle in a book's corner: a 44 px toggle for the raise panel (the book clips, so the panel lives at the root). */
-function BuckleToggle(b: BookView, p: BooksProps, onChange: () => void): HTMLElement | null {
+/**
+ * The buckle on the strap (§5): the clasp itself becomes a 44 px toggle for the raise panel (the book clips its
+ * content, so the panel opens above the books). The clasp keeps showing open or shut.
+ */
+function BuckleToggle(book: HTMLElement, b: BookView, p: BooksProps, onChange: () => void): (() => void) | null {
   if (!p.onRaise || b.raiseSteps.length === 0) return null;
-  const toggle = el('button', `pl-cards-buckle-btn${buckle.has(b.lane) ? ' is-open' : ''}`, svg('0 0 16 16', 'pl-cards-buckle-glyph', [{ d: 'M2.5 4.5h8v7h-8Z' }, { d: 'M10.5 8H14' }, { d: 'M6.5 4.5v7' }]));
+  const clasp = book.querySelector('.pl-cards-clasp');
+  if (!clasp || !clasp.parentElement) return null;
+  const toggle = el('button', 'pl-cards-buckle-btn');
   toggle.type = 'button';
   toggle.title = 'Raise the allowance';
   toggle.setAttribute('aria-label', `Raise ${b.file}'s allowance`);
-  toggle.setAttribute('aria-expanded', String(buckle.has(b.lane)));
+  clasp.parentElement.replaceChild(toggle, clasp);
+  toggle.append(clasp);
   toggle.addEventListener('pointerdown', (e) => e.stopPropagation());
   toggle.addEventListener('click', () => {
     const open = buckle.has(b.lane);
@@ -115,7 +121,12 @@ function BuckleToggle(b: BookView, p: BooksProps, onChange: () => void): HTMLEle
     if (!open) buckle.set(b.lane, null);
     onChange();
   });
-  return el('div', 'pl-cards-buckle', toggle);
+  const sync = () => {
+    toggle.classList.toggle('is-open', buckle.has(b.lane));
+    toggle.setAttribute('aria-expanded', String(buckle.has(b.lane)));
+  };
+  sync();
+  return sync;
 }
 
 /** The raise panel (§5): pick a step, read what it means, confirm. Nothing changes until "Raise to N". */
@@ -127,6 +138,7 @@ function BucklePanel(b: BookView, p: BooksProps, onChange: () => void): HTMLElem
     ...b.raiseSteps.map((n) => {
       const s = el('button', `pl-cards-buckle-step${pick === n ? ' is-picked' : ''}`, fig(n));
       s.type = 'button';
+      s.setAttribute('aria-label', `${fig(n)} tokens, ${COPY.estimated}`);
       s.setAttribute('aria-pressed', String(pick === n));
       s.addEventListener('click', () => (buckle.set(b.lane, n), onChange()));
       return s;
@@ -135,7 +147,7 @@ function BucklePanel(b: BookView, p: BooksProps, onChange: () => void): HTMLElem
   const keep = el('button', 'pl-cards-buckle-keep', 'Keep it');
   keep.type = 'button';
   keep.addEventListener('click', () => (buckle.delete(b.lane), onChange()));
-  const kids: HTMLElement[] = [el('p', 'pl-cards-buckle-q', `Raise ${b.file}'s allowance from ${fig(b.weight.allowance)} to:`), steps];
+  const kids: HTMLElement[] = [el('p', 'pl-cards-buckle-q', `Raise ${b.file}'s allowance from ${fig(b.weight.allowance)} tokens (${COPY.estimated}) to:`), steps];
   if (pick !== null) {
     const go = el('button', 'pl-cards-buckle-go', `Raise to ${fig(pick)}`);
     go.type = 'button';
@@ -194,7 +206,7 @@ function Figures(b: BookView): HTMLElement {
 function Notes(b: BookView): (HTMLElement | null)[] {
   return [
     b.weight.noGrowth ? el('p', 'pl-cards-book-note', 'No growth: this file arrived over the line.') : null,
-    b.weight.raisedBy !== null ? el('p', 'pl-cards-book-note', `Allowance raised to ${fig(b.weight.raisedBy)} by you.`) : null,
+    b.weight.raisedBy !== null ? el('p', 'pl-cards-book-note', `Allowance raised to ${fig(b.weight.raisedBy)} (${COPY.estimated}) by you.`) : null,
     b.blocked ? el('p', 'pl-cards-book-note is-blocked', b.blocked) : null,
     !b.loaded ? el('p', 'pl-cards-book-note', 'File not read.') : null,
   ];
@@ -210,15 +222,8 @@ function Book(b: BookView, ghost: GhostDelta | null, dest: boolean, p: BooksProp
     ghost && p.preview ? el('p', 'pl-cards-book-ghost', el('span', 'pl-cards-mono', ghost.text), ` ${COPY.estimated}`) : null,
     ...Notes(b),
   );
-  const toggle = BuckleToggle(b, p, onBuckle);
-  if (toggle) {
-    book.append(toggle);
-    toggles.push(() => {
-      const btn = toggle.querySelector('button')!;
-      btn.classList.toggle('is-open', buckle.has(b.lane));
-      btn.setAttribute('aria-expanded', String(buckle.has(b.lane)));
-    });
-  }
+  const sync = BuckleToggle(book, b, p, onBuckle);
+  if (sync) toggles.push(sync);
   book.dataset.lane = b.lane;
   book.setAttribute('aria-label', `${b.file}: ${b.weight.now} of ${b.weight.allowance} ${COPY.estimated}${b.proposed ? `, ${COPY.proposed}` : ''}`);
   if (b.proposed) {
@@ -234,7 +239,8 @@ function Book(b: BookView, ghost: GhostDelta | null, dest: boolean, p: BooksProp
       if (!c) continue;
       const slip = el('li', `pl-cards-slip${p.glow?.includes(id) ? ' is-glow' : ''}`, el('span', 'pl-cards-slip-text', ...inline(c.face.summary)), el('span', 'pl-cards-mono pl-cards-slip-w', `+${c.weight}`));
       slip.dataset.card = id;
-      slip.title = c.inspector.exact;
+      slip.title = `${c.inspector.exact} (+${c.weight} ${COPY.estimated})`;
+      slip.setAttribute('aria-label', `${c.face.summary}, +${c.weight} ${COPY.estimated}`);
       p.drag.bindCard(id, slip);
       if (p.onInspect) slip.addEventListener('contextmenu', (e) => (e.preventDefault(), p.onInspect!(id)));
       slips.append(slip);

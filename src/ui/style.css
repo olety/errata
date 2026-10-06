@@ -84,7 +84,9 @@ button.on { border-color: var(--ink); font-weight: 700; }
   font: 500 14px/1.35 var(--body); text-align: center; box-shadow: 0 -2px 12px rgba(30, 18, 10, 0.25);
 }
 .pl-layout-tablet .pl-coach { max-width: min(600px, calc(100vw - 360px)); font-size: 13px; }
-.pl-layout-phone .pl-coach { bottom: calc(100% + 4px); max-width: calc(100vw - 24px); font-size: 13px; }
+/* Phones: the hand fills the wood, so the coach takes the whole status strip (its text yields while coaching). */
+.pl-layout-phone .pl-coach { inset: 0; transform: none; width: auto; max-width: none; display: flex; align-items: center; justify-content: center; padding: 2px 12px; border: 0; border-radius: 0; box-shadow: none; font-size: 12px; line-height: 1.25; }
+@media (prefers-reduced-motion: no-preference) { .pl-layout-phone .pl-coach { animation: none; } }
 @media (prefers-reduced-motion: no-preference) { .pl-coach { animation: pl-coach-in 220ms cubic-bezier(0.23, 1, 0.32, 1); } }
 @keyframes pl-coach-in { from { opacity: 0; transform: translate(-50%, 4px); } }
 /* The tutorial's spotlight on one card: a gold halo, no motion under reduced motion. */

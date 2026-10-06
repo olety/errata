@@ -20,9 +20,8 @@ const line = (text: string, focus: Tutorial['focus'] = null): Tutorial => ({ tex
 function roomLine(v: C.RoomView, first: boolean, redThread: boolean): Tutorial | null {
   if (v.kind === 'event') return line('A change of plan flies off and counts nowhere. A problem turns the heron into a room with one head.');
   if (!first) return null;
-  const stamped = v.heads.length - v.review.remaining;
   if (v.phase === 'judge') {
-    if (stamped === 0) return line(`Your agents read the two books below. ${COPY.tutorialFiles} You stopped the agent here: read the slip. A problem?`);
+    if (v.review.remaining === v.heads.length) return line(`Your agents read the two books below. ${COPY.tutorialFiles} You stopped the agent here: read the slip. A problem?`);
     if (v.review.remaining > 0) return line(`Stamp each head from its own words: ${v.review.remaining} still to stamp.`);
     if (v.canDeal) return line('Every head is stamped. Deal the hand.');
     return null;

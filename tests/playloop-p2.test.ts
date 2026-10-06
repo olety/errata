@@ -285,3 +285,17 @@ describe('the tutorial coach on the sample (§11, §0a.16): one line per gesture
     expect(c.uiView().tutorial).toBeNull();
   });
 });
+
+describe('the honesty sweep stays swept', () => {
+  test('no string literal in the UI says prevented, killed, defeated, damage, saved time, worked or fired', async () => {
+    const { Glob } = await import('bun');
+    const banned = /\b(prevent(?:ed|s)?|kill(?:ed|s)?|defeat(?:ed|s)?|damage[ds]?|saved time|worked|fired)\b/i;
+    const hits: string[] = [];
+    for (const f of new Glob('src/ui/**/*.ts').scanSync({ cwd: join(import.meta.dir, '..') })) {
+      const text = await Bun.file(join(import.meta.dir, '..', f)).text();
+      // Strings only (comments and identifiers are not copy).
+      for (const m of text.matchAll(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g)) if (banned.test(m[0])) hits.push(`${f}: ${m[0].slice(0, 60)}`);
+    }
+    expect(hits).toEqual([]);
+  });
+});

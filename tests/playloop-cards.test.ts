@@ -163,8 +163,8 @@ describe('pure layout helpers', () => {
     const tag = { agent: 'claude' as const, project: null, date: null };
     const rows = compareRows(pv([{ caseId: 'x', tag, glow: true, word: null }, { caseId: 'y', tag, glow: false, word: 'Codex' }]), pv([{ caseId: 'y', tag, glow: true, word: null }]));
     expect(rows).toEqual([
-      { caseId: 'x', a: { glow: true, word: null }, b: null },
-      { caseId: 'y', a: { glow: false, word: 'Codex' }, b: { glow: true, word: null } },
+      { caseId: 'x', label: 'Claude', a: { glow: true, word: null }, b: null },
+      { caseId: 'y', label: 'Claude', a: { glow: false, word: 'Codex' }, b: { glow: true, word: null } },
     ]);
   });
 

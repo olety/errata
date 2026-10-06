@@ -211,6 +211,8 @@ export function Receipt(r: ReceiptView, session: string | null): HTMLElement {
 
 export interface CompareRow {
   caseId: string;
+  /** "Claude · pyramid · 09-23": the head's tag from the view (HeadGlow.tag), never a position number. */
+  label: string;
   a: { glow: boolean; word: string | null } | null;
   b: { glow: boolean; word: string | null } | null;
 }
@@ -223,7 +225,11 @@ export function compareRows(a: DragPreview, b: DragPreview): CompareRow[] {
     const h = p.heads.find((x) => x.caseId === id);
     return h ? { glow: h.glow, word: h.word } : null;
   };
-  return order.map((caseId) => ({ caseId, a: pick(a, caseId), b: pick(b, caseId) }));
+  const label = (id: string) => {
+    const t = [...a.heads, ...b.heads].find((x) => x.caseId === id)?.tag;
+    return t ? [AGENT_NAME[t.agent], t.project, t.date ? t.date.slice(5) : null].filter((x): x is string => !!x).join(' · ') : 'A head';
+  };
+  return order.map((caseId) => ({ caseId, label: label(caseId), a: pick(a, caseId), b: pick(b, caseId) }));
 }
 
 export interface ComparisonProps {
@@ -249,9 +255,9 @@ export function Comparison(p: ComparisonProps): HTMLElement {
       el(
         'ol',
         'pl-cards-cmp-heads',
-        ...rows.map((r, i) => {
+        ...rows.map((r) => {
           const h = r[side];
-          return el('li', h?.glow ? 'is-glow' : '', el('span', 'pl-cards-cmp-pip'), el('span', '', h ? (h.glow ? `Head ${i + 1} · lights` : `Head ${i + 1} · ${h.word ?? 'no'}`) : `Head ${i + 1} · —`));
+          return el('li', h?.glow ? 'is-glow' : '', el('span', 'pl-cards-cmp-pip'), el('span', '', h ? (h.glow ? `${r.label} · lights` : `${r.label} · ${h.word ?? 'no'}`) : `${r.label} · —`));
         }),
       ),
       ...LANES.map((a) => el('p', 'pl-cards-ghostline', el('b', '', FILE_OF[a]), ' ', `${pv.ghost[a].text} ${COPY.estimated}`)),

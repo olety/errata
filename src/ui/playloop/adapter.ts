@@ -1080,7 +1080,8 @@ function earlierUnreviewed(s: PlayState): number {
 function scoreLines(t: BossTally, sealed: number, earlierWrapped: number): string[] {
   const aside = t.setAside.notAProblem + t.setAside.changeOfPlan + t.setAside.unclear;
   const asideText = `${aside} set aside (${t.setAside.notAProblem} not a problem, ${t.setAside.changeOfPlan} a change of plan, ${t.setAside.unclear} unclear)`;
-  const waiting = t.unreviewed > 0 ? ` · ${t.unreviewed} not yet stamped` : '';
+  // The unreviewed count always prints beside the fraction, zero included (§0a.6).
+  const waiting = ` · ${t.unreviewed} not yet stamped`;
   return [
     sealed === 0
       ? 'No later cases were held back; no held-out claim is made.'

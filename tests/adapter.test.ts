@@ -235,7 +235,7 @@ describe('the tutorial route to Apply and Undo', () => {
     expect(A.selectBoss(s).turn).toBe('summary');
     expect(locked.validity).toBe('locked');
     expect(locked.later).toEqual({ addressed: 2, confirmed: 2 });
-    expect(locked.lines[0]).toBe('Later cases: 2 of 2 addressed · 0 set aside (0 not a problem, 0 a change of plan, 0 unclear)');
+    expect(locked.lines[0]).toBe('Later cases: 2 of 2 addressed · 0 set aside (0 not a problem, 0 a change of plan, 0 unclear) · 0 not yet stamped');
     s = A.actAdvance(s);
     expect(A.selectScreen(s, port()).kind).toBe('apply');
     s = await A.actPrepareApply(s, port());
