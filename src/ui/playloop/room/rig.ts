@@ -62,6 +62,9 @@ function neckWidths(collars: readonly { at: Pt; w: number }[], plan: readonly [n
 const ONE_EACH: [number, number][] = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]];
 const WYRM_PLAN: [number, number][] = [[0, 0], [0, -0.16], [1, 0], [0, -0.32], [2, 0]];
 const ONE_COLLAR: [number, number][] = [[0, 0], [0, -0.16], [0, 0.16], [0, -0.32], [0, 0.32]];
+// P3 (Astra, astra-rig five heads): one collar carrying a three-over-two crown spreads its sockets wider, so the
+// outer necks leave the collar on their own side.
+const CROWN_PLAN: [number, number][] = [[0, 0], [0, -0.24], [0, 0.24], [0, -0.46], [0, 0.46]];
 
 const round = (n: number) => Math.round(n * 10000) / 10000;
 
@@ -126,13 +129,14 @@ export const RIGS: Record<Skin, Rig> = {
     headPlate: { w: 1246, h: 1262 },
     bodyBox: { x0: 0.1281, y0: 0.0044, x1: 0.9622, y1: 0.9956 },
     collars: STAG_COLLARS,
-    // One collar, five necks fanned across its opening.
-    sockets: socketsOn(STAG_COLLARS, ONE_COLLAR),
-    neckW: neckWidths(STAG_COLLARS, ONE_COLLAR),
-    heads: [[0.22, -0.17], [-0.07, -0.1], [0.51, -0.04], [-0.36, 0.02], [0.8, 0.03]],
+    // One collar, five necks in a three-over-two crown over the stag's neck (P3, Astra): the outer pair sits about
+    // 1.2 head-heights from the collar, not strung out sideways on long flat necks.
+    sockets: socketsOn(STAG_COLLARS, CROWN_PLAN),
+    neckW: neckWidths(STAG_COLLARS, CROWN_PLAN),
+    heads: [[0.2, -0.45], [-0.048, -0.43], [0.448, -0.43], [-0.065, -0.125], [0.465, -0.125]],
     headAnchor: [0.5818, 0.927],
     headCollarW: 0.2632,
-    headScale: 0.4,
+    headScale: 0.3,
     neck: 'ribbon',
     fill: 1,
   },
@@ -144,9 +148,10 @@ export const RIGS: Record<Skin, Rig> = {
     headPlate: { w: 1374, h: 1145 },
     bodyBox: { x0: 0.0111, y0: 0.0371, x1: 0.9889, y1: 0.9463 },
     collars: MOTH_COLLARS,
-    sockets: socketsOn(MOTH_COLLARS, ONE_COLLAR),
-    neckW: neckWidths(MOTH_COLLARS, ONE_COLLAR),
-    heads: [[0.5, 0.04], [0.22, 0.0], [0.78, 0.0], [-0.06, 0.12], [1.06, 0.12]],
+    // Five heads above the wings in a three-over-two crown (P3, Astra), never beyond the wingtips.
+    sockets: socketsOn(MOTH_COLLARS, CROWN_PLAN),
+    neckW: neckWidths(MOTH_COLLARS, CROWN_PLAN),
+    heads: [[0.4989, -0.39], [0.2539, -0.365], [0.7439, -0.365], [0.2489, 0.0], [0.7489, 0.0]],
     headAnchor: [0.499, 0.9035],
     headCollarW: 0.1783,
     headScale: 0.36,
