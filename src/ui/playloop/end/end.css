@@ -585,4 +585,4 @@
 
 /* A glowing card at the boss also says so in words (the light alone was missed in the third cold run). */
 .pl-end-slot { position: relative; }
-.pl-end-glowtag { position: absolute; left: 50%; bottom: -10px; translate: -50% 0; z-index: 3; padding: 1px 8px; font: 600 11px/16px var(--pl-cards-f-body, sans-serif); color: var(--pl-cards-ink, #41291f); background: var(--pl-cards-paper, #fff9ee); border: 1px solid var(--pl-cards-gold, #b08a3e); border-radius: 8px; white-space: nowrap; }
+.pl-end-glowtag { position: absolute; left: 6px; top: -12px; translate: 0 0; z-index: 3; padding: 1px 8px; font: 600 11px/16px var(--pl-cards-f-body, sans-serif); color: var(--pl-cards-ink, #41291f); background: var(--pl-cards-paper, #fff9ee); border: 1px solid var(--pl-cards-gold, #b08a3e); border-radius: 8px; white-space: nowrap; }
