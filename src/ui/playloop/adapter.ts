@@ -1509,7 +1509,10 @@ export function selectInspector(s: PlayState, ref: { cardId: string } | { caseId
     const e = s.rooms.flatMap((r) => r.episodes).find((x) => x.sessionId === sid);
     return { sessionLabel: sessionLabel(s, sid).label, receipt: e ? receiptOf(e) : null };
   });
-  const view = cardView(s, card);
+  // A card in the dealt hand carries its beast reading, so the inspector can show the whole-file sum per destination.
+  const r = currentRoom(s);
+  const inHand = !!r && progressOf(s, r.key).phase === 'dealt' && dealtCards(s, r).hand.some((c) => c.id === card.id);
+  const view = inHand ? cardView(s, card, { room: draftRoom(s, r!), heads: roomCases(s, draftRoom(s, r!)), hand: true }) : cardView(s, card);
   return { kind: 'card', card: view, reading: lineOf(card, inDeck ? AGENTS.filter((a) => ex[a].has(card.id)) : AGENTS.filter((a) => card.targets === 'both' || card.targets === a))!, evidence, mappings };
 }
 

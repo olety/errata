@@ -242,10 +242,10 @@ function Book(b: BookView, ghost: GhostDelta | null, dest: boolean, p: BooksProp
     for (const id of b.cardIds) {
       const c = byId.get(id);
       if (!c) continue;
-      const slip = el('li', `pl-cards-slip${p.glow?.includes(id) ? ' is-glow' : ''}`, el('span', 'pl-cards-slip-text', ...inline(c.face.summary)), el('span', 'pl-cards-mono pl-cards-slip-w', `+${c.weight}`));
+      const slip = el('li', `pl-cards-slip${p.glow?.includes(id) ? ' is-glow' : ''}`, el('span', 'pl-cards-slip-text', ...inline(c.face.summary)), el('span', 'pl-cards-mono pl-cards-slip-w', `${c.weight} tok`));
       slip.dataset.card = id;
-      slip.title = `${c.inspector.exact} (+${c.weight} ${COPY.estimated})`;
-      slip.setAttribute('aria-label', `${c.face.summary}, +${c.weight} ${COPY.estimated}`);
+      slip.title = `${c.inspector.exact} (${c.weight} tokens, ${COPY.estimated})`;
+      slip.setAttribute("aria-label", `${c.face.summary}, ${c.weight} tokens, ${COPY.estimated}`);
       p.drag.bindCard(id, slip);
       if (p.onInspect) slip.addEventListener('contextmenu', (e) => (e.preventDefault(), p.onInspect!(id)));
       slips.append(slip);

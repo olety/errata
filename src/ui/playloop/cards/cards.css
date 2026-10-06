@@ -446,3 +446,9 @@
 /* Phones: the buckle on a book tab is a full 44 px control, and its panel opens above the tabs, inside the screen. */
 .pl-cards-booktab .pl-cards-buckle-btn { margin: -12px -6px -12px 0; }
 .pl-cards-books-tabs .pl-cards-buckle-panel { left: 0; right: 0; width: auto; }
+
+/* Phones: the tab grows to its two strap lines; the Proposed stamp sits at the top-right corner, clear of the text. */
+.pl-cards-booktab { height: auto; min-height: 44px; }
+.pl-cards-booktab .pl-cards-book-fig { white-space: normal; }
+.pl-cards-booktab .pl-cards-fig-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-cards-booktab .pl-cards-proposed-tag { top: -7px; bottom: auto; right: 8px; }

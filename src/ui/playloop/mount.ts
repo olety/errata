@@ -58,8 +58,13 @@ export function mountScreens(root: HTMLElement, ctl: Controller): () => void {
     // who clicks it next must not lose it); Escape or "Clear selection" clears it.
     onTap: (cardId, under) => {
       const sel = ctl.ui.selected;
-      if (sel && sel !== cardId && under?.kind === 'card') api.tapTarget(under);
-      else api.select(cardId);
+      if (sel && sel !== cardId && under?.kind === 'card') {
+        // Stack only when the two share a thread (or a shelf card meets a deck card); otherwise the tap selects anew.
+        const sc = ctl.screen();
+        const linked = sc.kind !== 'campfire' || sc.view.piles.shelf.some((c) => c.id === sel) || sc.view.threads.some((t) => t.members.includes(sel) && t.members.includes(cardId));
+        if (linked) return api.tapTarget(under);
+      }
+      api.select(cardId);
     },
     onInspect: (cardId) => api.inspect({ cardId }),
     onTapTarget: (target) => api.tapTarget(target),

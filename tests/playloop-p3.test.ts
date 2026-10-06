@@ -287,3 +287,20 @@ describe('a browser without folder access exports the blocks (Exported, not appl
     expect(A.selectApply(s, { ...port, canWrite: () => true }).exported).toBeNull();
   });
 });
+
+describe('a seal ends the gesture', () => {
+  test('after a settlement the selection clears, so the next tap at the fire starts a new stack', () => {
+    const c = new Controller(toFirstFire(), null, { viewport: { w: 1440, h: 900 } });
+    const fire = c.screen();
+    if (fire.kind !== 'campfire') throw new Error('not the fire');
+    const red = fire.view.threads.find((t) => t.color === 'red')!;
+    c.api.select(red.members[0]!);
+    c.api.tapTarget({ kind: 'card', cardId: red.members[1]! });
+    c.api.campfire.settle(red.id, { kind: 'keep', keep: red.newer! });
+    expect(c.ui.selected).toBeNull();
+    const uv = (c.screen() as { view: { threads: { id: string; color: string; members: string[] }[] } }).view.threads.find((t) => t.color === 'gold' && t.members.length === 3)!;
+    c.api.select(uv.members[0]!);
+    c.api.tapTarget({ kind: 'card', cardId: uv.members[1]! });
+    expect(c.ui.pending).toMatchObject({ kind: 'stack', threadId: uv.id });
+  });
+});

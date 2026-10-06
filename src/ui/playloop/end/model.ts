@@ -136,7 +136,7 @@ export function bossPlan(v: BossView): BossPlan {
         coach = `${COPY.noEligibleCard} · this case stays open.`;
         controls = [{ act: 'next', label: 'Continue', primary: true }];
       } else {
-        coach = open ? 'An earlier Open page faces your final deck. Drag a glowing card onto it to answer it.' : 'Drag a glowing card onto the head to answer it.';
+        coach = open ? 'An earlier Open page faces your final deck. Drag a glowing card onto it, or click the card and then the page, to answer it.' : 'Drag a glowing card onto the head, or click the card and then the head, to answer it.';
         controls = [{ act: 'next', label: 'Continue · leave it open', primary: false }];
       }
       break;

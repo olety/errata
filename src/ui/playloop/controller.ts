@@ -200,7 +200,9 @@ export class Controller {
         break;
       case 'boss-next': {
         const b = screen.kind === 'boss' ? screen.view : null;
-        if (b?.current && this.ui.selected && b.candidates.some((c) => c.cardId === this.ui.selected && c.glow)) this.api.boss.answer(this.ui.selected, b.current);
+        // Enter answers with the selected glowing card; once the head is answered (or nothing is selected) it moves on.
+        const answered = !!b?.heads.find((h) => h.caseId === b.current)?.addressed;
+        if (b?.current && !answered && this.ui.selected && b.candidates.some((c) => c.cardId === this.ui.selected && c.glow)) this.api.boss.answer(this.ui.selected, b.current);
         else this.api.boss.next();
         break;
       }
@@ -395,13 +397,14 @@ export class Controller {
         focus: (pair) => this.commit(A.actFocusPair(this.state, pair)),
         pin: (caseId) => this.commit(A.actPin(this.state, caseId)),
         changePreview: (q) => ('threadId' in q ? A.selectChangePreview(this.state, { threadId: q.threadId, ...(q.text !== undefined ? { text: q.text } : {}), ...(q.settle ? { resolution: q.settle } : {}) }) : A.selectChangePreview(this.state, q)),
-        fuse: (threadId, text) => this.commit(A.actFuse(this.state, threadId, text), { pending: null }, 'fuse'),
-        settle: (threadId, choice) => this.commit(A.actSettle(this.state, threadId, choice), { pending: null }, 'settle'),
-        cut: (cardId) => this.commit(A.actCut(this.state, cardId), { pending: null }, 'cut'),
+        // A seal ends the gesture: the selection clears, so the next tap starts a new one.
+        fuse: (threadId, text) => this.commit(A.actFuse(this.state, threadId, text), { pending: null, selected: null }, 'fuse'),
+        settle: (threadId, choice) => this.commit(A.actSettle(this.state, threadId, choice), { pending: null, selected: null }, 'settle'),
+        cut: (cardId) => this.commit(A.actCut(this.state, cardId), { pending: null, selected: null }, 'cut'),
         restore: (cardId) => this.commit(A.actRestore(this.state, cardId), {}, 'restore'),
         sharpen: (cardId, text) => this.commit(A.actSharpen(this.state, cardId, text), {}, 'sharpen'),
-        retarget: (cardId, targets) => this.commit(A.actRetarget(this.state, cardId, targets), { pending: null }, 'retarget'),
-        swap: (shelfId, deckId) => this.commit(A.actSwap(this.state, shelfId, deckId), { pending: null }, 'swap'),
+        retarget: (cardId, targets) => this.commit(A.actRetarget(this.state, cardId, targets), { pending: null, selected: null }, 'retarget'),
+        swap: (shelfId, deckId) => this.commit(A.actSwap(this.state, shelfId, deckId), { pending: null, selected: null }, 'swap'),
         acceptMapping: (cardId, caseId) => this.commit(A.actAcceptMapping(this.state, cardId, caseId), {}, 'accept'),
         acceptImport: (cardId) => this.commit(A.actAcceptImport(this.state, cardId), {}, 'accept'),
         raiseAllowance: (lane, to) => this.commit(A.actRaiseAllowance(this.state, lane, to)),

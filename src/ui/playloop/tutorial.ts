@@ -95,7 +95,7 @@ function bossLine(v: C.BossView): Tutorial | null {
     case 'stamp':
       return line('A later case rises: the game held it back from the start. Read it, then stamp it blind.');
     case 'answer':
-      return v.noEligibleCard ? line(`${COPY.noEligibleCard}: the reasons are on the cards. Continue; this case stays open.`) : line('Drag a glowing card from your deck onto the head.');
+      return v.noEligibleCard ? line(`${COPY.noEligibleCard}: the reasons are on the cards. Continue; this case stays open.`) : line('Drag a glowing card from your deck onto the head, or click the card and then the head.');
     case 'set-aside':
       return line('Set aside. Continue to the next head.');
     case 'summary':
