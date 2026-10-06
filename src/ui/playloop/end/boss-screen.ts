@@ -261,6 +261,13 @@ function wood(v: BossView, plan: BossPlan, p: ScreenProps<BossView>): HTMLElemen
       );
       const why = plan.dragCards ? reason.get(c.id) : null;
       if (why) slot.title = why;
+      // Say it in words as well as in light: which cards can answer this case, and why the others cannot.
+      if (plan.dragCards) {
+        const card = slot.querySelector<HTMLElement>('[data-card]');
+        const label = card?.getAttribute('aria-label') ?? '';
+        if (card) card.setAttribute('aria-label', plan.glow.has(c.id) ? `Glows: can answer this case. ${label}` : `${label}${why ? ` Cannot answer this case: ${why}.` : ''}`);
+        if (plan.glow.has(c.id)) slot.append(el('span', 'pl-end-glowtag', 'can answer'));
+      }
       strip.append(slot);
     }
     deck.append(el('section', 'pl-end-shelfrow', el('h3', 'pl-end-file', row.book.file), row.cards.length ? strip : el('p', 'pl-end-soft', 'No cards in this file.')));

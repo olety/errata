@@ -582,3 +582,7 @@
 .pl-end-exported { display: flex; flex-direction: column; gap: 8px; }
 .pl-end-export { border-top: 1px solid var(--pl-end-line, #e4d3ba); padding-top: 6px; }
 .pl-end-exportblock { max-height: 160px; overflow: auto; margin: 4px 0; font-size: 12px; }
+
+/* A glowing card at the boss also says so in words (the light alone was missed in the third cold run). */
+.pl-end-slot { position: relative; }
+.pl-end-glowtag { position: absolute; left: 50%; bottom: -10px; translate: -50% 0; z-index: 3; padding: 1px 8px; font: 600 11px/16px var(--pl-cards-f-body, sans-serif); color: var(--pl-cards-ink, #41291f); background: var(--pl-cards-paper, #fff9ee); border: 1px solid var(--pl-cards-gold, #b08a3e); border-radius: 8px; white-space: nowrap; }
