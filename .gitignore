@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.deck-backups/
+*.local.jsonl
+scratch/
+.DS_Store
