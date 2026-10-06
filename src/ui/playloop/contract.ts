@@ -502,6 +502,18 @@ export interface UiView {
   beat: 'rise' | 'judge' | 'deal' | 'play' | 'strike' | 'clear' | null;
   reducedMotion: boolean;
   bands: Bands;
+  /** Why the last drop or act was refused (the pick was not spent), until the next input. */
+  notice: string | null;
+  /**
+   * What a campfire drop proposed. Stacking proposes; confirming performs (§7): the seal calls the matching api
+   * (fuse, settle, swap, cut, retarget). Escape or pulling the top card off clears it.
+   */
+  pending:
+    | { kind: 'stack'; a: string; b: string; threadId: string | null }
+    | { kind: 'swap'; shelfId: string; deckId: string }
+    | { kind: 'cut'; cardId: string }
+    | { kind: 'retarget'; cardId: string; lane: Agent }
+    | null;
 }
 
 /**
@@ -525,6 +537,8 @@ export interface ControllerApi {
   /** The preview for a hover, or null. Never binds. */
   preview(cardId: string, target: DragTarget | null): DragPreview | null;
   inspect(ref: { cardId: string } | { caseId: string } | null): void;
+  /** Clear a pending proposal, the selection and any notice (Escape). */
+  cancel(): void;
   campfire: {
     tab(tab: LaneTab): void;
     focus(pair: { a: string; b: string; threadId: string | null } | null): void;
