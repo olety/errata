@@ -66,7 +66,9 @@ bun run dev
 - Hand: `bands.fan` decides rotated, flat or carousel. On phones a horizontal swipe scrolls and never plays a card.
 - Piles: the shelf is a target only when `shelfTarget`; Open is a list, never a target.
 - Table: bands at the exact heights in `Bands` for 1440×900, 1024×768 and 390×844, with nothing overlapping and nothing below 44 px. Phones get two book tabs and one pile rail.
-- Inspector: exact line in mono, chips for targets, scope, trigger and exceptions, `weightMath`, quote or "Tool evidence only", evidence list, `needsAcceptance` with an "Accept this reading" control, a Skill's first lines and estimate labelled outside the allowance, and `unavailable` reasons.
+- Inspector: render `ui.inspector`. For a card: the reading (exact line in mono, scope, exceptions, files), chips for targets and trigger, `weightMath`, the evidence with each session's receipt, one row per `mappings` entry with an Accept control when `eligible && !accepted` (`api.campfire.acceptMapping`), a Skill's first lines and estimate labelled outside the allowance, and `unavailable` reasons. For a case: the receipt and its room's queue. Withheld cases never arrive here before the boss.
+- Draft comparison: selecting one draft and then another shows the two cards' `playPreview`s side by side (files, glowing heads, per-lane ghosts). Both are computed on the same proposal.
+- Counts come from the view (`shelfCount`, `openCount`, `receipts.progress`); never `.length` on game data.
 
 **Integration points the integrator wires:** `mount.ts` already calls `Books`, `Hand`, `Piles` in the room's wood, `Table`, `RouteHeader` and `StatusBar` for every screen, and `Inspector` as an overlay. Campfire and end import `Card`, `Books` and `Piles` from `../cards`.
 
@@ -98,7 +100,11 @@ bun run dev
 - Head tags: agent sigil, project chip, date, each with its own 44 px hit region. Rings show `rings.count` and say what they count.
 - One complete receipt at a time from `receipts.current`, with the queue visible and immediate advance. The four stamps from `STAMPS`. Keys A, C, N and U are the controller's; do not bind them again.
 - While dragging, glowing heads lean in and the others turn aside with `HeadGlow.word`. Nothing binds until `view.result` says so.
-- Controls: Deal when `canDeal`; Pull the hand back while dealt; Continue or Keep existing from `offer`; the `finalizes` line while dealt; the "Already in your file?" prompt from `existingAsks`.
+- Controls: Deal when `canDeal`; Pull the hand back while dealt; Continue or Keep existing from `offer`; the `finalizes` line while dealt; the "Already in your file?" prompt from `existingAsks`, showing its full `reading` before Yes.
+- The review lock: show `review.remaining` ("2 heads still to stamp"); Deal and Continue wait for `review.canFinalize`.
+- `heads[0]` is the anchor: it leans in first. `wording` is the editable line for boundary and directive rooms (`api.wording`).
+- Binds after the room's play (an existing line accepted, a card dragged from a book onto a standing head) arrive as `ui.effect.bound`; fold those heads too, once per effect id.
+- The Workshop: lanterns, one per verified session; the bench is the beast target and the verb is `forge`.
 - The Event (§8): a heron with its slip. A change of plan flies off; A problem turns it into a one-head room.
 - Reduced motion: static icons, no ribbons, no folds; counts still change.
 
@@ -123,12 +129,13 @@ bun run dev
 
 - Lane tabs (Claude, both, Codex) and one focused pair (§0a.21); the creature band holds the pair and its preview.
 - Gold threads print `reason`; red threads print `reason`. Never "these say the same thing" without the reason.
-- Stacking proposes, sealing performs. A card dropped on a card sets `ui.pending` to a stack; read the preview with `api.campfire.changePreview`; seal on a 0.6 s hold or Enter with `fuse` or `settle`. Pulling the top card off or Escape calls `cancel`.
+- Stacking proposes, sealing performs. A card dropped on a card sets `ui.pending` to a stack of the whole thread (`members`; the uv triple seals as one); read the preview with `api.campfire.changePreview({ threadId })`; seal on a 0.6 s hold or Enter with `fuse` or `settle`. Pulling the top card off or Escape calls `cancel`. Swap, re-target, cut and sharpen preview the same way (`{ swap }`, `{ retarget }`, `{ cutId }`, `{ sharpen }`) and seal with their own api call; a preview with `refused` cannot seal.
+- After a fuse or sharpen, `resultId` is the card left in the deck; offer `needsAcceptance` cases with `acceptMapping(resultId, caseId)`.
 - A gold thread without `autoText` opens an editor holding both lines; the player writes the merged line.
 - A red pair offers four slots: keep one, separate the conditions (from `projects`), write an exception, cancel. Show the resulting exported `lines` before the seal. Cancel leaves the thread.
 - Every preview prints `cases.text` ("Affected cases: 0 · deck total: 3 → 3") and both ghosts with `estimated`. `needsAcceptance` lists cases a new text must be accepted for, each with an accept control.
 - The fire: a drop sets a pending cut; the preview shows the deletion, the weight freed and the reopened cases; the seal burns it. The ash list restores until Apply.
-- The books re-target (`book-retarget`); the shelf swap is a reviewed panel; the pinned Open receipt shows its eligibility and is never a target.
+- The books re-target (`book-retarget`) to `pending.targets`; seal with `campfire.retarget(cardId, targets)`. The shelf swap is a reviewed panel. The pinned Open receipt shows `pinnedCandidates` (eligibility, never coverage) and is never a target.
 - The coach line when a clasp is open. Leaving is free.
 
 **Integration points the integrator wires:** `mount.ts` places your `stage` and `wood` in the Table and resolves drops to `ui.pending` through the controller.
@@ -150,11 +157,12 @@ bun run dev
 
 **Acceptance checks:**
 
-- Sealed heads rise one at a time, oldest first (`heads` order, `current`). The receipt is readable before the stamp. The blind stamp locks on click.
+- Sealed heads rise one at a time, oldest first. `heads` holds only revealed heads; `remaining` is the count still hidden (never their words). `turn` drives the screen: `stamp` (receipt readable, no candidates), `answer`, `set-aside`, `summary`. The blind stamp locks on click.
 - Once stamped a problem, only cards whose candidate `glow` is true glow in their books; drag one onto the head (bind the head with `drag.bindTarget`, the cards with `drag.bindCard`). "No eligible card" prints each candidate's `reason`. Continue is always there.
 - The earlier Open pages (`source: 'open'`) rise after the sealed heads and face the final deck the same way.
-- The score prints `score.lines` exactly, set-asides always beside it. When `stale` is true, say the score must be locked again.
-- Apply: both diffs with context, Skill bodies first. Blockers with "Return to the final campfire" (`apply.returnToCampfire(blocker.select)`). Folder grants through `apply.grant`. The seal only when `canSeal`. Reviewed, Fits and Written ink one by one, each only when its `InkState` is `inked`. Undo under the receipt. The footer from `footer`.
+- The score prints `score.lines` exactly, set-asides always beside it. `score.validity` is `live`, `locked` or `stale`; a stale score is never shown as final.
+- Apply: both diffs with context, Skill bodies first. Blockers with "Return to the final campfire" (`apply.returnToCampfire(blocker.select)`). Folder grants through `apply.grant`. Disable every control while `busy` is not `idle`. The seal only when `canSeal`. Reviewed, Fits and Written ink one by one, each only when its `InkState` is `inked`; `result.files` says which files verified. Undo when `canUndo`. The footer only when `footer` is not null (a verified write).
+- The end screen from `summary`: the score lines, the Open pages, every set-aside by date, the shelf as "not written", the operation counts, both files' weights with any allowance raise "by you".
 - No write logic of your own: the engine's protocol runs behind `api.apply`.
 
 **Integration points the integrator wires:** `mount.ts` places your `stage` and `wood` in the Table for the boss, audit and Apply nodes.

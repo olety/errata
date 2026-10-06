@@ -22,7 +22,7 @@ export interface PilesProps {
 
 /** The shelf (discard) and the Open pile (torn pages, a set keyed by case id). */
 export function Piles(p: PilesProps): HTMLElement {
-  const shelf = el('div', 'pl-shelf', `Shelf · ${p.piles.shelf.length}`);
+  const shelf = el('div', 'pl-shelf', `Shelf · ${p.piles.shelfCount}`);
   if (p.shelfTarget) p.drag.bindTarget('shelf', { kind: 'shelf' }, shelf);
-  return el('div', `pl-piles pl-piles-${p.layout}`, shelf, el('div', 'pl-open', `Open · ${p.piles.open.length}`));
+  return el('div', `pl-piles pl-piles-${p.layout}`, shelf, el('div', 'pl-open', `Open · ${p.piles.openCount}`));
 }

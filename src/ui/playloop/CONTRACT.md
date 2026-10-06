@@ -14,13 +14,33 @@ engine (src/*.ts, src/deck/*)  ←  adapter.ts (select* / act*)  ←  controller
 
 ## Rules for workers
 
-1. Import types and selectors from `contract.ts` only. Never import `adapter.ts`, the engine, or another worker's folder.
-2. Never compute a number. Render the view's number, with `COPY.estimated` beside every token figure.
+1. Import types and selectors from `contract.ts`, and the base layer's components from `cards/index.ts` and `layout/index.ts`. Never import `adapter.ts`, the engine, or another worker's internals.
+2. Never compute a game or data number (counts, weights, coverage): render the view's, with `COPY.estimated` beside every token figure. Presentation maths (measuring rectangles, spacing sprites, fitting text) is yours.
 3. Take copy from `COPY`, `pipsText`, `footerText`, `overflowText`, `ghostText`, `casesText`, `failWord` and `bossReason`. Never write "prevented", "killed", "defeated", "damage", "saved time", "worked" or "fired".
 4. Raise intents through the callbacks the controller passes (`ControllerApi`). Components never hold game state.
-5. Animate only what a result says happened: `PlayResultView.bound` in order for the bind cascade, `standing` for the strike. Never bind optimistically.
+5. Animate only what a result says happened: `PlayResultView.bound` in order for the bind cascade, `standing` for the strike, and `UiView.effect` (bound and unbound cases) for every other committed change. Animate each result or effect once per `id`. Never bind optimistically.
 6. Register drop targets through `drag.ts` with real rectangles of at least 44 by 44 px. Open is never a drop target.
 7. Every string from a log is text, never HTML. Inline code arrives as backtick spans; render them as `<code>` elements.
+8. A line is read before it is accepted (§0a.5). A pointer drag shows the reading on hover. Selecting a dealt card shows its beast reading. Tap–tap or a key aimed at a target whose reading is not on screen only shows it (`UiView.pending.kind === 'confirm'`); the same act again plays. Dealing selects the first card, so one Enter plays a line already shown.
+9. No room finalizes with an unstamped head (`RoomView.review`). "Unclear · leave wrapped" is a stamp. Deal, skip and Continue wait for `canFinalize`.
+
+## Drop dispatch
+
+| Source | Target | Meaning |
+|---|---|---|
+| Room draft (hand) | The beast or any of its heads | Play on the beast: export to the glowing heads' agents. Refused without spending the pick when nothing glows. |
+| Room draft | A book | Play into that file only; may add a zero-match line. |
+| Room draft | The shelf | Skip. |
+| Workshop draft | The bench (beast target) or a book | Forge: the card and its Skill join the proposal; lanterns never glow; nothing is accepted. |
+| A card in the proposal (`RoomView.deck`) | A standing head | Accept that one mapping when it is eligible. |
+| Campfire deck card | Another deck card | Propose the whole gold thread (fuse) or the red pair (settle); a pair with no thread is refused. |
+| Campfire deck card | The fire | Propose a cut. |
+| Campfire deck card | The other book | Propose widening to both. Narrowing is the inspector's target chips (`campfire.retarget(cardId, targets)`). |
+| Campfire shelf card | A deck card of the same family | Propose a swap. |
+| Boss deck card | The current head, once stamped a problem | Answer: accept the mapping when the candidate glows. |
+| Anything else | Any | Refused with a notice; nothing changes. |
+
+Target ids must be unique per rendered instance (`card:<id>:<where>`). One card may render in several places; every rendering may bind as a drag source.
 
 ## Types and who consumes them
 
@@ -40,7 +60,10 @@ engine (src/*.ts, src/deck/*)  ←  adapter.ts (select* / act*)  ←  controller
 | `BossView`, `BossHeadView`, `BossCandidateView` | `selectBoss` | boss/apply |
 | `ApplyView`, `ApplyDiffView`, `ApplyBlockerView`, `InkState` | `selectApply` | boss/apply (presentation only) |
 | `Screen` | `selectScreen` | controller, `mount.ts` |
-| `UiView` | `Controller.uiView()` | every worker: selection, inspector, live drag preview, beat, reduced motion, bands, notice, pending campfire proposal |
+| `UiView` | `Controller.uiView()` | every worker: selection, the resolved inspector, live drag preview, the last committed effect, beat, reduced motion, bands, notice, pending proposal, tutorial |
+| `InspectorView`, `MappingReviewView`, `ReadingView` | `selectInspector`, inside previews | cards/layout (the one inspector); campfire (needsAcceptance → `acceptMapping(resultId, caseId)`) |
+| `CommitEffectView` | `Controller` around each act | room/rig (binds after an accept or a boss answer), campfire (reopened cases after a cut) |
+| `RunSummaryView` | inside `ApplyView` | boss/apply (the end screen) |
 | `Bands`, `Band` | `layout()` in `geometry.ts` | cards/layout (Table, hand, books, piles), room/rig (creature height, shore) |
 | `ControllerApi` | `Controller.api` | every worker: the only way to act |
 | `DropBinder` | `mount.ts` (over `DragCore`) | every worker that renders a card or a target |
@@ -56,7 +79,7 @@ engine (src/*.ts, src/deck/*)  ←  adapter.ts (select* / act*)  ←  controller
 | `actDeal()` | Deals the hand: only drafts with observed eligibility. Reversible. | No |
 | `actPullBack()` | Returns a dealt hand so stamps can change. | No |
 | `actPlay(cardId, 'beast' \| 'claude' \| 'codex')` | Adds the card, accepts only glowing heads, returns true cover results. A refused beast drop changes nothing. | **Yes**, on success |
-| `actSkip()` | Shelves the dealt hand, free. A drop on the shelf is the same act. | **Yes** |
+| `actSkip()` | Shelves the dealt hand, free. A drop on the shelf is the same act. Refused until every head is stamped. | **Yes** |
 | `actAdvance()` | Leaves the node. A room must be done, or offer Continue, or be an event set aside. Marks such a room done. | **Yes**, for a room left through an offer |
 | `actAnswerExisting(cardId, caseId, yes)` | "Already in your file. Does it answer this case?" | No |
 | `actAcceptOnHead(cardId, caseId)` | A card already in a book dropped on a standing head. | No |

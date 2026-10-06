@@ -97,7 +97,7 @@ describe('room 1 on the sample', () => {
     expect(result.ink.map((x) => x.file)).toEqual(['CLAUDE.md', 'AGENTS.md']);
     const v = A.selectRoom(state)!;
     expect(v.phase).toBe('done');
-    expect(v.beast.pips).toMatchObject({ text: '3/3 confirmed addressed', fully: true });
+    expect(v.beast.pips).toMatchObject({ text: '3/3 confirmed addressed · 0 unreviewed', fully: true });
     expect(v.piles.open).toEqual([]);
     expect(v.books.map((b) => b.weight.now)).toEqual([172, 102]);
     expect(v.books[0]!.cardIds.every((id) => v.deck.some((c) => c.id === id))).toBe(true);
@@ -119,7 +119,12 @@ describe('room 1 on the sample', () => {
   test('a refused beast drop does not spend the pick; skipping shelves the hand and finalizes', () => {
     let s = fresh();
     const ids = A.selectRoom(s)!.heads.map((h) => h.caseId);
-    s = A.actDeal(A.actStamp(s, ids[0]!, 'issue'));
+    s = A.actStamp(s, ids[0]!, 'issue');
+    // The review lock: no deal while a head is unstamped ("Unclear · leave wrapped" is a stamp).
+    expect(A.selectRoom(s)!.review).toEqual({ remaining: 2, canFinalize: false });
+    expect(A.selectRoom(A.actDeal(s))!.phase).toBe('judge');
+    expect(A.actSkip(s).result.refused).toBe('Stamp every head first. Unclear · leave wrapped is a stamp.');
+    s = A.actDeal(A.actStamp(A.actStamp(s, ids[1]!, 'unclear'), ids[2]!, 'unclear'));
     const reread = A.selectRoom(s)!.unavailable[0]!.id;
     expect(A.actPlay(s, reread, 'beast').result.refused).toBe('That card is not in this hand.');
     const sk = A.actSkip(s);
@@ -132,7 +137,7 @@ describe('room 1 on the sample', () => {
     let s = fresh();
     for (const h of A.selectRoom(s)!.heads) s = A.actStamp(s, h.caseId, 'not-a-problem');
     expect(A.selectRoom(s)!.offer).toBe('continue-all-set-aside');
-    expect(A.selectRoom(s)!.beast.pips.text).toBe('No confirmed problems');
+    expect(A.selectRoom(s)!.beast.pips.text).toBe('No confirmed problems · 0 unreviewed');
     const next = A.actAdvance(s);
     expect(next.node).toBe(1);
   });
@@ -209,10 +214,11 @@ describe('the tutorial route to Apply and Undo', () => {
     const boss = A.selectBoss(s);
     expect(boss.cards.length).toBeGreaterThan(0);
     expect(boss.books.map((b) => b.file)).toEqual(['CLAUDE.md', 'AGENTS.md']);
-    expect(boss.heads.map((h) => [h.source, label(h.caseId)])).toEqual([
-      ['sealed', 'S11'],
-      ['sealed', 'S12'],
-    ]);
+    // Only the current sealed head is revealed; the next stays a count. Its receipt is readable before the blind stamp.
+    expect(boss.heads.map((h) => [h.source, label(h.caseId)])).toEqual([['sealed', 'S11']]);
+    expect(boss.remaining).toBe(1);
+    expect(boss.turn).toBe('stamp');
+    expect(boss.candidates).toEqual([]);
     expect(boss.heads[0]!.receipt.quote).not.toBeNull();
     expect(boss.score.lines[0]).toBe('Later cases: none confirmed a problem · 0 set aside (0 not a problem, 0 a change of plan, 0 unclear) · 2 not yet stamped');
     for (let i = 0; i < 2; i++) {
@@ -220,12 +226,14 @@ describe('the tutorial route to Apply and Undo', () => {
       s = A.actBossStamp(s, cur, 'issue');
       expect(A.actBossStamp(s, cur, 'not-a-problem')).toBe(s);
       const b = A.selectBoss(s);
+      expect(b.turn).toBe('answer');
       const g = b.candidates.find((c) => c.glow)!;
       expect(A.selectDrag(s, g.cardId, { kind: 'head', caseId: cur }).verb).toBe('answer');
       s = A.actBossNext(A.actBossAnswer(s, g.cardId, cur));
     }
     const locked = A.selectBoss(s).score;
-    expect(locked.locked).toBe(true);
+    expect(A.selectBoss(s).turn).toBe('summary');
+    expect(locked.validity).toBe('locked');
     expect(locked.later).toEqual({ addressed: 2, confirmed: 2 });
     expect(locked.lines[0]).toBe('Later cases: 2 of 2 addressed · 0 set aside (0 not a problem, 0 a change of plan, 0 unclear)');
     s = A.actAdvance(s);
@@ -235,17 +243,27 @@ describe('the tutorial route to Apply and Undo', () => {
     expect(v.blockers).toEqual([]);
     expect(v.canSeal).toBe(true);
     expect(v.stamps).toEqual({ reviewed: 'pending', fits: 'pending', written: 'pending' });
+    expect(v.footer).toBeNull();
+    expect(v.summary.operations.find((o) => o.kind === 'fuse')!.count).toBe(1);
+    expect(v.summary.operations.find((o) => o.kind === 'settle')!.count).toBe(1);
+    expect(v.summary.setAside.map((x) => x.disposition)).toEqual(['pivot']);
     expect(v.diffs.map((d) => d.kind)).toEqual(['skill', 'global', 'global']);
     s = await A.actSeal(s, port());
     const after = A.selectApply(s, port());
     expect(after.result!.status).toBe('written');
     expect(after.stamps).toEqual({ reviewed: 'inked', fits: 'inked', written: 'inked' });
+    expect(after.footer).toBe('Saved for future sessions. This game did not test whether an agent follows these instructions.');
+    expect(after.result!.files.every((f) => f.status === 'written-verified')).toBe(true);
+    expect(after.canUndo).toBe(true);
     expect(A.selectBooks(s).every((b) => !b.proposed)).toBe(true);
     const claude = (await readFile(join(tmp, 'home/.claude/CLAUDE.md'))).toString();
     expect(claude).toContain('run only the test file for the change');
     expect(claude).toContain('## Notes\nMonorepo tooling lives under tools/. Ask before touching CI config.\n');
     s = await A.actUndo(s, port());
     expect(A.selectApply(s, port()).undo!.status).toBe('done');
+    // A successful Undo restores the Proposed watermark and withdraws the saved notice.
+    expect(A.selectBooks(s).every((b) => b.proposed)).toBe(true);
+    expect(A.selectApply(s, port()).footer).toBeNull();
     expect((await readFile(join(tmp, 'home/.claude/CLAUDE.md'))).equals(Buffer.from(sampleClaudeMd()))).toBe(true);
     expect((await readFile(join(tmp, 'home/.codex/AGENTS.md'))).equals(Buffer.from(sampleAgentsMd()))).toBe(true);
   });
@@ -270,7 +288,7 @@ describe('the tutorial route to Apply and Undo', () => {
     expect(changed.boss.locked).toBe(lockedBefore);
     // Back at the boss node the locked score is stale until it is locked again.
     const atBoss = { ...changed, node: changed.route.findIndex((n) => n.kind === 'boss') };
-    expect(A.selectBoss(atBoss).score.stale).toBe(true);
-    expect(A.selectBoss(A.actLockScore(atBoss)).score.stale).toBe(false);
+    expect(A.selectBoss(atBoss).score.validity).toBe('stale');
+    expect(A.selectBoss(A.actLockScore(atBoss)).score.validity).toBe('locked');
   });
 });

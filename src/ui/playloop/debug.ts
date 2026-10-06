@@ -129,7 +129,7 @@ export function mountDebug(root: HTMLElement, ctl: Controller): () => void {
           v.phase === 'dealt' && el('button', { onclick: () => api.skip() }, 'Skip'),
           (v.phase === 'done' || v.offer || v.kind === 'event') && el('button', { onclick: () => api.advance() }, v.offer === 'keep-existing' ? 'Keep existing' : 'Continue'),
         ),
-        ...v.existingAsks.map((a) => el('div', { class: 'box' }, `Already in your file. Does it answer this case? ${a.line}`, el('button', { onclick: () => api.answerExisting(a.cardId, a.caseId, true) }, 'Yes'), el('button', { onclick: () => api.answerExisting(a.cardId, a.caseId, false) }, 'No'))),
+        ...v.existingAsks.map((a) => el('div', { class: 'box' }, `Already in your file. Does it answer this case? ${a.reading.text} (${a.reading.scope} · ${a.reading.files.join(', ')})`, el('button', { onclick: () => api.answerExisting(a.cardId, a.caseId, true) }, 'Yes'), el('button', { onclick: () => api.answerExisting(a.cardId, a.caseId, false) }, 'No'))),
         el('div', {}, ...v.hand.map((c) => card(c))),
         v.unavailable.length > 0 && el('details', {}, el('summary', {}, `${v.unavailable.length} not dealt`), ...v.unavailable.map((c) => card(c))),
         ui.drag?.preview?.line && el('div', { class: 'box mono' }, `${ui.drag.preview.line.text}\n${ui.drag.preview.line.scope} · ${ui.drag.preview.line.files.join(', ')}${ui.drag.preview.refused ? `\n${ui.drag.preview.refused}` : ''}`),
@@ -175,7 +175,7 @@ export function mountDebug(root: HTMLElement, ctl: Controller): () => void {
         ...v.candidates.map((c) => el('div', { class: c.glow ? 'glow box' : 'box' }, c.cardId, c.reason && el('span', { class: 'word' }, ` · ${c.reason}`), c.glow && v.current && el('button', { onclick: () => api.boss.answer(c.cardId, v.current!) }, 'Answer'))),
         el('button', { onclick: () => api.boss.next() }, 'Continue'),
         ...v.score.lines.map((l) => el('div', {}, l)),
-        el('div', { class: 'sub' }, `locked ${v.score.locked} · stale ${v.score.stale}`),
+        el('div', { class: 'sub' }, `score ${v.score.validity} · turn ${v.turn} · ${v.remaining} sealed heads still hidden`),
         !v.current && el('button', { onclick: () => api.advance() }, 'Go to Apply'),
       );
     } else if (screen.kind === 'apply') {
@@ -188,9 +188,9 @@ export function mountDebug(root: HTMLElement, ctl: Controller): () => void {
         el('div', {}, `Reviewed ${v.stamps.reviewed} · Fits ${v.stamps.fits} · Written ${v.stamps.written}`),
         el('button', { onclick: () => void api.apply.prepare() }, 'Rebuild the diff'),
         v.canSeal && el('button', { onclick: () => void api.apply.seal() }, 'Seal'),
-        v.result && el('div', {}, v.result.text, v.result.bundle && el('button', { onclick: () => void api.apply.undo() }, 'Undo')),
+        v.result && el('div', {}, v.result.text, v.canUndo && el('button', { onclick: () => void api.apply.undo() }, 'Undo')),
         v.undo && el('div', { class: 'mono' }, v.undo.text ?? v.undo.files.map((f) => `${f.path}: ${f.text}`).join('\n')),
-        el('footer', { class: 'sub' }, v.footer),
+        v.footer && el('footer', { class: 'sub' }, v.footer),
       );
     } else {
       body.push(el('p', {}, screen.text), el('button', { onclick: () => api.advance() }, 'Continue'));

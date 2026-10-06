@@ -22,6 +22,8 @@ export interface UiState {
   /** Keyboard focus among heads (Tab) and cards (arrows). */
   headIndex: number;
   cardIndex: number;
+  effect: C.CommitEffectView | null;
+  effectSeq: number;
 }
 
 // ------------------------------------------------------------------ the keyboard map (§3), pure
@@ -106,7 +108,7 @@ export class Controller {
     opts: { viewport: Viewport; reducedMotion?: boolean },
   ) {
     this.state = state;
-    this.ui = { selected: null, inspect: null, drag: null, beat: null, reducedMotion: !!opts.reducedMotion, viewport: opts.viewport, notice: null, pending: null, headIndex: 0, cardIndex: 0 };
+    this.ui = { selected: null, inspect: null, drag: null, beat: null, reducedMotion: !!opts.reducedMotion, viewport: opts.viewport, notice: null, pending: null, headIndex: 0, cardIndex: 0, effect: null, effectSeq: 0 };
     this.ui.beat = beatFor(this.screen(), null);
     this.api = this.buildApi();
   }
@@ -122,7 +124,19 @@ export class Controller {
   }
 
   uiView(): C.UiView {
-    return { selected: this.ui.selected, inspect: this.ui.inspect, drag: this.ui.drag, beat: this.ui.beat, reducedMotion: this.ui.reducedMotion, bands: layout(this.ui.viewport), notice: this.ui.notice, pending: this.ui.pending };
+    return {
+      selected: this.ui.selected,
+      inspect: this.ui.inspect,
+      inspector: A.selectInspector(this.state, this.ui.inspect),
+      drag: this.ui.drag,
+      effect: this.ui.effect,
+      tutorial: null,
+      beat: this.ui.beat,
+      reducedMotion: this.ui.reducedMotion,
+      bands: layout(this.ui.viewport),
+      notice: this.ui.notice,
+      pending: this.ui.pending,
+    };
   }
 
   resize(viewport: Viewport): void {
@@ -199,9 +213,18 @@ export class Controller {
     for (const f of this.subs) f();
   }
 
-  /** Apply a state transition, recompute the beat, clear transient input state, notify. */
-  private commit(next: A.PlayState, patch: Partial<UiState> = {}): void {
+  /**
+   * Apply a state transition, recompute the beat, clear transient input state, notify. A changed state records one
+   * effect with a fresh id: the cases whose cover() flipped, so renderers animate each committed change once.
+   */
+  private commit(next: A.PlayState, patch: Partial<UiState> = {}, kind: C.CommitEffectView['kind'] = 'other'): void {
     const nodeChanged = next.node !== this.state.node || next.sub !== this.state.sub;
+    if (next !== this.state) {
+      const before = A.selectCovered(this.state);
+      const after = A.selectCovered(next);
+      const seq = this.ui.effectSeq + 1;
+      patch = { ...patch, effectSeq: seq, effect: { id: seq, kind, bound: [...after].filter((x) => !before.has(x)), unbound: [...before].filter((x) => !after.has(x)) } };
+    }
     this.state = next;
     const prevBeat = nodeChanged ? null : (patch.beat ?? this.ui.beat);
     this.ui = { ...this.ui, drag: null, notice: null, ...patch, ...(nodeChanged ? { selected: null, inspect: null, pending: null, headIndex: 0, cardIndex: 0 } : {}) };
@@ -216,19 +239,48 @@ export class Controller {
     this.emit();
   }
 
+  /** True when the reading for this card on this target is on screen now (a hover, a selection, or a staged confirm). */
+  private shown(cardId: string, target: C.DragTarget): boolean {
+    const d = this.ui.drag;
+    return !!d && d.cardId === cardId && !!d.preview && JSON.stringify(d.target) === JSON.stringify(target);
+  }
+
   /** What a drop on a target does, by screen. Campfire drops only propose; the seal performs. */
   private drop(cardId: string, target: C.DragTarget): void {
     const screen = this.screen();
     if (screen.kind === 'room' || screen.kind === 'event') {
-      if (target.kind === 'shelf') return this.commit(A.actSkip(this.state).state, { selected: null });
+      if (target.kind === 'shelf') {
+        const { state, result } = A.actSkip(this.state);
+        if (result.refused) return this.notice(result.refused);
+        return this.commit(state, { selected: null }, 'skip');
+      }
       // A hand card on the beast's body or any head plays on the beast (§3); an in-deck card on a head accepts it.
       const inHand = screen.view.hand.some((c) => c.id === cardId);
       if (target.kind === 'beast' || target.kind === 'book' || (target.kind === 'head' && inHand)) {
+        // §0a.5: a release that accepts mappings needs its reading on screen first. A pointer drag shows it on hover;
+        // tap–tap and keys stage it here, and the same act again confirms.
+        if (!this.shown(cardId, target)) {
+          const preview = A.selectDrag(this.state, cardId, target);
+          if (preview.accepts.length > 0 || preview.refused) {
+            this.ui = { ...this.ui, drag: { cardId, target, preview }, pending: preview.refused ? null : { kind: 'confirm', cardId, target }, notice: preview.refused ?? 'The line is on the table. Do it again to play it.' };
+            this.emit();
+            return;
+          }
+        }
         const { state, result } = A.actPlay(this.state, cardId, target.kind === 'book' ? target.lane : 'beast');
         if (result.refused) return this.notice(result.refused);
-        return this.commit(state, { selected: null, beat: result.standing.length ? 'strike' : 'clear' });
+        const forge = screen.view.kind === 'workshop';
+        return this.commit(state, { selected: null, pending: null, beat: result.standing.length ? 'strike' : 'clear' }, forge ? 'forge' : 'play');
       }
-      if (target.kind === 'head') return this.commit(A.actAcceptOnHead(this.state, cardId, target.caseId));
+      if (target.kind === 'head') {
+        if (!this.shown(cardId, target)) {
+          const preview = A.selectDrag(this.state, cardId, target);
+          this.ui = { ...this.ui, drag: { cardId, target, preview }, pending: preview.accepts.length ? { kind: 'confirm', cardId, target } : null, notice: preview.accepts.length ? 'The line is on the table. Do it again to accept it for this case.' : (preview.heads[0]?.word ?? null) };
+          this.emit();
+          return;
+        }
+        return this.commit(A.actAcceptOnHead(this.state, cardId, target.caseId), { pending: null }, 'accept');
+      }
       return;
     }
     if (screen.kind === 'campfire') {
@@ -236,35 +288,61 @@ export class Controller {
       if (target.kind === 'card') {
         const onShelf = v.piles.shelf.some((c) => c.id === cardId);
         if (onShelf) return this.commit(this.state, { pending: { kind: 'swap', shelfId: cardId, deckId: target.cardId } });
-        const t = v.threads.find((x) => x.members.includes(cardId) && x.members.includes(target.cardId)) ?? null;
-        const focus = { a: cardId, b: target.cardId, threadId: t?.id ?? null };
-        return this.commit(A.actFocusPair(this.state, focus), { pending: { kind: 'stack', ...focus } });
+        const t = v.threads.find((x) => x.members.includes(cardId) && x.members.includes(target.cardId));
+        if (!t) return this.notice('These two cards neither stack nor disagree.');
+        const focus = { a: cardId, b: target.cardId, threadId: t.id };
+        return this.commit(A.actFocusPair(this.state, focus), { pending: { kind: 'stack', ...focus, members: t.members } });
       }
       if (target.kind === 'fire') return this.commit(this.state, { pending: { kind: 'cut', cardId } });
-      if (target.kind === 'book-retarget' || target.kind === 'book') return this.commit(this.state, { pending: { kind: 'retarget', cardId, lane: target.lane } });
+      if (target.kind === 'book-retarget' || target.kind === 'book') {
+        const targets = A.retargetFor(this.state, cardId, target.lane);
+        const card = v.lanes.both.concat(v.lanes.claude, v.lanes.codex).find((c) => c.id === cardId);
+        if (!targets || !card) return this.notice('A line from your file stays in that file. Merge it with a card to share it.');
+        if (targets === card.targets) return this.notice('Already in that file. Narrow it from the inspector.');
+        return this.commit(this.state, { pending: { kind: 'retarget', cardId, targets } });
+      }
       return;
     }
     if (screen.kind === 'boss' && target.kind === 'head') {
       const next = A.actBossAnswer(this.state, cardId, target.caseId);
       if (next === this.state) return this.notice(screen.view.candidates.find((c) => c.cardId === cardId)?.reason ?? C_NO_ELIGIBLE);
-      return this.commit(next);
+      return this.commit(next, {}, 'boss-answer');
     }
+  }
+
+  /** Run an async Apply act once at a time: busy while it runs, refused while another is in flight. */
+  private async applyAct(busy: C.ApplyView['busy'], f: (s: A.PlayState, p: A.ApplyPort) => Promise<A.PlayState>): Promise<void> {
+    const p = this.port;
+    if (!p || this.state.apply.busy !== 'idle') return;
+    this.commit(A.actBusy(this.state, busy));
+    const next = await f(this.state, p);
+    this.commit(A.actBusy(next, 'idle'));
   }
 
   private buildApi(): C.ControllerApi {
     const run = (f: (s: A.PlayState) => A.PlayState) => () => this.commit(f(this.state));
     const port = () => this.port;
     return {
-      stamp: (caseId, stamp) => this.commit(A.actStamp(this.state, caseId, stamp), { beat: 'judge' }),
+      stamp: (caseId, stamp) => this.commit(A.actStamp(this.state, caseId, stamp), { beat: 'judge' }, 'stamp'),
       focusReceipt: (caseId) => this.commit(A.actFocusReceipt(this.state, caseId)),
-      deal: () => this.commit(A.actDeal(this.state), { beat: 'deal' }),
+      deal: () => {
+        this.commit(A.actDeal(this.state), { beat: 'deal' });
+        // The first dealt card is selected with its beast reading on screen, so one Enter plays a line already shown.
+        const s = this.screen();
+        const first = (s.kind === 'room' || s.kind === 'event') && s.view.phase === 'dealt' ? s.view.hand[0] : undefined;
+        if (first) this.api.select(first.id);
+      },
       pullBack: () => this.commit(A.actPullBack(this.state), { beat: 'judge', selected: null }),
-      skip: () => this.commit(A.actSkip(this.state).state, { selected: null }),
+      skip: () => this.drop(this.ui.selected ?? '', { kind: 'shelf' }),
       advance: run(A.actAdvance),
       answerExisting: (cardId, caseId, yes) => this.commit(A.actAnswerExisting(this.state, cardId, caseId, yes)),
       wording: (roomKey, text) => this.commit(A.actWording(this.state, roomKey, text)),
       select: (cardId) => {
-        this.ui = { ...this.ui, selected: cardId, notice: null };
+        // Selecting a dealt card shows its reading on the beast at once, so tap–tap never accepts an unseen line.
+        const screen = this.screen();
+        const inHand = !!cardId && (screen.kind === 'room' || screen.kind === 'event') && screen.view.hand.some((c) => c.id === cardId);
+        const drag = inHand ? { cardId: cardId!, target: { kind: 'beast' as const }, preview: A.selectDrag(this.state, cardId!, { kind: 'beast' }) } : null;
+        this.ui = { ...this.ui, selected: cardId, notice: null, pending: null, drag };
         this.emit();
       },
       tapTarget: (target) => {
@@ -290,16 +368,16 @@ export class Controller {
         tab: (tab) => this.commit(A.actTab(this.state, tab)),
         focus: (pair) => this.commit(A.actFocusPair(this.state, pair)),
         pin: (caseId) => this.commit(A.actPin(this.state, caseId)),
-        changePreview: (q) => ('cutId' in q ? A.selectChangePreview(this.state, q) : A.selectChangePreview(this.state, { threadId: q.threadId, ...(q.text !== undefined ? { text: q.text } : {}), ...(q.settle ? { resolution: q.settle } : {}) })),
-        fuse: (threadId, text) => this.commit(A.actFuse(this.state, threadId, text), { pending: null }),
-        settle: (threadId, choice) => this.commit(A.actSettle(this.state, threadId, choice), { pending: null }),
-        cut: (cardId) => this.commit(A.actCut(this.state, cardId), { pending: null }),
-        restore: (cardId) => this.commit(A.actRestore(this.state, cardId)),
-        sharpen: (cardId, text) => this.commit(A.actSharpen(this.state, cardId, text)),
-        retarget: (cardId, lane: Agent) => this.commit(A.actRetarget(this.state, cardId, lane), { pending: null }),
-        swap: (shelfId, deckId) => this.commit(A.actSwap(this.state, shelfId, deckId), { pending: null }),
-        acceptMapping: (cardId, caseId) => this.commit(A.actAcceptMapping(this.state, cardId, caseId)),
-        acceptImport: (cardId) => this.commit(A.actAcceptImport(this.state, cardId)),
+        changePreview: (q) => ('threadId' in q ? A.selectChangePreview(this.state, { threadId: q.threadId, ...(q.text !== undefined ? { text: q.text } : {}), ...(q.settle ? { resolution: q.settle } : {}) }) : A.selectChangePreview(this.state, q)),
+        fuse: (threadId, text) => this.commit(A.actFuse(this.state, threadId, text), { pending: null }, 'fuse'),
+        settle: (threadId, choice) => this.commit(A.actSettle(this.state, threadId, choice), { pending: null }, 'settle'),
+        cut: (cardId) => this.commit(A.actCut(this.state, cardId), { pending: null }, 'cut'),
+        restore: (cardId) => this.commit(A.actRestore(this.state, cardId), {}, 'restore'),
+        sharpen: (cardId, text) => this.commit(A.actSharpen(this.state, cardId, text), {}, 'sharpen'),
+        retarget: (cardId, targets) => this.commit(A.actRetarget(this.state, cardId, targets), { pending: null }, 'retarget'),
+        swap: (shelfId, deckId) => this.commit(A.actSwap(this.state, shelfId, deckId), { pending: null }, 'swap'),
+        acceptMapping: (cardId, caseId) => this.commit(A.actAcceptMapping(this.state, cardId, caseId), {}, 'accept'),
+        acceptImport: (cardId) => this.commit(A.actAcceptImport(this.state, cardId), {}, 'accept'),
         raiseAllowance: (lane, to) => this.commit(A.actRaiseAllowance(this.state, lane, to)),
       },
       boss: {
@@ -308,22 +386,10 @@ export class Controller {
         next: run(A.actBossNext),
       },
       apply: {
-        grant: async (which) => {
-          const p = port();
-          if (p) this.commit(await A.actGrant(this.state, p, which));
-        },
-        prepare: async () => {
-          const p = port();
-          if (p) this.commit(await A.actPrepareApply(this.state, p));
-        },
-        seal: async () => {
-          const p = port();
-          if (p) this.commit(await A.actSeal(this.state, p));
-        },
-        undo: async () => {
-          const p = port();
-          if (p) this.commit(await A.actUndo(this.state, p));
-        },
+        grant: (which) => this.applyAct('granting', (s, p) => A.actGrant(s, p, which)),
+        prepare: () => this.applyAct('preparing', A.actPrepareApply),
+        seal: () => this.applyAct('sealing', A.actSeal),
+        undo: () => this.applyAct('undoing', A.actUndo),
         returnToCampfire: (select) => this.commit(A.actReturnToCampfire(this.state, select)),
       },
     };

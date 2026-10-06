@@ -113,14 +113,19 @@ export interface BeastView {
 
 // ------------------------------------------------------------------ cards, books, piles (cards/layout worker)
 
-export interface CardFaceView {
-  /** ≤ 20 characters. */
-  title: string;
-  /** ≤ 64 visible characters. Inline `code` spans are marked with backticks. */
-  summary: string;
-  mode: 'exact' | 'summary' | 'excerpt';
-  /** COPY.excerpt when the face is a clamped excerpt. */
-  mark: string | null;
+/**
+ * ≤ 20-character title, ≤ 64 visible-character summary (inline `code` spans arrive as backticks). An excerpt always
+ * carries COPY.excerpt. Rendering rule: if a face still does not fit after measuring with the real font, render a
+ * clamped excerpt of inspector.exact with COPY.excerpt; never clamp a summary silently, never shrink the reading size.
+ */
+export type CardFaceView = { title: string; summary: string } & ({ mode: 'exact' | 'summary'; mark: null } | { mode: 'excerpt'; mark: string });
+
+/** A line at reading size before anything accepts a mapping (§0a.5): text, scope, exceptions, destination files. */
+export interface ReadingView {
+  text: string;
+  scope: string;
+  exceptions: string[];
+  files: FileName[];
 }
 
 export interface CardInspectorView {
@@ -160,6 +165,11 @@ export interface CardView {
   /** The files that carry this card in the proposal now (empty for a draft). */
   inFiles: Agent[];
   inspector: CardInspectorView;
+  /**
+   * Hand cards only: what a play on the beast would do (glowing heads, per-lane ghost, the reading). Selecting one draft
+   * then another compares these two previews, computed on the same proposal; null elsewhere.
+   */
+  playPreview: DragPreview | null;
 }
 
 export interface GhostDelta {
@@ -197,8 +207,10 @@ export interface OpenPageView {
 export interface PilesView {
   /** Drafted and not taken. Never written; returns only as a swap at the fire. */
   shelf: CardView[];
+  shelfCount: number;
   /** A set keyed by case id: confirmed cases with no coverage in the current proposal (§0a.7). Never a drop target. */
   open: OpenPageView[];
+  openCount: number;
 }
 
 export interface RouteKnotView {
@@ -210,6 +222,8 @@ export interface RouteKnotView {
   unreviewed: number;
   heads: number;
   sigils: Agent[];
+  /** The knot's in-room cases (never a withheld one): clicking the knot opens their receipts in the inspector. */
+  caseIds: string[];
 }
 
 export interface RouteView {
@@ -238,8 +252,13 @@ export interface RoomView {
   heads: HeadView[];
   /** Boundary and directive rooms: the line in the player's words, editable while judging (api.wording). */
   wording: { value: string; editable: boolean } | null;
-  /** One complete receipt at a time, with a visible queue (§0a.13). */
-  receipts: { current: ReceiptView | null; queue: string[] };
+  /** One complete receipt at a time, with a visible queue (§0a.13). position is 1-based, 0 when none is current. */
+  receipts: { current: ReceiptView | null; queue: string[]; progress: { position: number; total: number } };
+  /**
+   * Every head needs a stamp before the room can finalize ("Unclear · leave wrapped" is a stamp). remaining = heads
+   * still unstamped. Deal, skip and every Continue wait for canFinalize, so no case is stranded unreviewed.
+   */
+  review: { remaining: number; canFinalize: boolean };
   phase: RoomPhase;
   /** Dealt drafts with observed eligibility only (§0a.4). Empty before dealing. */
   hand: CardView[];
@@ -254,10 +273,12 @@ export interface RoomView {
   /** COPY.finalizes while dealt; the UI says which action finalizes. */
   finalizes: string | null;
   canDeal: boolean;
+  /** Skip (or a drop on the shelf) is allowed: the hand is dealt, or every head is stamped. */
+  canSkip: boolean;
   /** Offer Continue at once when every judged head is set aside, or Keep existing when imported lines cover all (§0a.14). */
   offer: 'continue-all-set-aside' | 'keep-existing' | null;
   /** An already-imported line that passes checks 3–7 for a bared head asks "Already in your file. Does it answer this case?" */
-  existingAsks: { cardId: string; caseId: string; line: string }[];
+  existingAsks: { cardId: string; caseId: string; reading: ReadingView }[];
   /** The room's result after its play or skip. */
   result: PlayResultView | null;
 }
@@ -283,12 +304,12 @@ export interface HeadGlow {
 
 export interface DragPreview {
   /** What release would do. */
-  verb: 'play' | 'add' | 'skip' | 'accept' | 'widen' | 'narrow' | 'fuse' | 'settle' | 'cut' | 'swap' | 'answer' | 'none';
+  verb: 'play' | 'add' | 'skip' | 'accept' | 'widen' | 'narrow' | 'fuse' | 'settle' | 'cut' | 'swap' | 'answer' | 'forge' | 'none';
   heads: HeadGlow[];
   /** Per-lane ghost on the straps, from rendering both lanes before and after. */
   ghost: { claude: GhostDelta; codex: GhostDelta };
-  /** The exact line at reading size before a release that accepts mappings (§0a.5). */
-  line: { text: string; scope: string; exceptions: string[]; files: FileName[] } | null;
+  /** The exact line at reading size before a release that accepts mappings (§0a.5). Never null when accepts is non-empty. */
+  line: ReadingView | null;
   /** Case ids whose mapping this release would accept. */
   accepts: string[];
   /** Why release would be refused; the pick is not spent. */
@@ -304,6 +325,8 @@ export interface DragIntent {
 // ------------------------------------------------------------------ results
 
 export interface PlayResultView {
+  /** Monotonic per run: a repaint of the same result never replays its animation. */
+  id: number;
   /** The play happened (false when refused, or for a skip). */
   played: boolean;
   skipped: boolean;
@@ -335,9 +358,18 @@ export interface ThreadView {
   autoText: string | null;
 }
 
+/**
+ * A campfire change before its seal. Quantities are over the run's reviewed cases (every stamped case, withheld ones
+ * only once stamped at the boss): deckBefore / deckAfter = cases addressed, opened = addressed before and not after,
+ * addressed = the reverse, affected = opened + addressed. A new text counts nothing until accepted (needsAcceptance).
+ */
 export interface ChangePreviewView {
   before: { id: string; text: string }[];
-  after: { text: string; targets: Targets; scope: string; exceptions: string[] } | null;
+  after: { text: string; targets: Targets; scope: string; trigger: string | null; exceptions: string[] } | null;
+  /** The card the change leaves in the deck (the fused or rewritten card), for accepting its mappings after the seal. */
+  resultId: string | null;
+  /** Why the seal would be refused, or null. */
+  refused: string | null;
   /** The resulting exported lines of a settlement, per card (text null = removed). */
   lines: { id: string; text: string | null; files: FileName[] }[];
   ghost: { claude: GhostDelta; codex: GhostDelta };
@@ -365,8 +397,11 @@ export interface CampfireView {
   piles: PilesView;
   /** Cards cut at this fire, restorable until Apply. */
   ash: CardView[];
+  ashCount: number;
   /** One Open receipt the player pinned as a puzzle; eligibility shown, still not a drop target. */
   pinned: OpenPageView | null;
+  /** Checks 2–7 of every deck card against the pinned case: conditional eligibility, never coverage. Empty when none. */
+  pinnedCandidates: BossCandidateView[];
   /** "A file is over its allowance. Apply waits until it fits." when a clasp is open, else null. */
   coach: string | null;
   route: RouteView;
@@ -394,7 +429,18 @@ export interface BossCandidateView {
 
 export interface BossView {
   kind: 'boss' | 'audit';
+  /**
+   * stamp = the current sealed head is readable and waits for its blind stamp (no candidate, no answer hint) ·
+   * answer = stamped a problem (or an Open page): candidates glow, or "No eligible card" · set-aside = stamped
+   * otherwise · summary = every head has faced the final deck. boss.next() moves the turn; advance() leaves the node.
+   */
+  turn: 'stamp' | 'answer' | 'set-aside' | 'summary';
+  /** Revealed heads only, in order: the current one and those before it. Later sealed heads stay a count. */
   heads: BossHeadView[];
+  /** Sealed heads not yet revealed: a count, never words. */
+  remaining: number;
+  route: RouteView;
+  status: StatusView;
   /** The final deck's cards (the answer drag picks one) and the books they lie in. No new cards, no edits here. */
   cards: CardView[];
   books: BookView[];
@@ -411,9 +457,8 @@ export interface BossView {
     original: { addressed: number; confirmed: number; unknown: number; established: boolean };
     /** The printed lines, set-asides always beside the score. */
     lines: string[];
-    /** Locked after the last head, keyed to the final deck revision; stale when the deck changed since. */
-    locked: boolean;
-    stale: boolean;
+    /** live = still being answered · locked = keyed to the final deck revision · stale = the deck changed since: lock again. */
+    validity: 'live' | 'locked' | 'stale';
   };
   canContinue: boolean;
 }
@@ -440,16 +485,39 @@ export interface ApplyBlockerView {
   select: { lane?: Agent; threadId?: string } | null;
 }
 
+/** The end screen's accounting (§7, §9, §0a.11), computed by the adapter. */
+export interface RunSummaryView {
+  /** The boss's printed lines: later cases with set-asides, earlier confirmed cases, the original files. */
+  lines: string[];
+  open: OpenPageView[];
+  openCount: number;
+  /** Every set-aside disposition in the run, by date. */
+  setAside: { receipt: ReceiptView; disposition: 'pivot' | 'not-a-problem' | 'unclear' }[];
+  /** The shelf: drafted and never written. */
+  notWritten: CardView[];
+  /** Successful committed operations, by kind. */
+  operations: { kind: 'add' | 'fuse' | 'settle' | 'cut' | 'restore' | 'sharpen' | 'retarget' | 'swap'; count: number }[];
+  files: { lane: Agent; file: FileName; before: number; after: number; allowance: number; raisedBy: number | null }[];
+}
+
 export interface ApplyView {
+  route: RouteView;
+  status: StatusView;
+  /** An async act in flight; the controller refuses overlapping grants, seals and undos. */
+  busy: 'idle' | 'granting' | 'preparing' | 'sealing' | 'undoing';
   needs: { claude: boolean; codex: boolean; agents: boolean };
+  books: BookView[];
+  summary: RunSummaryView;
   diffs: ApplyDiffView[];
   notes: string[];
   blockers: ApplyBlockerView[];
   canSeal: boolean;
   stamps: { reviewed: InkState; fits: InkState; written: InkState };
-  result: { status: 'written' | 'unchanged' | 'stale' | 'rejected' | 'backup-failed' | 'partial'; text: string; bundle: string | null } | null;
+  result: { status: 'written' | 'unchanged' | 'stale' | 'rejected' | 'backup-failed' | 'partial'; text: string; bundle: string | null; files: { path: string; status: 'written-verified' | 'unchanged' | 'failed' | 'not-attempted' }[] } | null;
+  canUndo: boolean;
   undo: { status: 'done' | 'refused'; files: { path: string; text: string; conflict: boolean }[]; text: string | null } | null;
-  footer: string;
+  /** COPY.footer only after a verified write (or a verified no-change); null before and after any failure. */
+  footer: string | null;
 }
 
 // ------------------------------------------------------------------ layout bands (integrator: geometry.ts)
@@ -499,12 +567,43 @@ export type Screen =
   | { kind: 'apply'; view: ApplyView }
   | { kind: 'empty'; text: string };
 
+/** One per-case mapping row in the inspector: accept from here when it is eligible and not yet accepted. */
+export interface MappingReviewView {
+  cardId: string;
+  caseId: string;
+  receipt: ReceiptView;
+  /** Checks 1 and 3–7 hold for the card as it stands. */
+  eligible: boolean;
+  /** cover() is true now (the mapping is accepted for this exact text). */
+  accepted: boolean;
+  reason: string | null;
+}
+
+/** The one inspector, resolved by the adapter (§0a.15). Withheld cases never appear here before the boss reveals them. */
+export type InspectorView =
+  | { kind: 'card'; card: CardView; reading: ReadingView; evidence: { sessionLabel: string; receipt: ReceiptView | null }[]; mappings: MappingReviewView[] }
+  | { kind: 'case'; receipt: ReceiptView; queue: ReceiptView[] };
+
+/** A committed change, for exactly-once animation. bound / unbound = cases whose cover() flipped, in cascade order. */
+export interface CommitEffectView {
+  id: number;
+  kind: 'stamp' | 'play' | 'skip' | 'accept' | 'forge' | 'fuse' | 'settle' | 'cut' | 'restore' | 'sharpen' | 'retarget' | 'swap' | 'boss-answer' | 'other';
+  bound: string[];
+  unbound: string[];
+}
+
 /** Presentation state the controller keeps beside the game state: selection, inspector, drag, motion. */
 export interface UiView {
   /** Tap–tap: the card selected by the first tap, waiting for a target. */
   selected: string | null;
   inspect: { cardId: string } | { caseId: string } | null;
+  /** The inspector's content for `inspect`, resolved by the adapter. */
+  inspector: InspectorView | null;
   drag: DragIntent | null;
+  /** The last committed change; animate it once per id. */
+  effect: CommitEffectView | null;
+  /** Coach line and spotlight on the tutorial route; null elsewhere (filled by the integrator in P1). */
+  tutorial: { text: string; focus: { kind: 'card'; cardId: string } | { kind: 'thread'; threadId: string } | { kind: 'target'; target: DragTarget } | null } | null;
   /** Room beat for choreography; every beat is interruptible and none waits on an animation. */
   beat: 'rise' | 'judge' | 'deal' | 'play' | 'strike' | 'clear' | null;
   reducedMotion: boolean;
@@ -516,10 +615,13 @@ export interface UiView {
    * (fuse, settle, swap, cut, retarget). Escape or pulling the top card off clears it.
    */
   pending:
-    | { kind: 'stack'; a: string; b: string; threadId: string | null }
+    /** A stack proposes the whole thread (a uv triple seals as one), never a pair without a thread. */
+    | { kind: 'stack'; a: string; b: string; threadId: string; members: string[] }
     | { kind: 'swap'; shelfId: string; deckId: string }
     | { kind: 'cut'; cardId: string }
-    | { kind: 'retarget'; cardId: string; lane: Agent }
+    | { kind: 'retarget'; cardId: string; targets: Targets }
+    /** Tap–tap or a key aimed at a target whose reading was not on screen: it is now; the same act again confirms. */
+    | { kind: 'confirm'; cardId: string; target: DragTarget }
     | null;
 }
 
@@ -550,13 +652,15 @@ export interface ControllerApi {
     tab(tab: LaneTab): void;
     focus(pair: { a: string; b: string; threadId: string | null } | null): void;
     pin(caseId: string | null): void;
-    changePreview(q: { threadId: string; text?: string; settle?: SettleChoice } | { cutId: string }): ChangePreviewView | null;
+    changePreview(
+      q: { threadId: string; text?: string; settle?: SettleChoice } | { cutId: string } | { swap: { shelfId: string; deckId: string } } | { retarget: { cardId: string; targets: Targets } } | { sharpen: { cardId: string; text: string } },
+    ): ChangePreviewView | null;
     fuse(threadId: string, text: string): void;
     settle(threadId: string, choice: SettleChoice): void;
     cut(cardId: string): void;
     restore(cardId: string): void;
     sharpen(cardId: string, text: string): void;
-    retarget(cardId: string, lane: Agent): void;
+    retarget(cardId: string, targets: Targets): void;
     swap(shelfId: string, deckId: string): void;
     acceptMapping(cardId: string, caseId: string): void;
     acceptImport(cardId: string): void;
@@ -596,10 +700,10 @@ export interface ScreenProps<V> {
 
 // ------------------------------------------------------------------ pure selectors (copy only, no engine)
 
-/** "3/3 confirmed addressed · 2 unreviewed"; never a bare 0/0 (§0a.6). */
+/** "3/3 confirmed addressed · 2 unreviewed": the unreviewed count always prints; never a bare 0/0 (§0a.6). */
 export function pipsText(addressed: number, confirmed: number, unreviewed: number): string {
-  const tail = unreviewed > 0 ? ` · ${unreviewed} unreviewed` : '';
-  return confirmed === 0 ? `No confirmed problems${tail}` : `${addressed}/${confirmed} confirmed addressed${tail}`;
+  const main = confirmed === 0 ? 'No confirmed problems' : `${addressed}/${confirmed} confirmed addressed`;
+  return `${main} · ${unreviewed} unreviewed`;
 }
 
 /** "n eligible here · m newly addressed" (§0a.3). */
@@ -616,7 +720,7 @@ const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');
 
 /** "+46 line · +22 block header", "+46", "−15"; the caller prints COPY.estimated beside it. */
 export function ghostText(g: Pick<GhostDelta, 'delta' | 'line' | 'blockHeader' | 'other'>): string {
-  if (g.delta === 0 && g.line === 0) return 'no change';
+  if (g.delta === 0 && g.line === 0 && g.blockHeader === 0 && g.other === 0) return 'no change';
   const parts: string[] = [];
   if (g.line !== 0) parts.push(`${signed(g.line)} line`);
   if (g.blockHeader !== 0) parts.push(`${signed(g.blockHeader)} block header`);
@@ -661,7 +765,7 @@ export function bossReason(check: Check, tri: Tri, head: { agent: Agent; project
     case 'targets_agent':
       return `${AGENT_NAME[head.agent]} · not in ${FILE_OF[head.agent]}`;
     case 'scope_matches':
-      return `${head.project ?? 'this case'} · scoped elsewhere`;
+      return tri === 'unknown' ? 'project unknown · applicability not established' : `${head.project ?? 'this case'} · scoped elsewhere`;
     case 'trigger_true':
       return tri === 'unknown' ? 'not mapped to this kind of case' : 'does not apply to this case';
     case 'response_eligible':
