@@ -64,11 +64,13 @@ export async function makePlan(roots: Root[], targets: Target[]): Promise<Plan> 
     seen.add(key);
     const baseline = await root.read(t.rel);
     const b = baseline ? baseline.slice() : null;
-    const n = t.next.slice();
+    // A guard's "next" is its baseline: it is only ever compared, never written.
+    const n = t.kind === 'guard' ? (b ? b.slice() : new Uint8Array(0)) : t.next.slice();
     files.push(Object.freeze({ root: t.root, rootIdentity: root.identity, rel: t.rel, kind: t.kind, baseline: b, next: n, baselineSha: b ? await sha256(b) : null, nextSha: await sha256(n) }));
   }
-  // Skill bodies before the globals that point to them.
-  files.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'skill' ? -1 : 1));
+  // Guards first (checked only), then Skill bodies, then the globals that point to them.
+  const order = { guard: 0, skill: 1, global: 2 } as const;
+  files.sort((a, b) => order[a.kind] - order[b.kind]);
   const frozen = Object.freeze(files);
   return Object.freeze({ createdAt: new Date().toISOString(), files: frozen, digest: await planDigest(frozen) });
 }
@@ -120,7 +122,7 @@ export function applyPlan(plan: Plan, roots: Root[], approvedDigest: string): Pr
     }
     if (changed.length) return { status: 'stale', changed };
     // 3. no-op filter
-    const writes = plan.files.filter((f) => f.baselineSha !== f.nextSha);
+    const writes = plan.files.filter((f) => f.kind !== 'guard' && f.baselineSha !== f.nextSha);
     if (writes.length === 0) return { status: 'unchanged' };
     // 4. recovery bundle
     const now = new Date();
@@ -178,7 +180,7 @@ export function applyPlan(plan: Plan, roots: Root[], approvedDigest: string): Pr
     // 6. final verification over the whole plan
     for (const f of plan.files) {
       const r = rm.get(f.root)!;
-      const want = f.baselineSha === f.nextSha ? f.baseline : f.next;
+      const want = f.kind === 'guard' || f.baselineSha === f.nextSha ? f.baseline : f.next;
       let cur: Uint8Array | null;
       try {
         cur = await r.read(f.rel);

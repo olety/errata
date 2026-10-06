@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { ALLOWANCE, BEGIN, END, budgetFor, bytes, fitProblem, parseGlobal, renderGlobal, sanitizeLine, text, weigh } from '../src/deck/file';
-import { buildLane, CLAUDE_LANE, codexLane, exportMap } from '../src/deck/lanes';
+import { buildLane, CLAUDE_LANE, codexLane, exportMap, SKILL_FILE, SKILL_LANES } from '../src/deck/lanes';
 import { draftCards, groupRooms } from '../src/deck/templates';
 import { setTaken, updateCard, acceptMapping, cardDigest } from '../src/deck/card';
 import { detectEpisodes } from '../src/episodes';
@@ -87,10 +87,31 @@ describe('lanes', () => {
     expect(cl.problem).toBeNull();
   });
 
-  test('a non-empty AGENTS.override.md becomes the Codex target', () => {
-    expect(codexLane(bytes('override')).rel).toBe('AGENTS.override.md');
-    expect(codexLane(bytes('  \n')).rel).toBe('AGENTS.md');
-    expect(codexLane(null).rel).toBe('AGENTS.md');
+  test('a non-empty AGENTS.override.md blocks the Codex lane; the override is never a target', async () => {
+    const lane = codexLane(bytes('override rules'));
+    expect(lane.rel).toBe('AGENTS.md');
+    expect(lane.blocker).toContain('AGENTS.override.md');
+    expect(codexLane(bytes('  \n')).blocker).toBeNull();
+    expect(codexLane(null).blocker).toBeNull();
+    // A card for both agents then reaches Claude only, so it cannot cover a Codex case.
+    const room = groupRooms((await Promise.all([fixture(CC.repeated), fixture(CX.build)])).flatMap(detectEpisodes))[0]!;
+    const card = setTaken(draftCards(room)[0]!, true);
+    expect(card.targets).toBe('both');
+    const orig = bytes('# Codex\n');
+    const cx = buildLane(lane, orig, [card]);
+    expect(cx.next).toEqual(orig);
+    expect(cx.problem).toBeNull();
+    const cl = buildLane(CLAUDE_LANE, bytes('# Claude\n'), [card]);
+    const ex = exportMap(cl.next, cx.next);
+    expect(ex.claude.has(card.id)).toBe(true);
+    expect(ex.codex.has(card.id)).toBe(false);
+  });
+
+  test('skill file rules from the spec are recorded for the renderer', () => {
+    expect(SKILL_FILE).toMatchObject({ name: 'SKILL.md', nameMax: 64, descriptionMax: 1024 });
+    expect(SKILL_FILE.namePattern.test('verify-change')).toBe(true);
+    expect(SKILL_FILE.namePattern.test('Verify--change')).toBe(false);
+    expect(SKILL_LANES.codex.label).toBe('~/.agents/skills');
   });
 });
 

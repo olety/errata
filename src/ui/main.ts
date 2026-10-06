@@ -8,11 +8,11 @@ import { detectEpisodes, mirror, type Episode, type MirrorCounts } from '../epis
 import { caseFor, constraintKeyOf, draftCards, groupRooms, type Room } from '../deck/templates';
 import { acceptMapping, setTaken, updateCard } from '../deck/card';
 import type { Card, Case } from '../deck/types';
-import { buildLane, CLAUDE_LANE, codexLane, exportMap, type LaneResult } from '../deck/lanes';
+import { buildLane, CLAUDE_LANE, CODEX_OVERRIDE, codexLane, exportMap, type LaneResult } from '../deck/lanes';
 import { sanitizeLine, text as utf8 } from '../deck/file';
 import { lineDiff, renderDiff } from '../deck/diff';
 import { coverage } from '../cover';
-import { applyPlan, makePlan, restoreOriginalSeen, undoBundle } from '../apply/engine';
+import { applyPlan, makePlan, restoreOriginalSeen, undoBundle, type Target } from '../apply/engine';
 import { ensureWritable, fsaRoot } from '../apply/fsa-root';
 import type { ApplyResult, Plan, Root, UndoResult } from '../apply/types';
 import { claudeCandidates, codexCandidates, droppedCandidates, selectRun, type Candidate, type Selection } from './importer';
@@ -190,7 +190,7 @@ async function startSample(): Promise<void> {
   S.dirs = dirs;
   S.globals.claude = await readIn(dirs.claude, 'CLAUDE.md');
   S.globals.codex = await readIn(dirs.codex, 'AGENTS.md');
-  S.globals.codexOverride = null;
+  S.globals.codexOverride = await readIn(dirs.codex, CODEX_OVERRIDE);
   S.globals.loaded = { claude: true, codex: true };
   await startRun(sampleFiles());
   S.globals.claude = await readIn(dirs.claude, 'CLAUDE.md');
@@ -253,7 +253,7 @@ function nextRoom(): void {
 // ---------------------------------------------------------------- lanes, diff, apply
 function lanes(): { claude: LaneResult; codex: LaneResult } {
   const cl = buildLane(CLAUDE_LANE, S.globals.claude, S.taken);
-  const cx = buildLane(codexLane(S.globals.codexOverride), S.mode === 'sample' ? S.globals.codex : S.globals.codex, S.taken);
+  const cx = buildLane(codexLane(S.globals.codexOverride), S.globals.codex, S.taken);
   return { claude: cl, codex: cx };
 }
 
@@ -261,9 +261,9 @@ async function grantCodexHome(): Promise<void> {
   try {
     const dir = await (window as unknown as { showDirectoryPicker: (o: object) => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker({ id: 'codex-home', mode: 'readwrite' });
     S.dirs.codex = dir;
-    // Only the instruction files are read from this folder.
-    S.globals.codexOverride = await readIn(dir, 'AGENTS.override.md');
-    S.globals.codex = await readIn(dir, codexLane(S.globals.codexOverride).rel);
+    // Only the instruction files are read from this folder. The override is read to detect it, never written.
+    S.globals.codexOverride = await readIn(dir, CODEX_OVERRIDE);
+    S.globals.codex = await readIn(dir, 'AGENTS.md');
     S.globals.loaded.codex = true;
     await prepareDiff();
   } catch (e) {
@@ -303,10 +303,11 @@ async function prepareDiff(): Promise<void> {
       set({ step: 'diff', plan: null });
       return;
     }
-    const plan = await makePlan(roots, [
-      { root: 'claude', rel: L.claude.lane.rel, kind: 'global', next: L.claude.next },
-      { root: 'codex', rel: L.codex.lane.rel, kind: 'global', next: L.codex.next },
-    ]);
+    // A blocked lane (an active Codex override) is left out; the other lane still applies.
+    // The override itself is a guard: if it appears or changes before Apply ends, nothing is reported as Written.
+    const targets: Target[] = [L.claude, L.codex].filter((l) => !l.blocker).map((l) => ({ root: l.lane.root, rel: l.lane.rel, kind: 'global', next: l.next }));
+    targets.push({ root: 'codex', rel: CODEX_OVERRIDE, kind: 'guard' as const, next: new Uint8Array(0) });
+    const plan = await makePlan(roots, targets);
     set({ step: 'diff', plan, result: null, undo: null });
   } catch (e) {
     fail(e);
@@ -389,7 +390,7 @@ function viewImport(): HTMLElement {
     ),
     !hasFSA && h('p', { class: 'sub' }, 'This browser cannot open folders. Drop session files instead; Apply will offer an exported bundle.'),
     drop,
-    h('p', { class: 'sub' }, 'Only projects/**/*.jsonl under ~/.claude and rollout-*.jsonl under ~/.codex/sessions are read. Secrets are redacted as each line is parsed.'),
+    h('p', { class: 'sub' }, 'Codex sessions from the Codex CLI, Codex Desktop and the VS Code extension. Only projects/**/*.jsonl under ~/.claude and rollout-*.jsonl under ~/.codex/sessions are read. Secrets are redacted as each line is parsed.'),
     sel &&
       h(
         'div',
@@ -559,7 +560,7 @@ function diffBlock(l: LaneResult): HTMLElement {
     'div',
     {},
     h('h2', {}, l.lane.label),
-    l.lane.notice && h('p', { class: 'sub' }, l.lane.notice),
+    l.blocker && h('p', { class: 'warn' }, l.blocker),
     h('p', { class: 'num' }, `Weight ${l.before.total} → ${l.after.total} of ${l.allowance}${l.noGrowth ? ' (no-growth)' : ''}`),
     l.problem && h('p', { class: 'warn' }, l.problem),
     ops.every((o) => o.op === 'same') ? h('p', { class: 'sub' }, 'No change.') : h('pre', {}, renderDiff(ops)),

@@ -64,6 +64,7 @@ describe('Codex parser', () => {
     expect(s.agent).toBe('codex');
     expect(s.id).toBe('codex:0c0d0e0f-8888-7888-8888-000000000008');
     expect(s.client).toBe('Codex Desktop');
+    expect(s.source).toBe('vscode'); // Desktop logs source "vscode": originator and source stay separate
     expect(s.project).toBe('harbor');
     expect(s.turns.map((t) => t.role)).toEqual(['injected', 'injected', 'injected', 'human', 'assistant', 'interrupt', 'injected', 'human', 'assistant']);
     expect(s.turns.slice(0, 3).map((t) => t.injected)).toEqual(['developer', 'context', 'context']);
@@ -98,6 +99,7 @@ describe('Codex parser', () => {
   test('subagent thread: inherited and agent-authored user text are never human', async () => {
     const s = await fixture(CX.subagent);
     expect(s.agentAuthored).toBe(true);
+    expect(s.source).toBe('subagent');
     expect(s.turns.filter((t) => t.role === 'human')).toEqual([]);
     expect(s.turns.slice(0, 2).map((t) => t.injected)).toEqual(['inherited', 'agent-task']);
   });

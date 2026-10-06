@@ -40,6 +40,7 @@ export class CodexParser {
       gitBranch: null,
       project: null,
       client: null,
+      source: null,
       agentAuthored: meta.agentAuthored ?? false,
       partial: meta.window === 'tail-window',
       partialReason: meta.window === 'tail-window' ? 'tail-window' : null,
@@ -116,6 +117,7 @@ export class CodexParser {
     this.setCwd(str(p.cwd));
     this.s.client = str(p.originator);
     const src = p.source;
+    this.s.source = typeof src === 'string' ? src : isObj(src) ? Object.keys(src)[0] ?? null : null;
     if (isObj(src) && 'subagent' in src) this.s.agentAuthored = true;
     if (str(p.agent_role) || str(p.agent_nickname)) this.s.agentAuthored = true;
     const git = isObj(p.git) ? p.git : null;

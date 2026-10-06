@@ -39,7 +39,8 @@ export interface Root {
   remove(rel: string): Promise<void>;
 }
 
-export type FileKind = 'skill' | 'global';
+/** guard = a file that must not change between the diff and the end of Apply (e.g. AGENTS.override.md). Never written. */
+export type FileKind = 'skill' | 'global' | 'guard';
 
 export interface PlannedFile {
   readonly root: RootId;

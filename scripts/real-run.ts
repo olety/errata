@@ -74,13 +74,17 @@ const sessions = [...cc.sessions, ...cx.sessions];
 
 // ---- independent raw cross-check (counts only): call ids and result ids straight from the JSON rows
 type Raw = { calls: Set<string>; results: Set<string>; paired: number; interrupts: number; userRows: number };
-async function rawCounts(s: Session, abs: string): Promise<Raw | null> {
+// One snapshot of the bytes feeds both the parser and the raw count, so a live session that grows between two
+// reads cannot fake a mismatch.
+async function rawCounts(s: Session, abs: string): Promise<{ raw: Raw; parsed: Session } | null> {
   if (s.partial) return null; // tail windows are not comparable
+  const bytes = await Bun.file(abs).bytes();
+  const parsed = await parseSessionFile({ rel: s.file, blob: new Blob([bytes]) }, s.agent);
   const calls = new Set<string>();
   const results = new Set<string>();
   let interrupts = 0;
   let userRows = 0;
-  const text = await Bun.file(abs).text();
+  const text = new TextDecoder().decode(bytes);
   for (const line of text.split('\n')) {
     if (!line) continue;
     let o: any;
@@ -106,7 +110,7 @@ async function rawCounts(s: Session, abs: string): Promise<Raw | null> {
   }
   let paired = 0;
   for (const id of calls) if (results.has(id)) paired++;
-  return { calls, results, paired, interrupts, userRows };
+  return { raw: { calls, results, paired, interrupts, userRows }, parsed };
 }
 
 const absOf = new Map<string, string>();
@@ -116,8 +120,10 @@ const checks: string[] = [];
 let pairingOk = true;
 let interruptOk = true;
 const perSession: string[] = [];
-for (const s of sessions) {
-  const raw = await rawCounts(s, absOf.get(s.file)!);
+for (const s0 of sessions) {
+  const snap = await rawCounts(s0, absOf.get(s0.file)!);
+  const raw = snap?.raw ?? null;
+  const s = snap?.parsed ?? s0;
   const calls = allCalls(s);
   // Compare by id: the parsed calls that correspond to raw call rows, and how many of them carry a result.
   const top = raw ? calls.filter((c) => raw.calls.has(c.callId)) : calls.filter((c) => c.parentCallId === null);
@@ -242,6 +248,9 @@ md.push(`|---|---|`);
 md.push(`| Sessions in the run | ${m.sessions.total} of the newest top-level sessions in ${DAYS} days (Claude Code ${m.sessions.claude} of ${ccFiles.length}, Codex ${m.sessions.codex} of ${cxFiles.length}) |`);
 md.push(`| Agent-authored threads skipped while picking | Claude Code ${cc.skippedAgentAuthored} of ${cc.considered} considered, Codex ${cx.skippedAgentAuthored} of ${cx.considered} considered |`);
 md.push(`| Partial sessions (tail window or cut line) | ${m.sessions.partial} of ${m.sessions.total} |`);
+const mix = new Map<string, number>();
+for (const x of cx.sessions) mix.set(`${x.client ?? '?'} / source ${x.source ?? '?'}`, (mix.get(`${x.client ?? '?'} / source ${x.source ?? '?'}`) ?? 0) + 1);
+md.push(`| Codex sessions by originator / source | ${[...mix.entries()].map(([k, v]) => `${k}: ${v}`).join('; ')} (of ${cx.sessions.length}) |`);
 md.push(`| Genuine human turns | ${m.humanTurns} (injected user-role turns quarantined: ${m.injectedTurns}) |`);
 md.push(`| Interrupts paired with your next message | ${m.interruptPairs} of ${m.interrupts} interrupts |`);
 md.push(`| Repeated unchanged failing commands | ${m.repeatedCommand.episodes} episodes in ${m.repeatedCommand.sessionsWith} of ${m.sessions.total} sessions (failed shell runs: ${m.repeatedCommand.failedShellCalls} of ${m.repeatedCommand.shellCalls}) |`);

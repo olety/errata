@@ -11,18 +11,32 @@ export interface GlobalLane {
   root: 'claude' | 'codex';
   rel: string;
   label: string;
-  notice: string | null;
+  /** Why this lane cannot be written at all. The lane is left out of the plan; other lanes still apply. */
+  blocker: string | null;
 }
 
-/** Codex reads a non-empty AGENTS.override.md instead of AGENTS.md (developers.openai.com/codex/guides/agents-md). */
+export const CODEX_OVERRIDE = 'AGENTS.override.md';
+
+/** A non-empty override is what Codex reads (developers.openai.com/codex/guides/agents-md: "Codex uses only the first non-empty file at this level"). */
+export function overrideActive(overrideBytes: Uint8Array | null): boolean {
+  return !!overrideBytes && overrideBytes.length > 0 && new TextDecoder().decode(overrideBytes).trim() !== '';
+}
+
+/**
+ * The Codex lane always targets AGENTS.md. A non-empty AGENTS.override.md makes AGENTS.md unread, so the lane is
+ * blocked; the game never creates or edits the override.
+ */
 export function codexLane(overrideBytes: Uint8Array | null): GlobalLane {
-  if (overrideBytes && overrideBytes.length > 0 && new TextDecoder().decode(overrideBytes).trim() !== '') {
-    return { agent: 'codex', root: 'codex', rel: 'AGENTS.override.md', label: '~/.codex/AGENTS.override.md', notice: 'Codex reads AGENTS.override.md instead of AGENTS.md here, so the deck writes there.' };
-  }
-  return { agent: 'codex', root: 'codex', rel: 'AGENTS.md', label: '~/.codex/AGENTS.md', notice: null };
+  return {
+    agent: 'codex',
+    root: 'codex',
+    rel: 'AGENTS.md',
+    label: '~/.codex/AGENTS.md',
+    blocker: overrideActive(overrideBytes) ? 'Your Codex reads AGENTS.override.md; edits to AGENTS.md would be ignored. The Codex lane is blocked. Remove or empty the override yourself to use it.' : null,
+  };
 }
 
-export const CLAUDE_LANE: GlobalLane = { agent: 'claude', root: 'claude', rel: 'CLAUDE.md', label: '~/.claude/CLAUDE.md', notice: null };
+export const CLAUDE_LANE: GlobalLane = { agent: 'claude', root: 'claude', rel: 'CLAUDE.md', label: '~/.claude/CLAUDE.md', blocker: null };
 
 /**
  * Skill roots, verified in the hour-0 spike (research/out/spike-roots.md, 2026-10-06):
@@ -35,6 +49,9 @@ export const SKILL_LANES = {
   codex: { root: 'codex-skills' as const, label: '~/.agents/skills', verified: true, legacyReadOnly: '~/.codex/skills' },
 };
 
+/** SKILL.md rules shared by both agents (agentskills.io spec, cited by the Codex docs). */
+export const SKILL_FILE = { name: 'SKILL.md', nameMax: 64, namePattern: /^[a-z0-9]+(?:-[a-z0-9]+)*$/, descriptionMax: 1024 } as const;
+
 export interface LaneResult {
   lane: GlobalLane;
   original: Uint8Array | null;
@@ -43,8 +60,10 @@ export interface LaneResult {
   after: Weight;
   allowance: number;
   noGrowth: boolean;
-  /** Why Apply is blocked for this file, or null. */
+  /** Why Apply is blocked for this file (malformed markers, over the allowance or the byte cap), or null. */
   problem: string | null;
+  /** The lane cannot be written at all (e.g. an active Codex override). Its cards do not reach this agent. */
+  blocker: string | null;
 }
 
 function reaches(card: Card, agent: Agent): boolean {
@@ -69,8 +88,9 @@ export function buildLane(lane: GlobalLane, original: Uint8Array | null, cards: 
   const p = parseGlobal(original);
   const budget = budgetFor(original);
   const before = weigh(original ?? new Uint8Array(0));
-  if (p.problem) {
-    return { lane, original, next: original ?? new Uint8Array(0), before, after: before, allowance: budget.allowance, noGrowth: budget.noGrowth, problem: p.problem };
+  if (lane.blocker || p.problem) {
+    // Nothing is rendered: the file stays as it is and no card reaches this agent.
+    return { lane, original, next: original ?? new Uint8Array(0), before, after: before, allowance: budget.allowance, noGrowth: budget.noGrowth, problem: lane.blocker ? null : p.problem, blocker: lane.blocker };
   }
   const lines = linesFor(original, cards, lane.agent, removed);
   const next = renderGlobal(p, lines);
@@ -83,6 +103,7 @@ export function buildLane(lane: GlobalLane, original: Uint8Array | null, cards: 
     allowance: Math.max(budget.allowance, raisedAllowance ?? 0),
     noGrowth: budget.noGrowth,
     problem: fitProblem(original, next, raisedAllowance),
+    blocker: null,
   };
 }
 

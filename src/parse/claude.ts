@@ -38,6 +38,7 @@ export class ClaudeParser {
       gitBranch: null,
       project: null,
       client: null,
+      source: null,
       agentAuthored: meta.agentAuthored ?? false,
       partial: meta.window === 'tail-window',
       partialReason: meta.window === 'tail-window' ? 'tail-window' : null,

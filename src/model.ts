@@ -117,8 +117,11 @@ export interface Session {
   project: string | null;
   /** Opaque project identity: hash of the full first cwd, computed before redaction. Null when no project. */
   projectKey: string | null;
-  /** Claude entrypoint / Codex originator, for the mirror. */
+  /** Claude entrypoint / Codex originator (e.g. "Codex Desktop", "codex_cli_rs"). */
   client: string | null;
+  /** Codex session_meta.source as logged ("vscode", "cli", "exec", or "subagent"); null for Claude Code.
+   *  Never classify the client from this alone: Codex Desktop logs source "vscode". */
+  source: string | null;
   /** Agent-authored thread (Claude subagent file, Codex subagent thread). Its user turns are not human. */
   agentAuthored: boolean;
   /** True when the session was read through a tail window or has a truncated last line. */

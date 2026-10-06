@@ -158,6 +158,34 @@ describe('apply → undo', () => {
     await expect(makePlan(roots, [{ root: 'claude', rel: 'link/x.md', kind: 'global', next: bytes('x') }])).rejects.toThrow('outside');
   });
 
+  test('a guard file is checked but never written: absent stays absent', async () => {
+    const plan = await makePlan(roots, [...targets(), { root: 'codex', rel: 'AGENTS.override.md', kind: 'guard', next: bytes('ignored') }]);
+    expect(plan.files[0]!.kind).toBe('guard');
+    const res = await applyPlan(plan, roots, plan.digest);
+    expect(res.status).toBe('written');
+    if (res.status === 'written') expect(res.receipt.files.map((f) => f.rel).sort()).toEqual(['AGENTS.md', 'CLAUDE.md']);
+    expect(await roots[1]!.read('AGENTS.override.md')).toBeNull();
+  });
+
+  test('an override that appears after the diff stops Apply with no writes', async () => {
+    const plan = await makePlan(roots, [...targets(), { root: 'codex', rel: 'AGENTS.override.md', kind: 'guard', next: new Uint8Array(0) }]);
+    await writeFile(join(dir, 'codex', 'AGENTS.override.md'), bytes('use these instead'));
+    const res = await applyPlan(plan, roots, plan.digest);
+    expect(res).toEqual({ status: 'stale', changed: [{ root: 'codex', rel: 'AGENTS.override.md' }] });
+    expect(sameBytes(await read('claude/CLAUDE.md'), CLAUDE_MD)).toBe(true);
+    expect(sameBytes(await read('codex/AGENTS.md'), AGENTS_MD)).toBe(true);
+  });
+
+  test('an override that appears during the writes means no Written receipt', async () => {
+    const plan = await makePlan(roots, [...targets(), { root: 'codex', rel: 'AGENTS.override.md', kind: 'guard', next: new Uint8Array(0) }]);
+    const sneaky: Root[] = roots.map((r) =>
+      r.id === 'claude' ? { ...r, write: async (rel: string, b: Uint8Array) => { await r.write(rel, b); await writeFile(join(dir, 'codex', 'AGENTS.override.md'), bytes('x')); } } : r,
+    );
+    const res = await applyPlan(plan, sneaky, plan.digest);
+    expect(res.status).toBe('partial');
+    if (res.status === 'partial') expect(res.failed.rel).toBe('AGENTS.override.md');
+  });
+
   test('bundles are unique and never overwritten', async () => {
     const p1 = await makePlan(roots, targets());
     const r1 = await applyPlan(p1, roots, p1.digest);
