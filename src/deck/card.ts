@@ -26,9 +26,13 @@ function stable(v: unknown): string {
   return JSON.stringify(v);
 }
 
-/** Digest of every field that decides what the card says and whom it covers. */
-export function cardDigest(c: Pick<Card, 'type' | 'text' | 'targets' | 'scope' | 'trigger' | 'responseKey' | 'exceptions'> & { claims?: Card['claims'] }): string {
-  return fnv(stable({ type: c.type, text: c.text, targets: c.targets, scope: c.scope, trigger: c.trigger, responseKey: c.responseKey, exceptions: c.exceptions, claims: c.claims ?? [] }));
+/**
+ * Digest of every field that decides what the card says and when it applies. Targets are left out on purpose
+ * (play-loop §14.2): acceptance is per case, so widening a card to a second agent keeps the acceptances the player
+ * already gave and manufactures none for the new agent's cases; narrowing fails check 3 on its own.
+ */
+export function cardDigest(c: Pick<Card, 'type' | 'text' | 'scope' | 'trigger' | 'responseKey' | 'exceptions'> & { claims?: Card['claims'] }): string {
+  return fnv(stable({ type: c.type, text: c.text, scope: c.scope, trigger: c.trigger, responseKey: c.responseKey, exceptions: c.exceptions, claims: c.claims ?? [] }));
 }
 
 export interface CardPatch {
@@ -42,7 +46,7 @@ export interface CardPatch {
   responseKey?: ResponseKey;
 }
 
-/** Returns a new card. Exceptions changes reset their review; the revision counter always moves on a real change. */
+/** Returns a new card. Exceptions changes reset their review; the revision counter moves on any real change, targets included. */
 export function updateCard(card: Card, patch: CardPatch, sanitize: (s: string) => string = (s) => s): Card {
   const next: Card = Object.freeze({
     ...card,
@@ -55,7 +59,7 @@ export function updateCard(card: Card, patch: CardPatch, sanitize: (s: string) =
     ...(patch.claims !== undefined ? { claims: Object.freeze(patch.claims.map((c) => Object.freeze({ ...c }))) } : {}),
     ...(patch.responseKey !== undefined ? { responseKey: patch.responseKey } : {}),
   });
-  const changed = cardDigest(next) !== cardDigest(card);
+  const changed = cardDigest(next) !== cardDigest(card) || next.targets !== card.targets;
   return changed ? Object.freeze({ ...next, textRevision: card.textRevision + 1 }) : next;
 }
 

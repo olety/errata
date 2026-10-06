@@ -74,7 +74,9 @@ describe('rooms', () => {
     const r = buildRooms(sessions, sessions.flatMap(detectEpisodes))[0]!;
     const c = caseFor(r.anchor, r);
     expect(c.facts).toEqual({ event: 'resume_after_interrupt', fingerprint: 'pytest' });
-    expect(c.eligibleResponseKeys).toEqual(['standing_instruction', 'reread_on_resume', 'record_at_handoff']);
+    // No context summary or handoff was observed in these sessions, so only the standing instruction is eligible.
+    expect(c.eligibleResponseKeys).toEqual(['standing_instruction']);
+    expect(c.observed).toEqual({ summaryBefore: false, attempts: null, editAfterStop: false, errorCaptured: false });
     expect(c.disposition).toBe('unreviewed');
   });
 });

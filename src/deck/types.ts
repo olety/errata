@@ -138,6 +138,21 @@ export interface EvidenceRef {
 
 export type Disposition = 'unreviewed' | 'issue' | 'pivot' | 'not-a-problem' | 'unclear';
 
+/**
+ * Observed facts that decide which responses a case is eligible for (play-loop §14.1). Read from the session when the
+ * episode is detected; a missing value is not observed, and a response that needs it is not eligible.
+ */
+export interface ObservedFacts {
+  /** A context summary or a handoff (continued-session or cross-session text) appeared earlier in the session. */
+  summaryBefore: boolean;
+  /** Repeated command: the unchanged failing runs (≥ 2). Null for other episodes. */
+  attempts: number | null;
+  /** Stop: an edit landed after the stop, before the next stop. */
+  editAfterStop: boolean;
+  /** Repeated command: the first failing run's error output was captured. */
+  errorCaptured: boolean;
+}
+
 export interface Case {
   id: string;
   agent: Agent;
@@ -149,6 +164,8 @@ export interface Case {
   family?: Family;
   facts: CaseFacts;
   eligibleResponseKeys: ResponseKey[];
+  /** The facts eligibility was read from (absent on hand-built cases). */
+  observed?: ObservedFacts;
   disposition: Disposition;
   evidenceRefs: EvidenceRef[];
 }

@@ -125,11 +125,15 @@ describe('cards', () => {
     const [c] = draftCards(room, { scope: { kind: 'global' } });
     const accepted = acceptMapping(c!, 'case-1');
     expect(accepted.acceptedMappings['case-1']).toBe(cardDigest(c!));
-    for (const patch of [{ text: 'other words' }, { targets: 'codex' as const }, { scope: { kind: 'project' as const, projectKey: 'p1', label: 'x' } }, { trigger: { event: 'command_failed' as const } }, { exceptions: [{ text: 'not in CI', when: { projectKey: 'p2' } }] }]) {
+    for (const patch of [{ text: 'other words' }, { scope: { kind: 'project' as const, projectKey: 'p1', label: 'x' } }, { trigger: { event: 'command_failed' as const } }, { exceptions: [{ text: 'not in CI', when: { projectKey: 'p2' } }] }]) {
       const u = updateCard(accepted, patch);
       expect(cardDigest(u)).not.toBe(accepted.acceptedMappings['case-1']);
       expect(u.textRevision).toBe(accepted.textRevision + 1);
     }
+    // Targets are not in the digest (play-loop §14.2): a re-target keeps the acceptance but still moves the revision.
+    const widened = updateCard(accepted, { targets: 'codex' });
+    expect(cardDigest(widened)).toBe(accepted.acceptedMappings['case-1']);
+    expect(widened.textRevision).toBe(accepted.textRevision + 1);
     expect(updateCard(accepted, { exceptions: [] }).exceptionsReviewed).toBe(false);
     expect(Object.isFrozen(accepted)).toBe(true);
   });

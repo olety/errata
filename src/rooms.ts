@@ -9,7 +9,7 @@ import type { DirectiveEpisode, Episode, InterruptEpisode, WorkflowEpisode } fro
 import { contentTokens, isPasted, jaccard, narrowedRerun, relPath } from './episodes';
 import { isFocusedTest, isTestCommand } from './noise';
 import { commandPrefixOf, fingerprint } from './parse/common';
-import type { Case, CaseFacts, Disposition, Family } from './deck/types';
+import type { Case, CaseFacts, Disposition, Family, ObservedFacts, ResponseKey } from './deck/types';
 import { FAMILY_KEYS } from './deck/types';
 import { opposed, suggestClaims } from './deck/claims';
 
@@ -37,10 +37,11 @@ export interface Room {
   family: Family;
   kind: RoomKind;
   object: RoomObject;
-  /** The one project every case in the room (withheld included) shares, else null. */
+  /** The one project every in-room case shares, else null. Withheld cases never widen or narrow it (§0a.12). */
   projectKey: string | null;
   projectLabel: string | null;
   projects: { key: string | null; label: string | null }[];
+  /** In-room agents only: a withheld case never adds an agent to the drafts' targets. */
   agents: Agent[];
   /** In-room episodes, oldest first. */
   episodes: Episode[];
@@ -248,21 +249,23 @@ function finalizeRoom(g: Group): Room | null {
   const order: string[] = [];
   for (const e of eps) if (!order.includes(e.sessionId)) order.push(e.sessionId);
   if (g.family === 'workflow' && order.length < 2) return null;
-  const ieAll = eps.filter((e): e is InterruptEpisode => e.type === 'interrupt');
-  const narrowedAll = ieAll.length > 0 && ieAll.length === eps.length && ieAll.every((e) => !!e.followUp && isNarrowing(e));
-  // Stops on one object across sessions are the same line only when the evidence shows it (every stop narrowed the
-  // same run); otherwise the room stays a boundary room with several sessions and the player confirms each case.
-  const family: Family = g.family === 'stop' ? (order.length >= 2 && narrowedAll ? 'directive' : 'boundary') : g.family;
   const withholdN = g.kind === 'encounter' && order.length > MIN_IN_ROOM ? Math.min(MAX_WITHHELD, order.length - MIN_IN_ROOM) : 0;
   const held = new Set(order.slice(order.length - withholdN));
   const inRoom = eps.filter((e) => !held.has(e.sessionId));
   // One boss case per withheld session (its first); other episodes from those sessions stay out of the room.
   const withheld = order.slice(order.length - withholdN).map((sid) => eps.find((e) => e.sessionId === sid)!);
-  const anchor = [...inRoom].sort((a, b) => anchorScore(b) - anchorScore(a) || tsOf(a) - tsOf(b))[0]!;
-  const projKeys = [...new Set(eps.map((e) => e.projectKey))];
-  const projects = projKeys.map((k) => ({ key: k, label: eps.find((e) => e.projectKey === k)?.projectLabel ?? null }));
-  const single = projKeys.length === 1 ? projects[0]! : null;
   const nSessions = order.length - withholdN;
+  // Everything the player sees before the boss, and every draft, is read from the in-room cases only (§0a.12):
+  // the family, the narrowed-test reading, the projects, the agents. The withheld cases stay a held-out test.
+  const ieIn = inRoom.filter((e): e is InterruptEpisode => e.type === 'interrupt');
+  const narrowedAll = ieIn.length > 0 && ieIn.length === inRoom.length && ieIn.every((e) => !!e.followUp && isNarrowing(e));
+  // Stops on one object across sessions are the same line only when the evidence shows it (every stop narrowed the
+  // same run); otherwise the room stays a boundary room with several sessions and the player confirms each case.
+  const family: Family = g.family === 'stop' ? (nSessions >= 2 && narrowedAll ? 'directive' : 'boundary') : g.family;
+  const anchor = [...inRoom].sort((a, b) => anchorScore(b) - anchorScore(a) || tsOf(a) - tsOf(b))[0]!;
+  const projKeys = [...new Set(inRoom.map((e) => e.projectKey))];
+  const projects = projKeys.map((k) => ({ key: k, label: inRoom.find((e) => e.projectKey === k)?.projectLabel ?? null }));
+  const single = projKeys.length === 1 ? projects[0]! : null;
   const n = inRoom.length;
   let subtitle: string;
   switch (family) {
@@ -290,7 +293,7 @@ function finalizeRoom(g: Group): Room | null {
             : `You stopped the agent during ${g.object.label}, then drew a line · ${times(n, nSessions)}`;
   }
   const quote = g.kind !== 'event' && (anchor.type === 'interrupt' || anchor.type === 'directive') ? anchor.receipt.quote : null;
-  const narrowedTests = ieAll.length > 0 && ieAll.every((e) => !!e.followUp && isNarrowing(e));
+  const narrowedTests = ieIn.length > 0 && ieIn.every((e) => !!e.followUp && isNarrowing(e));
   const projectPart = g.projectBound ? anchor.projectKey ?? '' : single ? single.key ?? '' : '*';
   return {
     key: `${g.kind === 'event' ? 'event' : family}|${g.object.key}|${projectPart}`,
@@ -300,7 +303,7 @@ function finalizeRoom(g: Group): Room | null {
     projectKey: single ? single.key : null,
     projectLabel: single ? single.label : null,
     projects,
-    agents: [...new Set(eps.map((e) => e.agent))],
+    agents: [...new Set(inRoom.map((e) => e.agent))],
     episodes: inRoom,
     withheld,
     anchor,
@@ -346,6 +349,31 @@ export function splitByProject(room: Room, projectKey: string | null): Room[] {
 
 // ------------------------------------------------------------------ cases
 
+/**
+ * Why one of the family's responses is not eligible for a case, or null when it is (play-loop §14.1). Eligibility is
+ * read from observed facts only; a fact that was never observed makes the response ineligible, never eligible.
+ */
+export function ineligibility(key: ResponseKey, o: ObservedFacts | undefined): string | null {
+  switch (key) {
+    case 'reread_on_resume':
+    case 'record_at_handoff':
+      return o?.summaryBefore ? null : 'no context summary or handoff earlier in this session';
+    case 'report_blocker_after_two':
+      return o?.attempts != null && o.attempts >= 3 ? null : 'fewer than three attempts';
+    case 'inspect_diff_against_boundary':
+      return o?.editAfterStop ? null : 'no edit after the stop';
+    case 'inspect_error_before_retry':
+      return o?.errorCaptured ? null : 'no error output captured';
+    default:
+      return null;
+  }
+}
+
+/** The family's responses this case is eligible for, from its observed facts. */
+export function eligibleKeys(family: Family, o: ObservedFacts | undefined): ResponseKey[] {
+  return FAMILY_KEYS[family].filter((k) => ineligibility(k, o) === null);
+}
+
 /** Case facts are observed facts of the episode, read through its room's family. */
 export function caseFor(e: Episode, room: Room, confirmedConstraint?: string): Case {
   let facts: CaseFacts;
@@ -379,7 +407,8 @@ export function caseFor(e: Episode, room: Room, confirmedConstraint?: string): C
     projectLabel: e.projectLabel,
     family: room.family,
     facts,
-    eligibleResponseKeys: FAMILY_KEYS[room.family],
+    eligibleResponseKeys: eligibleKeys(room.family, e.observed),
+    ...(e.observed ? { observed: e.observed } : {}),
     disposition: 'unreviewed',
     evidenceRefs: [{ sessionId: e.sessionId, agent: e.agent, turn: e.turn, callId: refCall(e) }],
   };

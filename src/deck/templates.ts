@@ -158,9 +158,9 @@ function drafts(room: Room, scope: Scope, wording: string | null): Draft[] {
         a = { key: 'standing_instruction', title: 'A standing instruction', text: s(w), trigger: trig, claims: suggestClaims(w) };
       } else if (room.object.kind === 'command') {
         // The person's words draw no clear line; the evidence does: they stopped this command in several sessions.
-        a = { key: 'standing_instruction', title: 'A standing instruction', text: s(`ask before running ${ow}; the user stopped it in ${room.totalSessions} sessions.`), trigger: trig, claims: [{ polarity: 'dont', act: 'run', object: `cmd:${obj}`, unless: 'the user asks' }] };
+        a = { key: 'standing_instruction', title: 'A standing instruction', text: s(`ask before running ${ow}; the user stopped it in ${room.sessions} sessions.`), trigger: trig, claims: [{ polarity: 'dont', act: 'run', object: `cmd:${obj}`, unless: 'the user asks' }] };
       } else if (room.object.kind === 'path') {
-        a = { key: 'standing_instruction', title: 'A standing instruction', text: s(`ask before editing files under ${ow}; the user stopped such edits in ${room.totalSessions} sessions.`), trigger: trig, claims: [{ polarity: 'dont', act: 'edit', object: `path:${obj}`, unless: 'the user asks' }] };
+        a = { key: 'standing_instruction', title: 'A standing instruction', text: s(`ask before editing files under ${ow}; the user stopped such edits in ${room.sessions} sessions.`), trigger: trig, claims: [{ polarity: 'dont', act: 'edit', object: `path:${obj}`, unless: 'the user asks' }] };
       } else {
         a = { key: 'standing_instruction', title: 'A standing instruction', text: w ? s(w) : s(`follow the instruction the user repeated about ${ow}.`), trigger: trig, claims: w ? suggestClaims(w) : [] };
       }

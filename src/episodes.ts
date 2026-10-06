@@ -8,6 +8,7 @@ import type { Agent, Session, ToolCall, Turn } from './model';
 import { allCalls, gapBetween } from './model';
 import { commandPrefixOf, fingerprint, programOf } from './parse/common';
 import { isFocusedTest, isGenuineFailure, isTestCommand, isTestPath } from './noise';
+import type { ObservedFacts } from './deck/types';
 
 export const QUOTE_LIMIT = 200;
 
@@ -35,6 +36,8 @@ interface EpisodeBase {
   turn: number;
   ts: string | null;
   receipt: Receipt;
+  /** Facts read from the session at detection, before bulk output is dropped (see observeEpisode). */
+  observed?: ObservedFacts;
 }
 
 export interface InterruptEpisode extends EpisodeBase {
@@ -656,7 +659,48 @@ export function workflowEpisodes(s: Session): WorkflowEpisode[] {
   return out;
 }
 
+// ------------------------------------------------------------------ observed facts (per-case eligibility)
+
+/** Injected text that hands context over: a context summary or a message from another session. */
+const HANDOFF_KINDS = new Set(['summary', 'cross-session']);
+
+function landedEdit(c: ToolCall): boolean {
+  const st = c.result?.status;
+  return c.kind === 'edit' && !!c.result && st !== 'error' && st !== 'rejected' && st !== 'interrupted';
+}
+
+/**
+ * The facts a case's eligible responses are read from (play-loop §14.1). Everything here is observed in the session;
+ * nothing is inferred. summaryBefore looks only at turns before the anchor; editAfterStop only between the stop and
+ * the next stop; errorCaptured only at the first failing run, the error a retry should have read.
+ */
+export function observeEpisode(s: Session, e: Episode): ObservedFacts {
+  const summaryBefore = s.turns.slice(0, e.turn).some((t) => t.role === 'injected' && !!t.injected && HANDOFF_KINDS.has(t.injected));
+  let attempts: number | null = null;
+  let errorCaptured = false;
+  let editAfterStop = false;
+  if (e.type === 'repeated-command') {
+    attempts = e.failures.length;
+    const first = allCalls(s).find((c) => c.callId === e.failures[0]);
+    errorCaptured = !!first?.result && first.result.status === 'error' && first.result.text.trim() !== '';
+  }
+  if (e.type === 'interrupt') {
+    const from = e.humanTurn ?? e.turn;
+    for (let j = from + 1; j < s.turns.length; j++) {
+      const u = s.turns[j]!;
+      if (u.role === 'interrupt') break;
+      if (u.role === 'assistant' && u.calls.some(landedEdit)) {
+        editAfterStop = true;
+        break;
+      }
+    }
+  }
+  return { summaryBefore, attempts, editAfterStop, errorCaptured };
+}
+
 /** Every per-session detector. Cross-session promotion (types 4 and 5) happens in ./rooms.ts. */
 export function detectEpisodes(s: Session): Episode[] {
-  return [...interruptEpisodes(s), ...repeatedCommandEpisodes(s), ...editSequenceEpisodes(s), ...directiveCandidates(s), ...workflowEpisodes(s)];
+  const out: Episode[] = [...interruptEpisodes(s), ...repeatedCommandEpisodes(s), ...editSequenceEpisodes(s), ...directiveCandidates(s), ...workflowEpisodes(s)];
+  for (const e of out) e.observed = observeEpisode(s, e);
+  return out;
 }
