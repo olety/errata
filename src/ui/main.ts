@@ -28,6 +28,7 @@ import { NEGATIVE_LABELS, type NegativeKind } from '../noise';
 import { createPlayState, type ApplyPort } from './playloop/adapter';
 import { Controller } from './playloop/controller';
 import { mountDebug } from './playloop/debug';
+import { mountScreens } from './playloop/mount';
 
 type Step = 'import' | 'reading' | 'mirror' | 'act' | 'receipt' | 'play';
 
@@ -255,7 +256,7 @@ async function startRun(files: { rel: string; blob: Blob; agent?: Agent }[]): Pr
     S.deck = newDeck(claudeMd, codexMd, override);
     rebuild(analyse(done.sessions, { episodes: done.episodes, importedCards: S.deck.imported.length, dispositions: S.disp }));
     set({ step: 'mirror', node: 0, sub: 0 });
-    if (location.hash === '#play') startPlayLoop();
+    if (location.hash === '#play' || location.hash === '#play-ui') startPlayLoop();
   } catch (e) {
     set({ step: 'import' });
     fail(e);
@@ -455,7 +456,8 @@ function startPlayLoop(): void {
   const ctl = new Controller(state, playPort(), { viewport: { w: window.innerWidth, h: window.innerHeight }, reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
   S.step = 'play';
   unmountPlay?.();
-  unmountPlay = mountDebug(app, ctl);
+  // "#play-ui" composes the workers' components; "#play" and the mirror button use the plain debug render.
+  unmountPlay = location.hash === '#play-ui' ? mountScreens(app, ctl) : mountDebug(app, ctl);
 }
 
 // ---------------------------------------------------------------- views: import and reading
@@ -1136,5 +1138,6 @@ function paint(): void {
 
 loadRemembered();
 render();
-// "#play" opens the play loop on the synthetic sample (the slice stays the default route until P1 replaces it).
-if (location.hash === '#play') void startSample();
+// "#play" (debug render) and "#play-ui" (the workers' screens) open the play loop on the synthetic sample. The slice
+// stays the default route until P1 replaces it.
+if (location.hash === '#play' || location.hash === '#play-ui') void startSample();

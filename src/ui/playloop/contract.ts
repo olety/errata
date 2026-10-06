@@ -568,6 +568,23 @@ export interface ControllerApi {
   };
 }
 
+/**
+ * How components register drag sources and drop targets (implemented by drag.ts). The mount clears every
+ * registration before each paint; components bind again as they render. Targets must be at least 44 × 44 px.
+ */
+export interface DropBinder {
+  bindCard(cardId: string, el: HTMLElement): () => void;
+  bindTarget(id: string, target: DragTarget, el: HTMLElement): () => void;
+}
+
+/** What every screen component receives from the mount. */
+export interface ScreenProps<V> {
+  view: V;
+  ui: UiView;
+  api: ControllerApi;
+  drag: DropBinder;
+}
+
 // ------------------------------------------------------------------ pure selectors (copy only, no engine)
 
 /** "3/3 confirmed addressed · 2 unreviewed"; never a bare 0/0 (§0a.6). */

@@ -190,6 +190,11 @@ export class DragCore {
     this.feed({ type: 'cancel' });
   }
 
+  /** Forget every registered target (the mount calls this before each paint; components bind again). */
+  resetTargets(): void {
+    this.regs.clear();
+  }
+
   /** A press or drag is in progress (renderers should not rebuild the card under the pointer). */
   active(): boolean {
     return this.g.kind === 'pressed' || this.g.kind === 'dragging';
