@@ -343,8 +343,17 @@ export interface ChangePreviewView {
   needsAcceptance: string[];
 }
 
+/** A settlement the player picks for a red thread (mirrors the engine's resolution; the adapter maps it). */
+export type SettleChoice =
+  | { kind: 'keep'; keep: string }
+  | { kind: 'separate'; bind: string; projectKey: string; projectLabel: string }
+  | { kind: 'exception'; on: string; text: string; when: { commandPrefix?: string; projectKey?: string; pathPrefix?: string } }
+  | { kind: 'cancel' };
+
 export interface CampfireView {
   tab: LaneTab;
+  /** Projects a "separate the conditions" settlement can bind to. */
+  projects: { key: string; label: string }[];
   lanes: Record<LaneTab, CardView[]>;
   focusedPair: { a: string; b: string; threadId: string | null } | null;
   threads: ThreadView[];
@@ -436,7 +445,44 @@ export interface ApplyView {
   footer: string;
 }
 
-// ------------------------------------------------------------------ the controller's screen
+// ------------------------------------------------------------------ layout bands (integrator: geometry.ts)
+
+export interface Band {
+  y: number;
+  h: number;
+}
+
+/** The screen's bands for one viewport (§0a.17–19). A pure function of the viewport; see geometry.ts. */
+export interface Bands {
+  viewport: { w: number; h: number };
+  mode: 'desktop' | 'tablet' | 'phone';
+  header: Band;
+  /** Spare sky above the creature. */
+  sky: Band;
+  /** The creature's box; its feet stand on shoreY. The cap is a ceiling, not a minimum. */
+  creature: Band & { cap: number };
+  wood: Band;
+  status: Band;
+  shoreY: number;
+  /** M is the default and the minimum reading size at every width ≥ 600. */
+  card: { size: 'S' | 'M' | 'L'; w: number; h: number };
+  /** Rotate the fan only when the wood allows a rotated M (293 px); phones use a snapping carousel. */
+  fan: 'rotated' | 'flat' | 'carousel';
+  books: { mode: 'props' | 'tabs'; w: number; gap: number };
+  cards: { gap: number };
+  piles: { mode: 'props' | 'rail'; w: number; gap: number };
+  /** Total of the gaps between the three wood groups, and of the two outer margins. */
+  groupGap: number;
+  margin: number;
+  /** books + cards + piles + gaps + margins; always ≤ the viewport width. */
+  rowWidth: number;
+  /** The stage is too short for the clamps: lay out at the minimum heights and scroll; never shrink text. */
+  scroll: boolean;
+  /** Touch targets: at least 44 px, at least 8 px apart. */
+  touch: { min: number; gap: number };
+}
+
+// ------------------------------------------------------------------ the controller's screen and callbacks
 
 export type Screen =
   | { kind: 'room'; view: RoomView }
@@ -445,6 +491,68 @@ export type Screen =
   | { kind: 'boss'; view: BossView }
   | { kind: 'apply'; view: ApplyView }
   | { kind: 'empty'; text: string };
+
+/** Presentation state the controller keeps beside the game state: selection, inspector, drag, motion. */
+export interface UiView {
+  /** Tap–tap: the card selected by the first tap, waiting for a target. */
+  selected: string | null;
+  inspect: { cardId: string } | { caseId: string } | null;
+  drag: DragIntent | null;
+  /** Room beat for choreography; every beat is interruptible and none waits on an animation. */
+  beat: 'rise' | 'judge' | 'deal' | 'play' | 'strike' | 'clear' | null;
+  reducedMotion: boolean;
+  bands: Bands;
+}
+
+/**
+ * The callbacks the controller hands to components. Components call these and never hold game state. The controller
+ * maps each to an adapter act; refused acts come back as the view's own fields (refused, offer, blockers).
+ */
+export interface ControllerApi {
+  stamp(caseId: string, stamp: Stamp): void;
+  focusReceipt(caseId: string): void;
+  deal(): void;
+  pullBack(): void;
+  skip(): void;
+  advance(): void;
+  answerExisting(cardId: string, caseId: string, yes: boolean): void;
+  wording(roomKey: string, text: string): void;
+  /** Tap–tap: select a card (null clears), then tap a target. */
+  select(cardId: string | null): void;
+  tapTarget(target: DragTarget): void;
+  /** Resolve a drop on a target: the controller picks the act (play, skip, accept, fuse, settle, cut, re-target, answer). */
+  drop(cardId: string, target: DragTarget): void;
+  /** The preview for a hover, or null. Never binds. */
+  preview(cardId: string, target: DragTarget | null): DragPreview | null;
+  inspect(ref: { cardId: string } | { caseId: string } | null): void;
+  campfire: {
+    tab(tab: LaneTab): void;
+    focus(pair: { a: string; b: string; threadId: string | null } | null): void;
+    pin(caseId: string | null): void;
+    changePreview(q: { threadId: string; text?: string; settle?: SettleChoice } | { cutId: string }): ChangePreviewView | null;
+    fuse(threadId: string, text: string): void;
+    settle(threadId: string, choice: SettleChoice): void;
+    cut(cardId: string): void;
+    restore(cardId: string): void;
+    sharpen(cardId: string, text: string): void;
+    retarget(cardId: string, lane: Agent): void;
+    swap(shelfId: string, deckId: string): void;
+    acceptMapping(cardId: string, caseId: string): void;
+    acceptImport(cardId: string): void;
+    raiseAllowance(lane: Agent, to: number): void;
+  };
+  boss: {
+    stamp(caseId: string, stamp: Stamp): void;
+    answer(cardId: string, caseId: string): void;
+    next(): void;
+  };
+  apply: {
+    prepare(): Promise<void>;
+    seal(): Promise<void>;
+    undo(): Promise<void>;
+    returnToCampfire(select: { lane?: Agent; threadId?: string } | null): void;
+  };
+}
 
 // ------------------------------------------------------------------ pure selectors (copy only, no engine)
 

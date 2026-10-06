@@ -736,8 +736,10 @@ export function selectCampfire(s: PlayState): C.CampfireView {
   const over = books.some((b) => b.weight.over);
   const focus = s.campfire.focus ?? (threads[0] ? { a: threads[0].members[0]!, b: threads[0].members[1]!, threadId: threads[0].id } : null);
   const piles = selectPiles(s);
+  const projects = [...new Map(placedRooms(s).flatMap((r) => r.projects).filter((p): p is { key: string; label: string | null } => !!p.key).map((p) => [p.key, p.label ?? 'this project'] as const)).entries()].map(([key, label]) => ({ key, label }));
   return {
     tab: s.campfire.tab,
+    projects,
     lanes,
     focusedPair: focus,
     threads,
