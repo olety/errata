@@ -26,7 +26,7 @@ export interface Rig {
   collars: readonly { at: Pt; w: number }[];
   /** Five neck sockets, normalized. Several may share one collar, offset across its width. */
   sockets: readonly Pt[];
-  /** Neck width at each socket, in plate widths. */
+  /** Neck width at each socket, in plate widths (derived from the collars it shares). */
   neckW: readonly number[];
   /** Where each head's anchor sits (the head point), normalized; x order matches the sockets' x order. */
   heads: readonly Pt[];
@@ -51,6 +51,16 @@ function socketsOn(collars: readonly { at: Pt; w: number }[], plan: readonly [nu
     return [round(k.at[0] + off * k.w), k.at[1]] as const;
   });
 }
+
+/** Neck width at each socket (Astra): 0.65 of the collar when it is the collar's only neck, 0.3 when necks share it. */
+function neckWidths(collars: readonly { at: Pt; w: number }[], plan: readonly [number, number][]): number[] {
+  return plan.map(([c]) => round(collars[c]!.w * (plan.filter(([x]) => x === c).length > 1 ? 0.3 : 0.65)));
+}
+
+// Socket allocation (Astra, astra-neck §5): the x order of sockets and head points is always 3, 1, 0, 2, 4.
+const ONE_EACH: [number, number][] = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]];
+const WYRM_PLAN: [number, number][] = [[0, 0], [0, -0.16], [1, 0], [0, -0.32], [2, 0]];
+const ONE_COLLAR: [number, number][] = [[0, 0], [0, -0.16], [0, 0.16], [0, -0.32], [0, 0.32]];
 
 const round = (n: number) => Math.round(n * 10000) / 10000;
 
@@ -80,12 +90,12 @@ export const RIGS: Record<Skin, Rig> = {
     bodyBox: { x0: 0.0084, y0: 0.005, x1: 0.9909, y1: 0.995 },
     collars: WYRM_COLLARS,
     // Three collars, five necks: the tall front collar carries the anchor and two more.
-    sockets: socketsOn(WYRM_COLLARS, [[0, 0], [0, -0.22], [1, 0], [0, -0.4], [2, 0]]),
-    neckW: [0.07, 0.06, 0.08, 0.055, 0.08],
-    heads: [[0.43, -0.42], [0.1, -0.24], [0.8, -0.24], [-0.22, -0.02], [1.1, 0.04]],
+    sockets: socketsOn(WYRM_COLLARS, WYRM_PLAN),
+    neckW: neckWidths(WYRM_COLLARS, WYRM_PLAN),
+    heads: [[0.52, -0.26], [0.08, -0.22], [0.96, -0.22], [-0.36, -0.16], [1.4, -0.16]],
     headAnchor: [0.6452, 0.9097],
     headCollarW: 0.32,
-    headScale: 0.45,
+    headScale: 0.46,
     neck: 'ribbon',
     fill: 1,
   },
@@ -98,12 +108,12 @@ export const RIGS: Record<Skin, Rig> = {
     bodyBox: { x0: 0.0066, y0: 0.0079, x1: 0.9927, y1: 0.9886 },
     collars: HYDRA_COLLARS,
     // One neck per collar: the tall centre collar is the anchor.
-    sockets: socketsOn(HYDRA_COLLARS, [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]]),
-    neckW: [0.11, 0.1, 0.1, 0.085, 0.085],
-    heads: [[0.49, -0.42], [0.14, -0.22], [0.84, -0.22], [-0.2, 0.0], [1.18, 0.0]],
+    sockets: socketsOn(HYDRA_COLLARS, ONE_EACH),
+    neckW: neckWidths(HYDRA_COLLARS, ONE_EACH),
+    heads: [[0.5, -0.26], [0.1, -0.22], [0.9, -0.22], [-0.3, -0.16], [1.3, -0.16]],
     headAnchor: [0.5371, 0.8881],
     headCollarW: 0.2814,
-    headScale: 0.45,
+    headScale: 0.46,
     neck: 'ribbon',
     fill: 1,
   },
@@ -116,12 +126,12 @@ export const RIGS: Record<Skin, Rig> = {
     bodyBox: { x0: 0.1281, y0: 0.0044, x1: 0.9622, y1: 0.9956 },
     collars: STAG_COLLARS,
     // One collar, five necks fanned across its opening.
-    sockets: socketsOn(STAG_COLLARS, [[0, 0], [0, -0.22], [0, 0.22], [0, -0.4], [0, 0.4]]),
-    neckW: [0.05, 0.045, 0.045, 0.04, 0.04],
-    heads: [[0.22, -0.46], [-0.12, -0.3], [0.56, -0.3], [-0.44, -0.08], [0.88, -0.1]],
+    sockets: socketsOn(STAG_COLLARS, ONE_COLLAR),
+    neckW: neckWidths(STAG_COLLARS, ONE_COLLAR),
+    heads: [[0.24, -0.28], [-0.18, -0.25], [0.66, -0.25], [-0.6, -0.18], [1.08, -0.18]],
     headAnchor: [0.5818, 0.927],
     headCollarW: 0.2632,
-    headScale: 0.45,
+    headScale: 0.46,
     neck: 'ribbon',
     fill: 1,
   },
@@ -133,12 +143,12 @@ export const RIGS: Record<Skin, Rig> = {
     headPlate: { w: 1374, h: 1145 },
     bodyBox: { x0: 0.0111, y0: 0.0371, x1: 0.9889, y1: 0.9463 },
     collars: MOTH_COLLARS,
-    sockets: socketsOn(MOTH_COLLARS, [[0, 0], [0, -0.22], [0, 0.22], [0, -0.4], [0, 0.4]]),
-    neckW: [0.042, 0.036, 0.036, 0.032, 0.032],
-    heads: [[0.5, -0.3], [0.2, -0.12], [0.8, -0.12], [-0.04, 0.02], [1.04, 0.02]],
+    sockets: socketsOn(MOTH_COLLARS, ONE_COLLAR),
+    neckW: neckWidths(MOTH_COLLARS, ONE_COLLAR),
+    heads: [[0.5, -0.14], [0.1, -0.11], [0.9, -0.11], [-0.3, -0.06], [1.3, -0.06]],
     headAnchor: [0.499, 0.9035],
     headCollarW: 0.1783,
-    headScale: 0.5,
+    headScale: 0.46,
     neck: 'ribbon',
     fill: 1,
   },
@@ -265,7 +275,7 @@ export function fitRig(rig: Rig, sockets: readonly number[], maxH: number, maxW 
       at: { x: at.x + ox, y: at.y + oy },
       from: { x: sk[0] * Wp + ox, y: sk[1] * Hp + oy },
       w0: Math.max(1.5, rig.neckW[s]! * Wp),
-      w1: Math.max(1.5, rig.headCollarW * box.w * 0.82),
+      w1: Math.max(1.5, rig.headCollarW * box.w * 0.7),
     };
   });
   const bw = rig.body ? (rig.bodyBox.x1 - rig.bodyBox.x0) * Wp : (heads[0]?.box.w ?? w) * 0.7;

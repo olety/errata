@@ -95,20 +95,34 @@ function beastHeight(p: ScreenProps<RoomView>, arenaW: number, arenaH: number): 
   return Math.max(60, Math.min(arenaH, Math.round(fit.h / rig.fill)));
 }
 
+/** Column widths per mode (presentation maths): the slip on the left, the controls rail on the right. */
+export function stageColumns(mode: 'desktop' | 'tablet' | 'phone', viewportW: number): { side: number; rail: number; arena: number; pad: number; gap: number } {
+  if (mode === 'phone') return { side: viewportW - 32, rail: viewportW - 32, arena: viewportW - 32, pad: 16, gap: 8 };
+  const pad = mode === 'desktop' ? 24 : 16;
+  const gap = mode === 'desktop' ? 20 : 12;
+  const side = mode === 'desktop' ? Math.min(380, Math.max(320, Math.round(viewportW * 0.26))) : 292;
+  const rail = mode === 'desktop' ? 250 : 210;
+  return { side, rail, arena: Math.max(200, viewportW - 2 * pad - side - rail - 2 * gap), pad, gap };
+}
+
+/** Room for the pips label above the beast's crown. */
+const PIPS_H = 30;
+
 function compose(p: ScreenProps<RoomView>, event: boolean): HTMLElement {
   const v = p.view;
   const b = p.ui.bands;
   const stageH = Math.max(0, b.shoreY - (b.header.y + b.header.h));
   const phone = b.mode === 'phone';
   const judging = v.phase === 'judge' && v.review.remaining > 0;
-  const root = el('section', `pl-room${phone ? ' is-phone' : ''}${p.ui.reducedMotion ? ' is-reduced' : ''}${event ? ' is-event' : ''} is-${v.kind}`);
+  const cols = stageColumns(b.mode, b.viewport.w);
+  const root = el('section', `pl-room is-${b.mode}${p.ui.reducedMotion ? ' is-reduced' : ''}${event ? ' is-event' : ''} is-${v.kind}`);
   root.style.height = `${stageH}px`;
+  root.style.setProperty('--pl-room-pad', `${cols.pad}px`);
+  root.style.setProperty('--pl-room-gap', `${cols.gap}px`);
   root.dataset.room = v.roomKey;
 
-  const sideW = phone ? b.viewport.w - 32 : Math.min(380, Math.max(280, Math.round(b.viewport.w * 0.28)));
-  const arenaW = phone ? b.viewport.w - 32 : b.viewport.w - sideW - 48 - 16;
   // Phones: while heads wait for stamps the slip takes most of the stage; afterwards the beast does.
-  const arenaH = phone ? Math.round(stageH * (judging ? 0.36 : 0.62)) : stageH - 10;
+  const arenaH = phone ? Math.round(stageH * (judging ? 0.4 : 0.6)) : stageH - 8;
 
   const glow = new Map((p.ui.drag?.preview?.heads ?? []).map((h) => [h.caseId, h]));
   const cues: BeastCues = {
@@ -126,7 +140,7 @@ function compose(p: ScreenProps<RoomView>, event: boolean): HTMLElement {
     glow,
     beat: p.ui.beat,
     reducedMotion: p.ui.reducedMotion,
-    height: beastHeight(p, arenaW, arenaH),
+    height: beastHeight(p, cols.arena, arenaH - PIPS_H),
     drag: p.drag,
     onHead: (id) => {
       flush();
@@ -141,10 +155,21 @@ function compose(p: ScreenProps<RoomView>, event: boolean): HTMLElement {
 
   const arena = el('div', 'pl-room-arena', beast);
   arena.style.height = `${arenaH}px`;
-  const side = el('div', 'pl-room-side', ReceiptStage({ room: v, api: p.api }), askBox(p), wordingBox(p), controlsBox(p));
-  if (!phone) side.style.width = `${sideW}px`;
-  side.style.maxHeight = `${phone ? stageH - arenaH - 8 : stageH - 10}px`;
-  root.append(side, arena);
+  if (!phone) arena.style.width = `${cols.arena}px`;
+  const side = el('div', 'pl-room-side', ReceiptStage({ room: v, api: p.api }), askBox(p));
+  const rail = el('div', 'pl-room-rail', wordingBox(p), controlsBox(p));
+  if (phone) {
+    // One scroller under the beast: slip, prompt, wording; the controls stick to its bottom edge.
+    const scroller = el('div', 'pl-room-scroll', side, rail);
+    scroller.style.height = `${Math.max(0, stageH - arenaH - cols.gap)}px`;
+    root.append(arena, scroller);
+  } else {
+    side.style.width = `${cols.side}px`;
+    rail.style.width = `${cols.rail}px`;
+    side.style.maxHeight = `${stageH - 8}px`;
+    rail.style.maxHeight = `${stageH - 8}px`;
+    root.append(side, arena, rail);
+  }
   return root;
 }
 

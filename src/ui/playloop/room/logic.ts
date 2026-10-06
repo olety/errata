@@ -134,6 +134,12 @@ export interface Box {
   h: number;
 }
 
+function overlapArea(a: Box, b: Box): number {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return w > 0 && h > 0 ? w * h : 0;
+}
+
 /** The gap between two rectangles (0 when they touch or overlap). */
 export function gapBetween(a: Box, b: Box): number {
   const dx = Math.max(0, Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w));
@@ -157,11 +163,15 @@ export interface TagPlacement extends Box {
 
 /**
  * Hang one tag per head (§0a.19: every hit region ≥ 44 px, ≥ 8 px apart). All heads get the full strip when every strip
- * fits; otherwise every head gets the compact knob (the agent sigil, 44 px) and the slip carries the current head's full
- * tag. A head whose tag cannot fit anywhere near it gets none (its head stays the hit region). Requests come in socket
- * order, so the anchor head is placed first.
+ * fits; otherwise every head gets the compact knob (the agent sigil and date, 44 px) and the slip carries the current
+ * head's full tag. A tag never covers another head (obstacles). A head whose tag cannot fit anywhere near it gets none
+ * (its head stays the hit region). Requests come in socket order, so the anchor head is placed first.
  */
-export function packTags(reqs: readonly TagRequest[], o: { bounds: { w: number; h: number }; h?: number; gap?: number; compactW?: number }): TagPlacement[] {
+export function packTags(
+  reqs: readonly TagRequest[],
+  o: { bounds: { w: number; h: number }; h?: number; gap?: number; compactW?: number; obstacles?: readonly (Box & { owner: string })[] },
+): TagPlacement[] {
+  const blocks = o.obstacles ?? [];
   const h = o.h ?? 44;
   const gap = o.gap ?? 8;
   const tryMode = (mode: 'full' | 'compact', all: boolean): TagPlacement[] | null => {
@@ -175,7 +185,8 @@ export function packTags(reqs: readonly TagRequest[], o: { bounds: { w: number; 
         const x = Math.round(Math.min(Math.max(0, r.x - w / 2 + s.dx), o.bounds.w - w));
         const y = Math.round(Math.min(Math.max(0, r.y + s.dy), o.bounds.h - h));
         const box = { caseId: r.caseId, mode, x, y, w, h };
-        if (placed.every((p) => gapBetween(p, box) >= gap)) {
+        const overlapsHead = blocks.some((b) => b.owner !== r.caseId && gapBetween(b, box) <= 0 && overlapArea(b, box) > 0);
+        if (!overlapsHead && placed.every((p) => gapBetween(p, box) >= gap)) {
           ok = box;
           break;
         }
