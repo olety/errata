@@ -60,6 +60,17 @@ describe('room beats and plays', () => {
     expect(c.ui.beat).toBe('rise');
   });
 
+  test('a hand card dropped on a head plays on the beast (§3)', () => {
+    const c = fresh();
+    for (let i = 0; i < 3; i++) c.key('a');
+    c.key('Enter');
+    const v = (c.screen() as { view: { hand: { id: string }[]; heads: { caseId: string }[] } }).view;
+    expect(c.api.preview(v.hand[0]!.id, { kind: 'head', caseId: v.heads[1]!.caseId })!.verb).toBe('play');
+    c.api.drop(v.hand[0]!.id, { kind: 'head', caseId: v.heads[1]!.caseId });
+    const s = c.screen();
+    expect(s.kind === 'room' && s.view.result!.bound.length).toBe(3);
+  });
+
   test('a CLAUDE.md play leaves standing heads: Strike, then Clear', () => {
     const c = fresh();
     for (let i = 0; i < 3; i++) c.key('a');

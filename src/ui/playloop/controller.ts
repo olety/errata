@@ -221,8 +221,10 @@ export class Controller {
     const screen = this.screen();
     if (screen.kind === 'room' || screen.kind === 'event') {
       if (target.kind === 'shelf') return this.commit(A.actSkip(this.state).state, { selected: null });
-      if (target.kind === 'beast' || target.kind === 'book') {
-        const { state, result } = A.actPlay(this.state, cardId, target.kind === 'beast' ? 'beast' : target.lane);
+      // A hand card on the beast's body or any head plays on the beast (§3); an in-deck card on a head accepts it.
+      const inHand = screen.view.hand.some((c) => c.id === cardId);
+      if (target.kind === 'beast' || target.kind === 'book' || (target.kind === 'head' && inHand)) {
+        const { state, result } = A.actPlay(this.state, cardId, target.kind === 'book' ? target.lane : 'beast');
         if (result.refused) return this.notice(result.refused);
         return this.commit(state, { selected: null, beat: result.standing.length ? 'strike' : 'clear' });
       }

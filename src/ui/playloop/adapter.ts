@@ -681,11 +681,12 @@ export function selectDrag(s: PlayState, cardId: string, target: C.DragTarget): 
     const card = hand.find((c) => c.id === cardId);
     const hs = heads(s);
     if (target.kind === 'shelf') return { ...none, verb: 'skip', heads: hs.map((h) => ({ caseId: h.id, glow: false, word: null })) };
-    if (card && (target.kind === 'beast' || target.kind === 'book')) {
-      const t: DropTarget = target.kind === 'beast' ? 'beast' : target.lane;
+    // A hand card over the beast's body or any head is a play on the beast (§3).
+    if (card && (target.kind === 'beast' || target.kind === 'book' || target.kind === 'head')) {
+      const t: DropTarget = target.kind === 'book' ? target.lane : 'beast';
       const pv = previewDrop(s.deck, card, hs, t);
       return {
-        verb: target.kind === 'beast' ? 'play' : 'add',
+        verb: target.kind === 'book' ? 'add' : 'play',
         heads: pv.heads.map((h) => {
           const c = hs.find((x) => x.id === h.caseId)!;
           return { caseId: h.caseId, glow: h.preview.eligible, word: h.preview.failing ? C.failWord(h.preview.failing.check, h.preview.failing.tri, { agent: c.agent, project: c.projectLabel }, target.kind === 'book' ? target.lane : undefined) : null };
