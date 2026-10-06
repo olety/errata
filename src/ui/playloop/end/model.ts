@@ -3,7 +3,7 @@
 // show, in which order, and which controls are live. Tested in tests/playloop-end.test.ts.
 
 import type { ApplyBlockerView, ApplyView, BookView, BossHeadView, BossView, CardView, CommitEffectView, Disposition, InkState, ReceiptView, RunSummaryView } from '../contract';
-import { AGENT_NAME, COPY, STAMPS } from '../contract';
+import { AGENT_NAME, COPY, FITS_WHY, fitsText, STAMPS } from '../contract';
 
 // ------------------------------------------------------------------ text
 
@@ -250,9 +250,21 @@ export const INK_ORDER: readonly InkKey[] = ['reviewed', 'fits', 'written'];
 export const INK_LABEL: Record<InkKey, string> = { reviewed: 'Reviewed', fits: 'Fits', written: 'Written' };
 export const INK_MEANING: Record<InkKey, string> = {
   reviewed: 'every selected case has a disposition',
-  fits: 'both files within their allowances',
+  fits: 'both files within budget',
   written: 'every read-back matched',
 };
+
+/** The Fits stamp's words from the books (P4 item 1): "both files within budget" or "CLAUDE.md over budget by 30". */
+export function fitsMeaning(books: readonly BookView[]): string {
+  const read = books.filter((b) => b.loaded);
+  return read.length ? fitsText(read.map((b) => ({ file: b.file, now: b.weight.now, allowance: b.weight.allowance }))) : INK_MEANING.fits;
+}
+
+/** The Fits stamp's inspector line: "Fits: within the budget you chose · CLAUDE.md 172 of 1,200 tokens · …". */
+export function fitsWhy(books: readonly BookView[]): string {
+  const read = books.filter((b) => b.loaded);
+  return [`Fits: ${FITS_WHY}`, ...read.map((b) => `${b.file} ${fmt(b.weight.now)} of ${fmt(b.weight.allowance)} tokens${b.weight.raisedBy !== null ? ' (raised by you)' : ''}`)].join(' · ') + ` (${COPY.estimated})`;
+}
 
 /** The stamps that just turned inked, in order (Reviewed, Fits, Written): each inks once, only once verified. */
 export function inkFresh(prev: ApplyView['stamps'] | null, next: ApplyView['stamps']): InkKey[] {
@@ -340,7 +352,8 @@ export interface ApplyPlan {
   blockers: { kind: ApplyBlockerView['kind']; text: string; actions: BlockerAction[]; select: ApplyBlockerView['select'] }[];
   seal: boolean;
   undo: boolean;
-  stamps: { key: InkKey; label: string; meaning: string; state: InkState }[];
+  /** `why`: the stamp's inspector line (its title), e.g. Fits: "within the budget you chose". */
+  stamps: { key: InkKey; label: string; meaning: string; why: string; state: InkState }[];
   files: { path: string; text: string }[];
   /** The end summary leads once a write verified (the footer shows); the diffs lead before. */
   pane: 'diffs' | 'run';
@@ -356,7 +369,7 @@ export function applyPlan(v: ApplyView): ApplyPlan {
     blockers: v.blockers.map((b) => ({ kind: b.kind, text: b.text, actions: blockerActions(b), select: b.select })),
     seal: v.canSeal && !locked,
     undo: v.canUndo && !locked,
-    stamps: INK_ORDER.map((key) => ({ key, label: INK_LABEL[key], meaning: INK_MEANING[key], state: v.stamps[key] })),
+    stamps: INK_ORDER.map((key) => ({ key, label: INK_LABEL[key], meaning: key === 'fits' ? fitsMeaning(v.books) : INK_MEANING[key], why: key === 'fits' ? fitsWhy(v.books) : `${INK_LABEL[key]}: ${INK_MEANING[key]}`, state: v.stamps[key] })),
     files: (v.result?.files ?? []).map((f) => ({ path: f.path, text: FILE_STATUS[f.status] })),
     pane: v.footer !== null ? 'run' : 'diffs',
   };
@@ -421,8 +434,8 @@ export function summaryPlan(s: RunSummaryView): SummaryPlan {
     operations: s.operations.filter((o) => o.count > 0).map((o) => `${fmt(o.count)} ${OP_LABEL[o.kind]}`),
     files: s.files.map((f) => ({
       file: f.file,
-      text: `${fmt(f.before)} → ${fmt(f.after)} of ${fmt(f.allowance)} · ${COPY.estimated}`,
-      raised: f.raisedBy !== null ? `allowance raised to ${fmt(f.raisedBy)} by you` : null,
+      text: `${fmt(f.before)} → ${fmt(f.after)} of ${fmt(f.allowance)} tokens used · ${COPY.estimated}`,
+      raised: f.raisedBy !== null ? `budget raised to ${fmt(f.raisedBy)} by you` : null,
     })),
   };
 }

@@ -321,7 +321,7 @@ describe('numbers the second cold run could not trace', () => {
     expect(g.other).toBe(0);
     expect(g.blockHeader).toBeGreaterThan(0);
     expect(g.delta).toBe(g.line + g.blockHeader);
-    expect(g.text).toContain('block header');
+    expect(g.text).toBe(`+${g.line} tok (+${g.blockHeader} header, once)`);
   });
 
   test('the boss tally says what its unknown count counts', () => {

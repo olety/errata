@@ -710,7 +710,7 @@ function previewPart(L: Live, part: 'result' | 'detail'): HTMLElement {
     caseLabel: (id) => M.caseTag(id, v, L.preview?.refs ?? []),
     onCase: (id) => L.p.api.inspect({ caseId: id }),
     empty:
-      L.proposal?.kind === 'settle' ? 'Pick a slot: the lines as they would be exported show here before you seal. Cancel leaves the red thread.' : 'The preview shows here: the lines as they would be exported, the weight per file and the cases.',
+      L.proposal?.kind === 'settle' ? 'Pick a slot: the lines as they would be exported show here before you seal. Cancel leaves the red thread.' : 'The preview shows here: the lines as they would be exported, the tokens per file and the cases.',
   };
   return part === 'result' ? resultPart(L.preview, ctx) : detailPart(L.preview, ctx);
 }
@@ -765,7 +765,7 @@ function resultPart(pv: ChangePreviewView | null, ctx: PreviewCtx): HTMLElement 
   if (pv.lines.length) root.append(sect('Exported after the seal', el('ul', 'pl-campfire-lines', ...pv.lines.map((l) => lineRow(l.text, ctx.title(l.id), l.text === null, l.files)))));
   root.append(
     sect(
-      'Weight',
+      'Token budget',
       el('table', 'pl-campfire-weights', el('tbody', '', ...M.weightRows(pv.ghost).filter((r) => pv.changed.length === 0 || pv.changed.includes(r.file as never)).map((r) => el('tr', '', el('th', '', r.file), el('td', 'pl-campfire-mono', r.span), el('td', 'pl-campfire-delta', el('span', 'pl-campfire-mono', r.delta), ' ', el('span', 'pl-campfire-est', r.estimated)))))),
     ),
     sect(

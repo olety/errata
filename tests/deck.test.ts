@@ -70,7 +70,7 @@ describe('weight', () => {
     expect(b.noGrowth).toBe(true);
     expect(b.allowance).toBe(weigh(big).total);
     const grown = renderGlobal(parseGlobal(big), [line('r_1', 'one more rule')]);
-    expect(fitProblem(big, grown)).toContain('allowance');
+    expect(fitProblem(big, grown)).toContain('token budget');
     expect(fitProblem(big, grown, weigh(grown).total)).toBeNull();
   });
 });

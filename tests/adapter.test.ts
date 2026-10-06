@@ -77,8 +77,8 @@ describe('room 1 on the sample', () => {
     const beast = A.selectDrag(s, id, { kind: 'beast' });
     expect(beast.verb).toBe('play');
     expect(beast.heads.every((h) => h.glow)).toBe(true);
-    expect(beast.ghost.claude.text).toBe('+46 line · +22 block header (the one-time marker lines)');
-    expect(beast.ghost.codex.text).toBe('+46 line · +23 block header (the one-time marker lines)');
+    expect(beast.ghost.claude.text).toBe('+46 tok (+22 header, once)');
+    expect(beast.ghost.codex.text).toBe('+46 tok (+23 header, once)');
     expect([beast.ghost.claude.before, beast.ghost.claude.after, beast.ghost.codex.before, beast.ghost.codex.after]).toEqual([104, 172, 33, 102]);
     expect(beast.line!.files).toEqual(['CLAUDE.md', 'AGENTS.md']);
     expect(beast.accepts.length).toBe(3);

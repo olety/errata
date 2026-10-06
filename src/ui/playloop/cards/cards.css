@@ -169,6 +169,10 @@
 /* At S the overview drops provenance (it stays in the inspector) and gives the room line both rows. */
 .pl-cards-S .pl-cards-foot.has-room .pl-cards-prov { display: none; }
 .pl-cards-S .pl-cards-room > span:first-child { grid-column: 1 / -1; }
+/* P4: a play that brings the block header shows "+46 tok · +22 once" on the second row; the provenance yields (it
+   stays in the inspector), so the footer keeps its two rows inside the fixed box at every size. */
+.pl-cards-foot.has-cost .pl-cards-prov { display: none; }
+.pl-cards-cost { grid-column: 1 / -1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--pl-cards-ink); font-variant-numeric: tabular-nums; }
 
 /* The external Inspect control: 44 px hit area outside the face, a small paper badge inside it */
 .pl-cards-card .pl-cards-inspect,

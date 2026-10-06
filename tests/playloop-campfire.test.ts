@@ -279,7 +279,7 @@ describe('on the sample, through the controller', () => {
     expect(p).toMatchObject({ kind: 'fuse', editing: false, top: uv.members[1], under: uv.members[0], members: uv.members });
     expect(q).toEqual({ threadId: uv.id });
     expect(pv!.cases.text).toBe('cases answered by the whole deck: 3 → 3 (this change affects 0)');
-    expect(pv!.ghost.claude.text).toBe('−19');
+    expect(pv!.ghost.claude.text).toBe('−19 tok');
     expect(seal.call).toEqual({ kind: 'fuse', threadId: uv.id, text: uv.autoText! });
     M.runSeal(c.api, seal.call!);
     expect(c.ui.pending).toBeNull();
@@ -346,7 +346,7 @@ describe('on the sample, through the controller', () => {
     c.api.drop(card.id, { kind: 'book-retarget', lane: 'codex' });
     const { p, preview: pv, seal } = pipeline(c);
     expect(p).toEqual({ kind: 'retarget', cardId: card.id, targets: 'both', from: 'book' });
-    expect(pv!.ghost.codex.text).toBe('+46 line · +23 block header (the one-time marker lines)');
+    expect(pv!.ghost.codex.text).toBe('+46 tok (+23 header, once)');
     M.runSeal(c.api, seal.call!);
     expect(fire(c).lanes.both.map((k) => k.id)).toContain(card.id);
   });

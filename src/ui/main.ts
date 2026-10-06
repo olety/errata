@@ -310,7 +310,7 @@ function material(cls: string, sky: Child[], wood: Child[]): HTMLElement {
   return page;
 }
 
-/** One book lying closed on the wood: its strap at the file's real weight once read, else "not read yet". */
+/** One book lying closed on the wood: its strap at the file's real token count once read, else "not read yet". */
 function closedBook(name: string, path: string, bytes: Uint8Array | null | undefined, tilt: string, unread: string): HTMLElement {
   let strap: HTMLElement;
   let fig: HTMLElement;
@@ -323,7 +323,7 @@ function closedBook(name: string, path: string, bytes: Uint8Array | null | undef
     const allowance = budgetFor(bytes).allowance;
     const t = strapText(now, allowance);
     strap = h('div', { class: `mt-strap${now > allowance ? ' is-over' : ''}` }, h('i', { style: `width:${Math.min(100, Math.round((now / Math.max(allowance, now, 1)) * 1000) / 10)}%` }));
-    fig = h('p', { class: 'mt-book-fig' }, h('span', {}, bytes === null ? 'no file yet: it starts empty' : t.weight), h('span', {}, t.left));
+    fig = h('p', { class: 'mt-book-fig' }, h('span', {}, bytes === null ? `${t.title}: no file yet, it starts empty` : t.title), h('span', {}, t.used));
   }
   const b = h('div', { class: `mt-book ${tilt}`, role: 'img', 'aria-label': `${name}, closed: ${fig.textContent}` }, h('span', { class: 'mt-book-name' }, name), h('span', { class: 'mt-book-path' }, path), strap, fig);
   return b;
@@ -549,7 +549,7 @@ function viewMirror(): HTMLElement {
         ),
       ),
       h('dl', { class: 'mt-counts' }, ...mirrorRows(m).map(([k, v], i) => h('div', { class: `mt-slip mt-count ${['tilt-a', 'tilt-b', 'tilt-c', ''][i % 4]}` }, h('dt', {}, k), h('dd', {}, v)))),
-      S.mode === 'real' && !S.dirs.codexLoaded && hasFSA && h('div', { class: 'mt-slip mt-privacy' }, h('p', {}, 'Optional: load AGENTS.md now so its weight and any disagreements show during the act. Read only; write access is asked at Apply.'), h('button', { onclick: () => void readCodexHome() }, 'Choose ~/.codex')),
+      S.mode === 'real' && !S.dirs.codexLoaded && hasFSA && h('div', { class: 'mt-slip mt-privacy' }, h('p', {}, 'Optional: load AGENTS.md now so its token budget and any disagreements show during the act. Read only; write access is asked at Apply.'), h('button', { onclick: () => void readCodexHome() }, 'Choose ~/.codex')),
     ],
   );
 }

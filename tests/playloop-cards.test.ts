@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { newDeck } from '../src/deck/deck';
 import * as A from '../src/ui/playloop/adapter';
 import type { Bands, CardView, DragPreview, RoomView } from '../src/ui/playloop/contract';
-import { COPY, footerText } from '../src/ui/playloop/contract';
+import { COPY, costText, footerText } from '../src/ui/playloop/contract';
 import { signedDelta, strapGeom } from '../src/ui/playloop/cards/books';
 import { CARD_BOX, faceText, footerParts } from '../src/ui/playloop/cards/card';
 import { cardArt, fig, splitCode } from '../src/ui/playloop/cards/dom';
@@ -56,6 +56,10 @@ function sampleCards(): { drafts: CardView[]; all: CardView[] } {
     const stress: CardView = { ...c, id: `${c.id}-stress`, weight: 999, provenance: 'seen in 12 sessions', footer: { eligible: 12, newly: 12, text: footerText(12, 12) } };
     drafts.set(`${stress.id}:${stress.footer!.text}`, stress);
     all.set(`${stress.id}:${stress.footer!.text}`, stress);
+    // P4: the widest header cost the face can carry ("+999 tok · +222–223 once") under the widest room line.
+    const costly: CardView = { ...stress, id: `${c.id}-cost`, cost: { text: costText(999, [222, 223])!, files: [], markers: [] } };
+    drafts.set(`${costly.id}:${costly.footer!.text}`, costly);
+    all.set(`${costly.id}:${costly.footer!.text}`, costly);
   }
   return { drafts: [...drafts.values()], all: [...all.values()] };
 }
@@ -666,7 +670,7 @@ window.__done = true;
   );
 
   test.skipIf(!have)(
-    "a Skill's inspector shows its SKILL.md first lines and its estimate outside the allowance",
+    "a Skill's inspector shows its SKILL.md first lines and its estimate outside the token budget",
     async () => {
       let s = fresh();
       for (let i = 0; i < 20 && A.currentNode(s)?.kind !== 'workshop'; i++) {
@@ -697,7 +701,7 @@ window.__done = true;
       });
       const sk = view.kind === 'card' ? view.card.inspector.skill! : null;
       expect(r.pre).toBe(sk!.firstLines.join('\n'));
-      expect(r.text).toContain(`+${sk!.estimate} estimated · outside the allowance`);
+      expect(r.text).toContain(`+${sk!.estimate} estimated · outside the token budget`);
     },
     60_000,
   );

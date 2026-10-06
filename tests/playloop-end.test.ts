@@ -329,8 +329,8 @@ describe('Apply', () => {
     expect(plan.lines).toBe(v.summary.lines);
     expect(plan.operations).toEqual(['4 added', '1 fused']);
     expect(plan.files).toEqual([
-      { file: 'CLAUDE.md', text: '104 → 1,350 of 1,500 · estimated', raised: 'allowance raised to 1,500 by you' },
-      { file: 'AGENTS.md', text: '33 → 96 of 1,200 · estimated', raised: null },
+      { file: 'CLAUDE.md', text: '104 → 1,350 of 1,500 tokens used · estimated', raised: 'budget raised to 1,500 by you' },
+      { file: 'AGENTS.md', text: '33 → 96 of 1,200 tokens used · estimated', raised: null },
     ]);
     expect(plan.openCount).toBe(v.summary.openCount);
   });

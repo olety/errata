@@ -2,7 +2,7 @@
 // the hand, the books, the piles, the campfire's lanes and the boss's answer cards.
 // Import from ../contract only. Never the adapter or the engine.
 import type { CardView, DropBinder } from '../contract';
-import { COPY } from '../contract';
+import { BLOCK_HEADER_WHY, COPY } from '../contract';
 import { ART_FOCUS, asset, button, cardArt, el, ImportedEmblem, inline, Sigil, svg, TypeGlyph } from './dom';
 import './cards.css';
 
@@ -58,7 +58,7 @@ export function Card(p: CardProps): HTMLElement {
   root.setAttribute('role', 'button');
   root.tabIndex = 0;
   root.setAttribute('aria-pressed', String(p.selected));
-  root.setAttribute('aria-label', `Card: ${c.face.title}. ${c.face.summary}. ${c.inFiles.length ? `Weighs` : `Adds`} ${c.weight} tokens, ${COPY.estimated}.${c.footer ? ` ${c.footer.text}.` : ''} ${c.provenance}.`);
+  root.setAttribute('aria-label', `Card: ${c.face.title}. ${c.face.summary}. ${c.inFiles.length ? `Uses` : `Adds`} ${c.weight} tokens, ${COPY.estimated}.${c.footer ? ` ${c.footer.text}.` : ''}${c.cost ? ` ${c.cost.text}: the header's marker lines are paid once per file.` : ''} ${c.provenance}.`);
   if (p.onActivate) {
     root.addEventListener('keydown', (e) => {
       if (e.target !== root || (e.key !== 'Enter' && e.key !== ' ')) return;
@@ -104,6 +104,15 @@ export function Card(p: CardProps): HTMLElement {
     const parts = footerParts(p.size === 'S' ? c.footer.text.replace(/^answers (\d+) cases? here/, 'answers $1 here') : c.footer.text);
     foot.append(el('span', `pl-cards-room${parts.length > 1 ? ' is-split' : ''}`, ...parts.map((t, i) => el('span', '', i > 0 ? `· ${t}` : t))));
     foot.classList.add('has-room');
+  }
+  if (c.cost) {
+    // P4 item 2: a play that brings the block header shows its cost on the face ("+46 tok · +22 once"). The footer
+    // keeps two rows in the fixed box, so the provenance yields here (as it does at S) and stays in the inspector.
+    // At S the orb already says the line's tokens; the footer keeps the once-only part ("+22 once").
+    const cost = el('span', 'pl-cards-cost', p.size === 'S' ? c.cost.text.replace(/^\+\d+ tok · /, '') : c.cost.text);
+    cost.title = `${c.cost.files.map((f) => `${f.file}: +${f.line} tok for the line, +${f.header} once for ${BLOCK_HEADER_WHY}`).join('; ')} (tokens, ${COPY.estimated})`;
+    foot.append(cost);
+    foot.classList.add('has-cost');
   }
 
   const face = el('div', 'pl-cards-face', top, art, title, summary, foot, ear);

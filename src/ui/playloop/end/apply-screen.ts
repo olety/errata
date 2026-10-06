@@ -83,7 +83,7 @@ function diffSheet(d: ApplyDiffView): HTMLElement {
     'article',
     `pl-end-diff pl-end-diff-${d.kind}`,
     el('header', 'pl-end-diffhead', el('b', 'pl-end-difflabel', d.label), el('span', 'pl-end-badge', d.kind === 'skill' ? 'Skill body' : 'Global file'), el('span', 'pl-end-path', d.path)),
-    d.weight ? el('p', 'pl-end-weight', `${fmt(d.weight.before)} → ${fmt(d.weight.after)} of ${fmt(d.weight.allowance)} · ${COPY.estimated}`) : null,
+    d.weight ? el('p', 'pl-end-weight', `token budget: ${fmt(d.weight.before)} → ${fmt(d.weight.after)} of ${fmt(d.weight.allowance)} used · ${COPY.estimated}`) : null,
     d.problem ? el('p', 'pl-end-warn', rich(d.problem)) : null,
     d.blocker ? el('p', 'pl-end-warn', rich(d.blocker)) : null,
     lines,
@@ -143,7 +143,8 @@ function sealBox(v: ApplyView, plan: ApplyPlan, p: ScreenProps<ApplyView>, fresh
     const order = fresh.indexOf(s.key);
     const slot = el('div', `pl-end-inkslot pl-end-ink-${s.state}${order >= 0 ? ' pl-end-inking' : ''}`, el('span', 'pl-end-inkmark', s.label), el('small', '', s.state === 'failed' ? `did not verify · ${s.meaning}` : s.state === 'undone' ? `undone · the original bytes are back` : s.meaning));
     if (order >= 0) slot.style.setProperty('--i', String(order));
-    slot.setAttribute('aria-label', `${s.label}: ${s.state}`);
+    slot.title = s.why;
+    slot.setAttribute('aria-label', `${s.label}: ${s.state}. ${s.why}`);
     stamps.append(slot);
   }
   const verified = v.footer !== null;

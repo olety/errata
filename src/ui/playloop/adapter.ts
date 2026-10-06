@@ -265,6 +265,7 @@ function cardView(s: PlayState, c: Card, ctx?: { room: Room; heads: Case[]; unav
   const bytes = c.source ? new TextEncoder().encode(`${c.source.prefix}${c.text}${c.source.eol}`).length : new TextEncoder().encode(`- ${sanitizeLine(c.text)} <!-- deck:${c.id} -->\n`).length;
   const weight = c.source ? Math.ceil(bytes / 3) : lineWeight(c.text, c.id);
   const ex = exportOf(s.deck);
+  const play = ctx?.hand ? dropPreview(s, c, ctx.heads, { kind: 'beast' }) : null;
   let footer: C.CardView['footer'] = null;
   if (ctx) {
     /** Honesty map: "would address" = preview-mode cover count over the room's bared heads (§13), against displayed targets. */
@@ -294,6 +295,7 @@ function cardView(s: PlayState, c: Card, ctx?: { room: Room; heads: Case[]; unav
     exceptions: c.exceptions.map((e) => e.text),
     provenance: provenance(c),
     footer,
+    cost: play ? costOf(s, c, play) : null,
     inFiles: AGENTS.filter((a) => ex[a].has(c.id)),
     inspector: {
       exact: c.text,
@@ -311,8 +313,29 @@ function cardView(s: PlayState, c: Card, ctx?: { room: Room; heads: Case[]; unav
       skill,
       unavailable: ctx?.unavailable ?? [],
     },
-    playPreview: ctx?.hand ? dropPreview(s, c, ctx.heads, { kind: 'beast' }) : null,
+    playPreview: play,
   };
+}
+
+/**
+ * Honesty map: header cost = the beast drop's ghost per lane, blockHeader > 0 (weightPreview's split, P4 item 2); the
+ * markers = the rendered file's new lines that are not the card's bullet (renderLanes before and after the play).
+ */
+function costOf(s: PlayState, card: Card, pv: C.DragPreview): C.CardView['cost'] {
+  if (pv.refused || !pv.line) return null;
+  const lanes = AGENTS.filter((a) => pv.ghost[a].blockHeader > 0);
+  const text = lanes.length ? C.costText(pv.ghost[lanes[0]!].line, lanes.map((a) => pv.ghost[a].blockHeader)) : null;
+  if (!text) return null;
+  const dest = AGENTS.filter((a) => pv.line!.files.includes(C.FILE_OF[a]));
+  const targets: Targets = dest.length === 2 ? 'both' : dest[0] ?? card.targets;
+  const before = renderLanes(s.deck);
+  const after = renderLanes(withProposed(s.deck, card, targets));
+  const markers: string[] = [];
+  for (const a of lanes) {
+    const had = new Set(utf8(before[a].next).split('\n'));
+    for (const l of utf8(after[a].next).split('\n')) if (!had.has(l) && /^(<!-- deck:(begin|end)\b|## )/.test(l) && !markers.includes(l)) markers.push(l);
+  }
+  return { text, files: lanes.map((a) => ({ file: C.FILE_OF[a], line: pv.ghost[a].line, header: pv.ghost[a].blockHeader })), markers };
 }
 
 /** The art plate by family (decoration only, §13 "not data"; P3: one plate per family, imported lines an inked book). */
@@ -902,7 +925,7 @@ export function selectCampfire(s: PlayState): C.CampfireView {
       /** Honesty map: checks 2–7 against the pinned case, conditional eligibility only (§0a "More fun" 2). */
       return bossTally(s.deck, [c], []).heads[0]!.candidates.map((k) => ({ cardId: k.cardId, glow: k.eligible, reason: k.failing ? C.bossReason(k.failing.check, k.failing.tri, { agent: c.agent, project: c.projectLabel }) : null }));
     })(),
-    coach: over ? 'A file is over its allowance. Apply waits until it fits: merge, shorten, cut, or move a procedure into a Skill.' : null,
+    coach: over ? 'A file is over budget. Apply waits until it fits: merge, shorten, cut, or move a procedure into a Skill.' : null,
     route: selectRoute(s),
     status: selectStatus(s),
   };
@@ -1009,7 +1032,7 @@ export function selectChangePreview(
 }
 
 /** Why a sealed line refuses every campfire change. */
-export const SEALED = 'Protected text stays as it is: it weighs, and it can be neither merged nor cut.';
+export const SEALED = 'Protected text stays as it is: it counts toward the token budget, and it can be neither merged nor cut.';
 
 function campfireDrag(s: PlayState, cardId: string, target: C.DragTarget, none: C.DragPreview): C.DragPreview {
   const present = presentCards(s.deck);
@@ -1414,7 +1437,7 @@ export function selectApply(s: PlayState, port?: Pick<ApplyPort, 'needs' | 'canW
   }
   const blockers: C.ApplyBlockerView[] = [];
   const L = renderLanes(s.deck, s.raised);
-  for (const a of AGENTS) if (L[a].after.total > L[a].allowance) blockers.push({ kind: 'clasp', text: `${C.FILE_OF[a]} weighs ${L[a].after.total} of ${L[a].allowance} (estimated).`, select: { lane: a } });
+  for (const a of AGENTS) if (L[a].after.total > L[a].allowance) blockers.push({ kind: 'clasp', text: `${C.FILE_OF[a]} is ${C.overBudgetText(L[a].after.total, L[a].allowance)}: ${L[a].after.total.toLocaleString('en-US')} of ${L[a].allowance.toLocaleString('en-US')} tokens used (estimated).`, select: { lane: a } });
   for (const c of conflicts(s.deck)) blockers.push({ kind: 'conflict', text: c.text, select: { threadId: c.id } });
   if (needs.claude || needs.codex) blockers.push({ kind: 'grant', text: 'Choose the folders that hold your two files to see the diff.', select: null });
   if (t) for (const p of t.problems) blockers.push({ kind: 'lane', text: p, select: null });

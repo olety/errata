@@ -2,7 +2,7 @@
 // approval and editing; and the draft comparison (two playPreviews on the same proposal, side by side).
 // Import from ../contract only. Never the adapter or the engine.
 import type { Agent, CardView, ChangePreviewView, ControllerApi, DragPreview, InspectorView, MappingReviewView, ReadingView, ReceiptView, Targets } from '../contract';
-import { AGENT_NAME, COPY, FILE_OF } from '../contract';
+import { AGENT_NAME, BLOCK_HEADER_LONG, COPY, FILE_OF } from '../contract';
 import { button, el, fig, inline, Sigil } from './dom';
 import './cards.css';
 
@@ -70,6 +70,7 @@ function CardBody(c: CardView, v: Extract<InspectorView, { kind: 'card' }> | nul
       ]),
       el('p', 'pl-cards-weightmath', el('span', 'pl-cards-mono', i.weightMath)),
       ...WeightSums(c),
+      ...HeaderNote(c),
     ),
   );
 
@@ -82,7 +83,7 @@ function CardBody(c: CardView, v: Extract<InspectorView, { kind: 'card' }> | nul
       Section(
         'SKILL.md',
         el('pre', 'pl-cards-skill', i.skill.firstLines.join('\n')),
-        el('p', 'pl-cards-insp-note', el('span', 'pl-cards-mono', `+${fig(i.skill.estimate)}`), ` ${COPY.estimated} · outside the allowance`),
+        el('p', 'pl-cards-insp-note', el('span', 'pl-cards-mono', `+${fig(i.skill.estimate)}`), ` ${COPY.estimated} · outside the token budget`),
       ),
     );
   }
@@ -121,6 +122,24 @@ function WeightSums(c: CardView): HTMLElement[] {
     const parts = [`${fig(x.line)} line`, x.blockHeader ? `${fig(x.blockHeader)} block header (the one-time marker lines)` : null, x.other ? `${fig(x.other)} ${Math.abs(x.other) <= 2 ? 'rounding' : 'other text'}` : null].filter((t): t is string => !!t);
     return el('p', 'pl-cards-weightmath', el('b', '', FILE_OF[a]), ' ', el('span', 'pl-cards-mono', `${parts.join(' + ')} = ${x.delta > 0 ? '+' : ''}${fig(x.delta)} tok`), ` (${fig(x.before)} → ${fig(x.after)}, ${COPY.estimated})`, x.other && Math.abs(x.other) <= 2 ? el('span', 'pl-cards-insp-note', ' Rounding: each block of the file is rounded up to whole tokens on its own, so the parts can differ from the sum by a token.') : null);
   });
+}
+
+/**
+ * Why a first line costs more (P4 item 2): the managed block's marker lines, paid once per file, said in words with the
+ * cost the face shows. Shown when the play adds the header to a file.
+ */
+function HeaderNote(c: CardView): HTMLElement[] {
+  if (!c.cost) return [];
+  return [
+    el(
+      'p',
+      'pl-cards-insp-note pl-cards-headernote',
+      el('b', '', c.cost.text),
+      ` (${c.cost.files.map((f) => `${f.file} +${fig(f.header)} once`).join(' · ')}). ${BLOCK_HEADER_LONG}`,
+      c.cost.markers.length ? ' This play adds: ' : '',
+      ...c.cost.markers.flatMap((m, i) => [i ? ' · ' : '', el('code', '', m)]),
+    ),
+  ];
 }
 
 function MappingRow(m: MappingReviewView, api: ControllerApi, inProposal: boolean): HTMLElement {

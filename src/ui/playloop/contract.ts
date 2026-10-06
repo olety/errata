@@ -157,7 +157,7 @@ export type CardArt = 'wyrm' | 'retry' | 'scope' | 'moth' | 'verify' | 'imported
 
 export interface CardView {
   id: string;
-  /** protected = sealed protected text (a wax lock): it weighs, and it can be neither stacked nor cut. */
+  /** protected = sealed protected text (a wax lock): it counts toward the budget, and it can be neither stacked nor cut. */
   type: 'rule' | 'skill' | 'protected' | 'trait';
   /** Sealed protected text (the Notes block): kept byte-for-byte, never a stack, fire or settle target. */
   sealed: boolean;
@@ -175,6 +175,12 @@ export interface CardView {
   provenance: string;
   /** Rooms only: "answers n cases here" (footerText), counted against the card's displayed targets. */
   footer: { eligible: number; newly: number; text: string } | null;
+  /**
+   * Hand cards only, when a play on the beast would add the managed block header to a file (P4 item 2): "+46 tok ·
+   * +22 once" (costText) and, per file that gains the header, the line's and the header's tokens, and the exact marker
+   * lines the play adds (the begin and end comments, a section heading). Null otherwise.
+   */
+  cost: { text: string; files: { file: FileName; line: number; header: number }[]; markers: string[] } | null;
   /** The files that carry this card in the proposal now (empty for a draft). */
   inFiles: Agent[];
   inspector: CardInspectorView;
@@ -192,7 +198,7 @@ export interface GhostDelta {
   line: number;
   blockHeader: number;
   other: number;
-  /** "+46 line · +22 block header", "−15", or "no change"; always with COPY.estimated beside it. */
+  /** "+46 tok (+22 header, once)", "−15 tok", or "no change" (ghostText); always with COPY.estimated beside it. */
   text: string;
 }
 
@@ -459,7 +465,7 @@ export interface CampfireView {
   pinned: OpenPageView | null;
   /** Checks 2–7 of every deck card against the pinned case: conditional eligibility, never coverage. Empty when none. */
   pinnedCandidates: BossCandidateView[];
-  /** "A file is over its allowance. Apply waits until it fits." when a clasp is open, else null. */
+  /** "A file is over budget. Apply waits until it fits." when a clasp is open, else null. */
   coach: string | null;
   route: RouteView;
   status: StatusView;
@@ -803,21 +809,36 @@ export function overflowText(more: number, bound: number, unreviewed: number): s
 
 const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');
 
-/** What the block header is, said once beside its figure (P3 gate fix 9). */
+/** What the block header is, said once in the inspector beside its figure (P3 gate fix 9, P4 item 2). */
 export const BLOCK_HEADER_WHY = 'the one-time marker lines';
 
+/** The inspector's sentence on the header cost: why a first line costs more than the next (P4 item 2). */
+export const BLOCK_HEADER_LONG =
+  "The first of the game's lines in a file brings the managed block's marker lines: its begin and end comments and a section heading. The first Skill pointer brings its own heading. Each is paid once per file; later lines add only their own tokens.";
+
 /**
- * "+46 line · +22 block header (the one-time marker lines)", "+46", "−15"; the caller prints "tok" and COPY.estimated
- * beside it. The remainder is named: per-block rounding when it is a token or two, else the other text that changed
- * (P3 gate fix 13).
+ * The ghost while dragging (P4 item 1): "+46 tok (+22 header, once)", "+46 tok", "−15 tok", "+60 tok · −1 rounding".
+ * The line's own tokens lead; the block header is named as paid once; a remainder is per-block rounding when it is a
+ * token or two, else the other text that changed (P3 gate fix 13). Every figure is estimated; the caller says so.
  */
 export function ghostText(g: Pick<GhostDelta, 'delta' | 'line' | 'blockHeader' | 'other'>): string {
   if (g.delta === 0 && g.line === 0 && g.blockHeader === 0 && g.other === 0) return 'no change';
-  const parts: string[] = [];
-  if (g.line !== 0) parts.push(`${signed(g.line)} line`);
-  if (g.blockHeader !== 0) parts.push(`${signed(g.blockHeader)} block header (${BLOCK_HEADER_WHY})`);
-  if (g.other !== 0) parts.push(`${signed(g.other)} ${Math.abs(g.other) <= 2 ? 'rounding' : 'other text'}`);
-  return parts.length > 1 ? parts.join(' · ') : signed(g.delta);
+  if (g.line === 0 && g.blockHeader === 0) return `${signed(g.delta)} tok`;
+  const head = g.blockHeader !== 0 ? ` (${signed(g.blockHeader)} header, once)` : '';
+  const other = g.other !== 0 ? ` · ${signed(g.other)} ${Math.abs(g.other) <= 2 ? 'rounding' : 'other text'}` : '';
+  return `${signed(g.line)} tok${head}${other}`;
+}
+
+/**
+ * A dealt card's cost when its play would add the managed block header to a file (P4 item 2): "+46 tok · +22 once",
+ * or "+46 tok · +22–23 once" when the files' headers differ by rounding. Null when no file gains a header.
+ */
+export function costText(line: number, headers: readonly number[]): string | null {
+  const h = headers.filter((x) => x > 0);
+  if (!h.length) return null;
+  const lo = Math.min(...h);
+  const hi = Math.max(...h);
+  return `+${line} tok · ${lo === hi ? `+${lo}` : `+${lo}–${hi}`} once`;
 }
 
 /** "cases answered by the whole deck: 3 → 3 (this change affects 0)" (§0a.9, P3 gate fix 11). */
@@ -825,11 +846,33 @@ export function casesText(affected: number, before: number, after: number): stri
   return `cases answered by the whole deck: ${before} → ${after} (this change affects ${affected})`;
 }
 
-/** The strap's two lines (P3 gate fix 2): "file weight 104 of 1,200 tok" and "room left 1,096" or "over the allowance by 30". */
-export function strapText(now: number, allowance: number): { weight: string; left: string } {
-  const f = (n: number) => n.toLocaleString('en-US');
-  return { weight: `file weight ${f(now)} of ${f(allowance)} tok`, left: now > allowance ? `over the allowance by ${f(now - allowance)}` : `room left ${f(allowance - now)}` };
+/** The budget word on every label (P4 item 1): the strap, the clasp, the end screen and the Fits stamp. */
+export const BUDGET = 'token budget';
+
+/** "over budget by 30" when a file is over its budget, else null (the open clasp, the strap, the end screen). */
+export function overBudgetText(now: number, allowance: number): string | null {
+  return now > allowance ? `over budget by ${(now - allowance).toLocaleString('en-US')}` : null;
 }
+
+/**
+ * The strap's two lines (P4 item 1): "token budget" and "104 of 1,200 used · 1,096 left", or
+ * "1,230 of 1,200 used · over budget by 30". Never a bare fraction, never a word that reads as health.
+ */
+export function strapText(now: number, allowance: number): { title: string; used: string } {
+  const f = (n: number) => n.toLocaleString('en-US');
+  const left = overBudgetText(now, allowance) ?? `${f(allowance - now)} left`;
+  return { title: BUDGET, used: `${f(now)} of ${f(allowance)} used · ${left}` };
+}
+
+/** The Fits stamp on the end screen (P4 item 1): "both files within budget", or "CLAUDE.md over budget by 30". */
+export function fitsText(files: readonly { file: string; now: number; allowance: number }[]): string {
+  const over = files.filter((f) => f.now > f.allowance);
+  if (!over.length) return files.length === 1 ? `${files[0]!.file} within budget` : 'both files within budget';
+  return over.map((f) => `${f.file} ${overBudgetText(f.now, f.allowance)}`).join(' · ');
+}
+
+/** The Fits stamp's inspector line (P4 item 1). */
+export const FITS_WHY = 'within the budget you chose';
 
 /** The provenance seal in words (P3 gate fix 6): "seen once", "seen in 3 sessions", "seen passing in 2 sessions". */
 export function provenanceText(kind: 'imported' | 'workflow' | 'other', sessions: number): string {

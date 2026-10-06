@@ -221,7 +221,7 @@ export function fitProblem(original: Uint8Array | null, next: Uint8Array, raised
   const allowance = Math.max(b.allowance, raisedAllowance ?? 0);
   const w = weigh(next).total;
   if (next.length > MAX_FILE_BYTES) return `The file would be ${next.length} bytes; the limit is ${MAX_FILE_BYTES}.`;
-  if (w > allowance) return `The file would weigh ${w} tokens (estimated); the allowance is ${allowance}.`;
+  if (w > allowance) return `The file would use ${w} tokens (estimated), over its token budget of ${allowance}.`;
   return null;
 }
 

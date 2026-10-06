@@ -135,3 +135,13 @@ Each field below has a test in `tests/playloop-p3.test.ts`, `tests/playloop-cont
 | `ApplyView.remember`, `api.apply.remember(on)`, `ApplyPort.canWrite/remember/remembered`, `applyRecord` | The second visit: keep the receipt and the stable line ids (and, in the app, the folder grants) only on the player's click. |
 | `DragHooks.onTap(cardId, under)`, `targetLabel` | A tap on another card while one is selected stacks it when that card is a target; every drop target is a named button for assistive tech and the keyboard. |
 | `CardProps.onActivate` | Cards are focusable buttons; Enter or Space selects (or stacks at the fire). |
+
+## P4 additions (lead, 2026-10-07, the freeze leg)
+
+Each field below has a test in `tests/playloop-p4.test.ts`.
+
+| Field, act or selector | What it is |
+|---|---|
+| `strapText` → `{ title, used }`, `BUDGET`, `overBudgetText`, `fitsText`, `FITS_WHY` | Every budget label says budget: the strap reads "token budget" over "104 of 1,200 used · 1,096 left"; the open clasp "over budget by 30"; the end screen "both files within budget" or "CLAUDE.md over budget by 30"; the Fits stamp's title "Fits: within the budget you chose · …". No UI string says weight, weighs or allowance (a source sweep in the test). |
+| `ghostText` | The ghost while dragging: "+46 tok (+22 header, once)", "−19 tok", "+60 tok · −1 rounding". |
+| `CardView.cost`, `costText`, `BLOCK_HEADER_LONG` | Hand cards whose play adds the managed block header: "+46 tok · +22–23 once" on the footer's second row (the provenance yields there, as at S), per-file figures, and the exact marker lines the play adds, which the inspector names. |
