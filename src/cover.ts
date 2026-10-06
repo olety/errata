@@ -123,3 +123,57 @@ export function coverage(cards: readonly Card[], cases: readonly Case[], exporte
   for (const v of groups.values()) if (v) addressed++;
   return { addressed, confirmed: groups.size, byCase };
 }
+
+// ------------------------------------------------------------------ preview mode (play-loop §14.4, §0a.2)
+
+/** The checks a drag preview evaluates, in order: check 1, then 3 to 7. Checks 2 and 8 are treated as true. */
+export const PREVIEW_CHECKS = ['confirmed_issue', 'targets_agent', 'scope_matches', 'trigger_true', 'response_eligible', 'exceptions_clear'] as const;
+export type PreviewCheck = (typeof PREVIEW_CHECKS)[number];
+
+export interface CoverPreview {
+  /** Check 1 and checks 3 to 7 are all true: the head glows. Conditional eligibility, never coverage. */
+  eligible: boolean;
+  /** The first failing check in PREVIEW_CHECKS order, with its value; null when eligible. */
+  failing: { check: PreviewCheck; tri: Tri } | null;
+  checks: Record<PreviewCheck, Tri>;
+}
+
+/**
+ * Preview-mode cover for a drag over a target. `target` is the card's targets as the drop would leave them, and
+ * `prospective` is the export map rendered with the card added for that target. Check 3 holds only when those targets
+ * include the case's agent and the rendered proposal really carries the card to that agent (a blocked lane does not).
+ * Checks 4 to 7 are the ordinary checks. Check 1 is evaluated and an unknown disposition is never true ("read first").
+ * Checks 2 and 8 are treated as true: the drop is what adds the card and accepts the mapping. Nothing here binds;
+ * the real cover() is the only path to a bind.
+ */
+export function coverPreview(card: Card, c: Case, prospective: ExportMap, target: Card['targets']): CoverPreview {
+  const k: Card = card.targets === target ? card : { ...card, targets: target };
+  const full = cover(k, c, prospective);
+  const reaches = full.checks.targets_agent === 'true' && k.type !== 'trait' && prospective[c.agent].has(k.id);
+  const checks: Record<PreviewCheck, Tri> = {
+    confirmed_issue: full.checks.confirmed_issue,
+    targets_agent: reaches ? 'true' : 'false',
+    scope_matches: full.checks.scope_matches,
+    trigger_true: full.checks.trigger_true,
+    response_eligible: full.checks.response_eligible,
+    exceptions_clear: full.checks.exceptions_clear,
+  };
+  const first = PREVIEW_CHECKS.find((x) => checks[x] !== 'true');
+  return { eligible: first === undefined, failing: first ? { check: first, tri: checks[first] } : null, checks };
+}
+
+/**
+ * The Open pile (§0a.7): the ids of confirmed cases that no card in the proposed export covers. A pure function of the
+ * deck and the reviewed cases, so it is a set by construction: re-entering a room, a boss strike or a second cut can
+ * never add a page twice. Input order is kept.
+ */
+export function openCases(cards: readonly Card[], cases: readonly Case[], exported: ExportMap): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const c of cases) {
+    if (c.disposition !== 'issue' || seen.has(c.id)) continue;
+    seen.add(c.id);
+    if (!cards.some((k) => cover(k, c, exported).covers)) out.push(c.id);
+  }
+  return out;
+}

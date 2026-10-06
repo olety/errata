@@ -47,3 +47,26 @@ export async function sliceFixtures(): Promise<Session[]> {
 export async function allFixtures(): Promise<Session[]> {
   return Promise.all([...Object.values(CC), ...Object.values(CX)].map(fixture));
 }
+
+// ------------------------------------------------------------------ the synthetic sample through the real pipeline
+import { readFileSync } from 'node:fs';
+import { analyse, type Analysis } from '../src/pipeline';
+import { newDeck } from '../src/deck/deck';
+
+export const SAMPLE_ROOT = join(import.meta.dir, '..', 'public', 'sample');
+export interface SampleManifest {
+  sessions: { session: string; file: string; agent: 'claude' | 'codex'; project: string }[];
+  expected_outcomes: { session: string; expects: Record<string, unknown> }[];
+}
+export const sampleManifest = (): SampleManifest => JSON.parse(readFileSync(join(SAMPLE_ROOT, 'manifest.json'), 'utf8'));
+export const sampleClaudeMd = () => new Uint8Array(readFileSync(join(SAMPLE_ROOT, 'home/.claude/CLAUDE.md')));
+export const sampleAgentsMd = () => new Uint8Array(readFileSync(join(SAMPLE_ROOT, 'home/.codex/AGENTS.md')));
+
+/** The sample analysed as the app does it, with a session-id → "S01" label map. */
+export async function sampleAnalysis(): Promise<Analysis & { labels: Map<string, string> }> {
+  const m = sampleManifest();
+  const sessions: Session[] = [];
+  for (const s of m.sessions) sessions.push(await parseSessionFile({ rel: s.file.replace(/^home\/\.(?:claude|codex)\//, ''), blob: Bun.file(join(SAMPLE_ROOT, s.file)) }));
+  const A = analyse(sessions, { importedCards: newDeck(sampleClaudeMd(), sampleAgentsMd()).imported.length });
+  return Object.assign(A, { labels: new Map(m.sessions.map((s, i) => [sessions[i]!.id, s.session])) });
+}

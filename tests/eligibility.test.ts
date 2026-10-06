@@ -1,15 +1,12 @@
 // Per-case eligible responses from observed facts (play-loop §14.1) and the withheld cases kept out of everything the
 // player sees before the boss (§0a.12, §14.7).
 import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import type { Session } from '../src/model';
-import { parseLines, parseSessionFile } from '../src/parse/index';
+import { parseLines } from '../src/parse/index';
 import { detectEpisodes } from '../src/episodes';
-import { analyse } from '../src/pipeline';
 import { buildRooms, caseFor, eligibleKeys, ineligibility } from '../src/rooms';
 import { draftCards } from '../src/deck/templates';
-import { newDeck } from '../src/deck/deck';
+import { sampleAnalysis, sampleManifest } from './helpers';
 
 type Row = Record<string, unknown>;
 function claude(n: number, rows: (row: (o: object) => string, ts: (m: number) => string) => string[]): Session {
@@ -90,15 +87,7 @@ describe('per-case eligibility from observed facts', () => {
   });
 });
 
-const ROOT = join(import.meta.dir, '..', 'public', 'sample');
-const manifest = JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8')) as { sessions: { session: string; file: string }[]; expected_outcomes: { session: string; expects: Record<string, unknown> }[] };
-async function sampleAnalysis() {
-  const sessions: Session[] = [];
-  for (const m of manifest.sessions) sessions.push(await parseSessionFile({ rel: m.file.replace(/^home\/\.(?:claude|codex)\//, ''), blob: Bun.file(join(ROOT, m.file)) }));
-  const claudeMd = readFileSync(join(ROOT, 'home/.claude/CLAUDE.md'));
-  const agentsMd = readFileSync(join(ROOT, 'home/.codex/AGENTS.md'));
-  return Object.assign(analyse(sessions, { importedCards: newDeck(claudeMd, agentsMd).imported.length }), { labels: new Map(manifest.sessions.map((m, i) => [sessions[i]!.id, m.session])) });
-}
+const manifest = sampleManifest();
 
 describe('withheld cases stay out until the boss (§14.7)', () => {
   test('S12 and S11 never appear in a room, a receipt, an example, a draft or a draft text before the boss', async () => {

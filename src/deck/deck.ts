@@ -6,6 +6,7 @@ import type { Agent } from '../model';
 import type { Card, ExportMap, ResponseKey, Trigger } from './types';
 import { BEGIN, END, parseGlobal, type ProtectedEdit } from './file';
 import { buildLane, CLAUDE_LANE, codexLane, type LaneResult } from './lanes';
+import { cardDigest } from './card';
 import { suggestClaims } from './claims';
 import { shortHash } from './templates';
 import { WORKFLOW_VERIFY } from '../episodes';
@@ -22,10 +23,29 @@ export interface DeckState {
   readonly removedManaged: readonly string[];
   /** Game cards in the proposal (taken drafts, fused results, sharpened managed lines). */
   readonly cards: readonly Card[];
-  /** Red links the player resolved by writing an explicit exception (pair ids "a×b", sorted). */
-  readonly resolvedPairs?: readonly string[];
+  /** Red links the player settled, each keyed to both cards exactly as they were settled (see Settlement). */
+  readonly settlements?: readonly Settlement[];
   /** Imported lines whose suggested mapping the player accepted (for the text as it is now). */
   readonly acceptedImports?: Readonly<Record<string, string>>;
+  /**
+   * Per-case acceptances for imported lines (card id → case id → the digest of the line as accepted). Game cards keep
+   * theirs on the card; imported lines are rebuilt from the files, so theirs live here and merge in presentCards.
+   */
+  readonly importCaseMappings?: Readonly<Record<string, Readonly<Record<string, string>>>>;
+}
+
+/**
+ * A settled red link (§0a.8). The record holds only for the exact pair it was written for: both card ids with their
+ * digests and targets. Any edit to either card, or a new pair, shows the red thread again.
+ */
+export interface Settlement {
+  /** `${id}@${digest}:${targets}` for both cards, sorted, joined by "×". */
+  key: string;
+  /** The two card ids, sorted, joined by "×". */
+  pair: string;
+  kind: 'keep' | 'separate' | 'exception';
+  /** The resulting exported lines: each card's text and the files it lands in (text null for a removed card). */
+  lines: { id: string; text: string | null; files: ('claude' | 'codex')[] }[];
 }
 
 const dec = new TextDecoder();
@@ -166,14 +186,33 @@ export function presentCards(d: DeckState): Card[] {
         const mapped = suggestMapping(x.text);
         x = Object.freeze({ ...x, mappingSuggested: false, trigger: Object.freeze(mapped.trigger), responseKey: mapped.responseKey });
       }
-      out.push(x);
+      out.push(withCaseMappings(d, x));
     } else {
       if (d.removedManaged.includes(c.id) || d.cards.some((g) => g.id === c.id)) continue;
-      out.push(c);
+      out.push(withCaseMappings(d, c));
     }
   }
   out.push(...d.cards);
   return out;
+}
+
+/** An imported line carries the per-case acceptances the player gave it (they hold only while its digest matches). */
+function withCaseMappings(d: DeckState, c: Card): Card {
+  const m = d.importCaseMappings?.[c.id];
+  return m ? Object.freeze({ ...c, acceptedMappings: Object.freeze({ ...c.acceptedMappings, ...m }) }) : c;
+}
+
+/**
+ * The player accepts that one card answers one case, for the card exactly as it is now. Game cards record it on the
+ * card; imported lines record it in the deck. Returns the deck unchanged when the card is not present.
+ */
+export function acceptOnCase(d: DeckState, cardId: string, caseId: string): DeckState {
+  const game = d.cards.find((g) => g.id === cardId);
+  if (game) return withCards(d, d.cards.map((g) => (g.id === cardId ? Object.freeze({ ...g, acceptedMappings: Object.freeze({ ...g.acceptedMappings, [caseId]: cardDigest(g) }) }) : g)));
+  const present = presentCards(d).find((c) => c.id === cardId);
+  if (!present) return d;
+  const prior = d.importCaseMappings ?? {};
+  return Object.freeze({ ...d, importCaseMappings: Object.freeze({ ...prior, [cardId]: Object.freeze({ ...(prior[cardId] ?? {}), [caseId]: cardDigest(present) }) }) });
 }
 
 function protectedEdits(d: DeckState, file: 'claude' | 'codex'): ProtectedEdit[] {
@@ -215,14 +254,23 @@ export function deckExportMap(d: DeckState, lanes: Lanes): ExportMap {
 }
 
 /**
- * Re-read files under an existing deck: keep taken cards, removed managed lines, resolved red links, and every edit
- * whose line still exists (prose ids come from file, text and occurrence, so an unchanged line keeps its id).
+ * Re-read files under an existing deck: keep taken cards, removed managed lines, settlements, accepted mappings, and
+ * every edit whose line still exists (prose ids come from file, text and occurrence, so an unchanged line keeps its
+ * id). Settlements and acceptances are keyed to digests, so any that no longer match simply stop holding.
  */
 export function rebaseDeck(d: DeckState, claude: Uint8Array | null, codex: Uint8Array | null, codexOverride: Uint8Array | null): DeckState {
   const fresh = newDeck(claude, codex, codexOverride);
   const ids = new Set(fresh.imported.map((c) => c.id));
   const edits = Object.fromEntries(Object.entries(d.edits).filter(([id]) => ids.has(id)));
-  return Object.freeze({ ...fresh, edits: Object.freeze(edits), removedManaged: Object.freeze(d.removedManaged.filter((id) => ids.has(id))), cards: d.cards, ...(d.resolvedPairs ? { resolvedPairs: d.resolvedPairs } : {}) });
+  return Object.freeze({
+    ...fresh,
+    edits: Object.freeze(edits),
+    removedManaged: Object.freeze(d.removedManaged.filter((id) => ids.has(id))),
+    cards: d.cards,
+    ...(d.settlements ? { settlements: d.settlements } : {}),
+    ...(d.acceptedImports ? { acceptedImports: d.acceptedImports } : {}),
+    ...(d.importCaseMappings ? { importCaseMappings: d.importCaseMappings } : {}),
+  });
 }
 
 export function withCards(d: DeckState, cards: readonly Card[]): DeckState {

@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { mkdtemp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { applyFuse, conflicts, cutCard, fuseSuggestions, preservedTokens, previewFuse, resolveConflict, sharpen } from '../src/deck/campfire';
+import { applyFuse, previewSettlement, settlementKey, conflicts, cutCard, fuseSuggestions, preservedTokens, previewFuse, resolveConflict, sharpen } from '../src/deck/campfire';
 import { acceptImportMapping, deckExportMap, newDeck, presentCards, rebaseDeck, renderLanes, withCards, withEdit } from '../src/deck/deck';
-import { acceptMapping, cardDigest, setTaken } from '../src/deck/card';
+import { acceptMapping, cardDigest, setTaken, updateCard } from '../src/deck/card';
 import { bytes, text } from '../src/deck/file';
 import type { Card, Case } from '../src/deck/types';
 import { coverage } from '../src/cover';
@@ -151,9 +151,60 @@ describe('conflicts', () => {
     expect(b2.text).not.toContain('In old');
   });
 
-  test('cancel puts a card taken this run back on the shelf; prose alone stays red', () => {
+  test('cancel changes nothing and the red thread stays (§0a.8)', () => {
     const d = files();
     expect(resolveConflict(d, conflicts(d)[0]!, { kind: 'cancel' })).toBe(d);
+    const g = setTaken(Object.freeze({ ...presentCards(d)[0]!, id: 'r_new', family: 'directive', type: 'rule', source: undefined, text: 'Never run the full test suite.', claims: suggestClaims('Never run the full test suite.') }) as Card, true);
+    const withNew = withCards(newDeck(bytes('- Run the full test suite before reporting done.\n'), null), [g]);
+    const red = conflicts(withNew)[0]!;
+    const after = resolveConflict(withNew, red, { kind: 'cancel' });
+    expect(after.cards.map((x) => x.id)).toEqual(['r_new']);
+    expect(conflicts(after).length).toBe(1);
+  });
+
+  test('every settlement is recorded with its kind and the resulting exported lines, keyed to both digests', () => {
+    const d = files();
+    const [c] = conflicts(d);
+    const keep = resolveConflict(d, c!, { kind: 'keep', keep: c!.a });
+    const sk = keep.settlements![0]!;
+    expect(sk.kind).toBe('keep');
+    expect(sk.lines.find((l) => l.id === c!.a)).toMatchObject({ text: 'Run the full test suite before reporting done.', files: ['claude'] });
+    expect(sk.lines.find((l) => l.id === c!.b)).toMatchObject({ text: null, files: [] });
+    const ex = resolveConflict(d, c!, { kind: 'exception', on: c!.a, text: 'unless the user names a test file', when: {} });
+    const se = ex.settlements![0]!;
+    expect(se.kind).toBe('exception');
+    expect(se.lines.find((l) => l.id === c!.a)!.text).toBe('Run the full test suite before reporting done, unless the user names a test file.');
+    const a = presentCards(ex).find((x) => x.id === c!.a)!;
+    const b = presentCards(ex).find((x) => x.id === c!.b)!;
+    expect(se.key).toBe(settlementKey(a, b));
+    const sep = resolveConflict(d, c!, { kind: 'separate', bind: c!.b, projectKey: 'p1', projectLabel: 'web' });
+    expect(sep.settlements![0]!.kind).toBe('separate');
+    expect(sep.settlements![0]!.lines.find((l) => l.id === c!.b)!.text).toStartWith('In web, ');
+  });
+
+  test('a settlement never suppresses a new pair, and a re-target of either card brings the thread back', () => {
+    const d0 = newDeck(bytes('- Run the full test suite before reporting done.\n'), null);
+    const p = presentCards(d0)[0]!;
+    const g = (id: string) => setTaken(Object.freeze({ ...p, id, family: 'directive', type: 'rule', source: undefined, targets: 'both', text: 'Never run the full test suite.', claims: suggestClaims('Never run the full test suite.') }) as Card, true);
+    const d = withCards(d0, [g('r_one')]);
+    const c = conflicts(d)[0]!;
+    const settled = resolveConflict(d, c, { kind: 'exception', on: p.id, text: 'unless the user names a test file', when: {} });
+    expect(conflicts(settled)).toEqual([]);
+    // A second card with the same words is a new pair: its thread shows.
+    const two = withCards(settled, [...settled.cards, g('r_two')]);
+    expect(conflicts(two).map((x) => x.id)).toEqual([[p.id, 'r_two'].sort().join('×')]);
+    // Narrowing the settled game card to Claude changes the key; the record no longer holds for it.
+    const narrowed = withCards(settled, settled.cards.map((x) => (x.id === 'r_one' ? updateCard(x, { targets: 'claude' }) : x)));
+    expect(conflicts(narrowed).length).toBe(1);
+  });
+
+  test('a settlement preview shows the resulting lines and the per-file weights before the seal', () => {
+    const d = files();
+    const [c] = conflicts(d);
+    const pv = previewSettlement(d, c!, { kind: 'exception', on: c!.a, text: 'unless the user names a test file', when: {} }, []);
+    expect(pv.lines.find((l) => l.id === c!.a)!.text).toContain('unless the user names a test file');
+    expect(pv.preview.weight.claude.after).toBeGreaterThan(pv.preview.weight.claude.before);
+    expect(previewSettlement(d, c!, { kind: 'cancel' }, []).lines).toEqual([]);
   });
 
   test('scopes that cannot meet do not conflict; targets that cannot meet do not conflict', () => {

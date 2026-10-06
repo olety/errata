@@ -8,7 +8,8 @@ import { coverage } from '../cover';
 import { cardDigest, updateCard } from './card';
 import { sanitizeLine, weigh } from './file';
 import { claimKey, opposed, sameClaims } from './claims';
-import { deckExportMap, isProse, presentCards, renderLanes, withCards, withEdit, type DeckState } from './deck';
+import { deckExportMap, isProse, presentCards, renderLanes, withCards, withEdit, type DeckState, type Settlement } from './deck';
+import type { Agent } from '../model';
 import { NEAR_DUPLICATE } from '../rooms';
 
 export type FuseKind = 'exact' | 'near' | 'subsumed' | 'same-claims';
@@ -269,10 +270,13 @@ function separated(a: Card, b: Card): boolean {
   return cut(a, b) || cut(b, a);
 }
 
-/** A written exception resolves a red link only for the two cards exactly as they were when it was written. */
-function resolutionKey(a: Card, b: Card): string {
+/**
+ * A settlement holds only for the two cards exactly as they were when it was made: ids, digests and targets. Targets
+ * are part of the key (they are not in the digest) because a re-target can put the pair into a new file together.
+ */
+export function settlementKey(a: Card, b: Card): string {
   const [x, y] = [a, b].sort((p, q) => p.id.localeCompare(q.id));
-  return `${x.id}@${cardDigest(x)}×${y.id}@${cardDigest(y)}`;
+  return `${x.id}@${cardDigest(x)}:${x.targets}×${y.id}@${cardDigest(y)}:${y.targets}`;
 }
 
 /** Red links: opposed actions under overlapping conditions, for the same agent, in overlapping scopes. */
@@ -284,7 +288,8 @@ export function conflicts(d: DeckState): Conflict[] {
       const a = cards[i]!;
       const b = cards[j]!;
       if (!targetsMeet(a.targets, b.targets) || !scopesMeet(a, b) || separated(a, b)) continue;
-      if (d.resolvedPairs?.includes(resolutionKey(a, b))) continue;
+      // The settlement record is consulted only for this exact pair as it is now; it never suppresses a new pair.
+      if (d.settlements?.some((s) => s.key === settlementKey(a, b))) continue;
       const pair = anyOpposed(a.claims, b.claims);
       if (!pair) continue;
       const [x, y] = pair;
@@ -301,7 +306,7 @@ export type Resolution =
   | { kind: 'separate'; bind: string; projectKey: string; projectLabel: string }
   /** Write an explicit exception on one card (visible text plus its structured condition). */
   | { kind: 'exception'; on: string; text: string; when: CardException['when'] }
-  /** Cancel: a card taken this run is put back on the shelf; otherwise nothing changes and the link stays red. */
+  /** Cancel: nothing changes and the red thread stays (§0a.8). */
   | { kind: 'cancel' };
 
 function withText(d: DeckState, c: Card, text: string, patch: { scope?: Scope; exceptions?: CardException[] }): DeckState {
@@ -328,6 +333,26 @@ export function removeCard(d: DeckState, id: string): DeckState {
 const stripStop = (t: string) => t.trim().replace(/[\s.]+$/, '');
 const lowerFirst = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
 
+function filesOf(d: DeckState, id: string): Agent[] {
+  const ex = deckExportMap(d, renderLanes(d));
+  return (['claude', 'codex'] as const).filter((a) => ex[a].has(id));
+}
+
+/** Record a settlement for the pair as it stands after the resolution, with the lines it exports. */
+function record(after: DeckState, c: Conflict, kind: Settlement['kind']): DeckState {
+  const present = presentCards(after);
+  const A = present.find((x) => x.id === c.a);
+  const B = present.find((x) => x.id === c.b);
+  const line = (id: string, card: Card | undefined) => ({ id, text: card ? card.text : null, files: card ? filesOf(after, id) : [] });
+  const s: Settlement = { key: A && B ? settlementKey(A, B) : `${[c.a, c.b].sort().join('×')}@removed`, pair: [c.a, c.b].sort().join('×'), kind, lines: [line(c.a, A), line(c.b, B)] };
+  const kept = (after.settlements ?? []).filter((x) => x.pair !== s.pair);
+  return Object.freeze({ ...after, settlements: Object.freeze([...kept, s]) });
+}
+
+/**
+ * Settle a red link. Keep-one removes a line; separate and exception rewrite the lines and show the result; each is
+ * recorded against both cards' current digests (§0a.8). Cancel changes nothing and the thread stays.
+ */
 export function resolveConflict(d: DeckState, c: Conflict, r: Resolution): DeckState {
   const present = presentCards(d);
   const A = present.find((x) => x.id === c.a);
@@ -335,7 +360,7 @@ export function resolveConflict(d: DeckState, c: Conflict, r: Resolution): DeckS
   if (!A || !B) return d;
   switch (r.kind) {
     case 'keep':
-      return removeCard(d, r.keep === A.id ? B.id : A.id);
+      return record(removeCard(d, r.keep === A.id ? B.id : A.id), c, 'keep');
     case 'separate': {
       const bound = r.bind === A.id ? A : B;
       const other = bound === A ? B : A;
@@ -346,22 +371,26 @@ export function resolveConflict(d: DeckState, c: Conflict, r: Resolution): DeckS
       let next = withText(d, bound, boundText, { scope });
       const ex: CardException = { text: `except in ${r.projectLabel}`, when: { projectKey: r.projectKey } };
       next = withText(next, presentCards(next).find((x) => x.id === other.id)!, `${stripStop(other.text)}, except in ${r.projectLabel}.`, { exceptions: [...other.exceptions, ex] });
-      return next;
+      return record(next, c, 'separate');
     }
     case 'exception': {
       // The player's written exception says the two coexist: it shows in the text and resolves this red link.
       const on = r.on === A.id ? A : B;
       const ex: CardException = { text: sanitizeLine(r.text), when: { ...r.when } };
       const next = withText(d, on, `${stripStop(on.text)}, ${lowerFirst(stripStop(ex.text))}.`, { exceptions: [...on.exceptions, ex] });
-      const pa = presentCards(next).find((x) => x.id === A.id)!;
-      const pb = presentCards(next).find((x) => x.id === B.id)!;
-      return Object.freeze({ ...next, resolvedPairs: Object.freeze([...(next.resolvedPairs ?? []), resolutionKey(pa, pb)]) });
+      return record(next, c, 'exception');
     }
-    case 'cancel': {
-      const fresh = [A, B].find((x) => d.cards.some((g) => g.id === x.id));
-      return fresh ? withCards(d, d.cards.filter((g) => g.id !== fresh.id)) : d;
-    }
+    case 'cancel':
+      return d;
   }
+}
+
+/** What a settlement would do, before the seal: the deck after it, the exported lines, weights and cases. */
+export function previewSettlement(d: DeckState, c: Conflict, r: Resolution, cases: readonly Case[]): { after: DeckState; lines: Settlement['lines']; preview: Preview } {
+  const after = resolveConflict(d, c, r);
+  const s = after.settlements?.find((x) => x.pair === [c.a, c.b].sort().join('×'));
+  const lines = r.kind === 'cancel' || !s ? [] : s.lines;
+  return { after, lines, preview: previewChange(d, after, cases, { ids: [c.a, c.b] }) };
 }
 
 // ------------------------------------------------------------------ cut and sharpen
