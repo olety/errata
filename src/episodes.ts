@@ -45,6 +45,8 @@ export interface InterruptEpisode extends EpisodeBase {
   gapSec: number | null;
   /** The call that was cut off or rejected, when there was one. */
   interruptedCall: ToolCall | null;
+  /** The human message looks like pasted material (long or many lines), not a typed directive. */
+  pasted: boolean;
 }
 
 export interface RepeatedCommandEpisode extends EpisodeBase {
@@ -80,6 +82,11 @@ export function describeResult(c: ToolCall | null): string | null {
   const code = c.result.exitCode !== null ? ` (exit ${c.result.exitCode})` : '';
   const head = c.result.text ? ` — ${clip(c.result.text, 140)}` : '';
   return `${c.result.status}${code}${head}`;
+}
+
+/** Long or many-line human text is usually pasted material: a report, a doc, a log. */
+export function isPasted(text: string): boolean {
+  return text.length > 400 || text.split('\n').length > 5;
 }
 
 function gap(a: string | null, b: string | null): number | null {
@@ -139,6 +146,7 @@ export function interruptEpisodes(s: Session): InterruptEpisode[] {
       skippedInjected: skipped,
       gapSec: human ? gap(t.ts, human.ts) : null,
       interruptedCall: cut,
+      pasted: human !== null && isPasted(human.text),
       receipt: {
         quote: human ? clip(human.text, QUOTE_LIMIT) : null,
         action: describeCall(cut),

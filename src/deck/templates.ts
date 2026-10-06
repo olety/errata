@@ -6,6 +6,7 @@ import type { Card, Case, CaseFacts, Family, ResponseKey, Scope, Targets, Trigge
 import { FAMILY_KEYS } from './types';
 import type { Episode, InterruptEpisode, RepeatedCommandEpisode } from '../episodes';
 import { sanitizeLine } from './file';
+import { programOf } from '../parse/common';
 
 /** FNV-1a, 24 bits, base36: stable short ids from the card's structure. */
 export function shortHash(s: string): string {
@@ -40,7 +41,7 @@ function objectOf(e: Episode): string {
   if (e.type === 'repeated-command') return e.prefix;
   const c = e.interruptedCall;
   if (!c) return 'a reply';
-  if (c.kind === 'shell' && c.command) return (c.command.split(' ')[0] ?? c.name).replace(/^.*\//, '');
+  if (c.command) return programOf(c.command) ?? c.name;
   return c.name;
 }
 
@@ -70,7 +71,8 @@ export function groupRooms(episodes: Episode[]): Room[] {
         : `You stopped the agent during ${object}, then said what to do · ${times}`;
     rooms.push({ family, object, projectKey: e0.projectKey, projectLabel: e0.projectLabel, agents, episodes: list, sessions, name, subtitle });
   }
-  return rooms.sort((a, b) => b.sessions - a.sessions || b.episodes.length - a.episodes.length);
+  const typed = (r: Room) => r.episodes.filter((e) => e.type === 'interrupt' && !e.pasted).length;
+  return rooms.sort((a, b) => b.sessions - a.sessions || typed(b) - typed(a) || b.episodes.length - a.episodes.length);
 }
 
 /** One case per episode. Every case starts unreviewed; only the player's "issue" makes it count. */

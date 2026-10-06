@@ -29,12 +29,12 @@ export function agentForFirstLine(line: string): Agent | null {
   return null;
 }
 
-export async function parseSessionFile(f: SessionFile, agent?: Agent): Promise<Session> {
+export async function parseSessionFile(f: SessionFile, agent?: Agent, opts: { fullRead?: boolean } = {}): Promise<Session> {
   const name = f.rel.split('/').pop() ?? f.rel;
   const a = agent ?? agentForPath(f.rel);
   const meta: ParseMeta = { file: name, agentAuthored: /(^|\/)subagents\//.test(f.rel) || /^agent-/.test(name) };
   const parser = a === 'codex' ? new CodexParser(meta) : new ClaudeParser(meta);
-  const out = await readSessionLines(f.blob, { line: (t) => parser.push(t), oversized: () => parser.oversized(), gap: () => parser.tailGap() });
+  const out = await readSessionLines(f.blob, { line: (t) => parser.push(t), oversized: () => parser.oversized(), gap: () => parser.tailGap() }, opts);
   const s = parser.finish();
   if (out.window === 'tail-window') {
     s.partial = true;

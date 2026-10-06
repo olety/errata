@@ -125,8 +125,8 @@ export interface ReadOutcome {
 }
 
 /** Feed every line of a session file into sink, applying the oversized-session tail rule. */
-export async function readSessionLines(blob: BlobLike, sink: LineSink): Promise<ReadOutcome> {
-  if (blob.size <= OVERSIZED_SESSION_BYTES) {
+export async function readSessionLines(blob: BlobLike, sink: LineSink, opts: { fullRead?: boolean } = {}): Promise<ReadOutcome> {
+  if (blob.size <= OVERSIZED_SESSION_BYTES || opts.fullRead) {
     const sp = new LineSplitter(sink);
     await pump(blob, sp);
     return { window: 'full', unterminated: sp.end() };

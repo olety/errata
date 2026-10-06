@@ -32,16 +32,34 @@ export function programOf(command: string): string | null {
   // Use the last segment that is not a bare `cd`.
   const seg = [...segs].reverse().find((s) => !/^cd\s/.test(s)) ?? segs[0] ?? '';
   const words = seg.split(/\s+/).filter(Boolean);
-  let i = 0;
-  while (i < words.length && (/^[A-Za-z_][A-Za-z0-9_]*=/.test(words[i]!) || ['sudo', 'env', 'time', 'nohup', 'exec', 'command'].includes(words[i]!))) i++;
+  const i = skipWrappers(words);
   const w = words[i];
   if (!w) return null;
   return w.replace(/^.*\//, '');
 }
 
+/** Command wrappers that run another command: the wrapped command is what matters. */
+const WRAPPERS = new Set(['sudo', 'env', 'time', 'nohup', 'nice', 'exec', 'command', 'rtk']);
+
+function skipWrappers(words: string[]): number {
+  let i = 0;
+  while (i < words.length) {
+    const w = words[i]!;
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(w) || WRAPPERS.has(w)) {
+      i++;
+      // `rtk proxy <cmd>` and `rtk <cmd>` both wrap <cmd>.
+      if (w === 'rtk' && words[i] === 'proxy') i++;
+      continue;
+    }
+    break;
+  }
+  return i;
+}
+
 /** The first two words of the effective command ("bun test", "git push"), used as a card trigger prefix. */
 export function commandPrefixOf(fingerprint: string): string {
-  const words = fingerprint.split(' ');
+  const all = fingerprint.split(' ');
+  const words = all.slice(skipWrappers(all));
   const sub = (w: string | undefined) => !!w && /^[a-z][a-z0-9:._-]*$/.test(w);
   if (!sub(words[1])) return words[0] ?? '';
   // Runner verbs take one more word: "bun run build", "npm run lint", "uv run pytest".
