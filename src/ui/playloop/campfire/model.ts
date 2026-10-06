@@ -109,9 +109,11 @@ export function settleChoice(d: SettleDraft, thread: ThreadView, projects: Campf
       const text = d.text.trim();
       if (!member(d.on) || !oneLine(text)) return null;
       const v = d.whenValue.trim();
-      const when: { commandPrefix?: string; projectKey?: string; pathPrefix?: string } =
-        d.when === 'project' && projects.some((x) => x.key === v) ? { projectKey: v } : d.when === 'command' && v ? { commandPrefix: v } : d.when === 'path' && v ? { pathPrefix: v } : {};
-      return { kind: 'exception', on: d.on, text, when };
+      // A chosen condition must be complete: an empty prefix or an unknown project is no choice, never "always".
+      if (d.when === 'always') return { kind: 'exception', on: d.on, text, when: {} };
+      if (d.when === 'project') return projects.some((x) => x.key === v) ? { kind: 'exception', on: d.on, text, when: { projectKey: v } } : null;
+      if (!v) return null;
+      return { kind: 'exception', on: d.on, text, when: d.when === 'command' ? { commandPrefix: v } : { pathPrefix: v } };
     }
     default:
       return null;
@@ -183,7 +185,7 @@ export function sealOf(p: Proposal, preview: ChangePreviewView | null): { call: 
   if (p.kind === 'gone') return { call: null, why: 'These cards no longer share a thread. Pull them apart.' };
   if (!preview) {
     const why =
-      p.kind === 'fuse' ? 'Write the merged line on one line to see it.' : p.kind === 'settle' ? 'Pick how to settle the pair.' : p.kind === 'sharpen' ? 'Write the line on one line to see it.' : 'No preview for this change.';
+      p.kind === 'fuse' ? 'Write the merged line on one line to see it.' : p.kind === 'settle' ? 'Pick how to settle the pair, and complete its fields.' : p.kind === 'sharpen' ? 'Write the line on one line to see it.' : 'No preview for this change.';
     return { call: null, why };
   }
   if (preview.refused) return { call: null, why: preview.refused };
@@ -191,7 +193,7 @@ export function sealOf(p: Proposal, preview: ChangePreviewView | null): { call: 
     case 'fuse':
       return { call: { kind: 'fuse', threadId: p.thread.id, text: p.editing ? p.text.trim() : (p.thread.autoText ?? p.text) }, why: null };
     case 'settle':
-      return p.choice && p.choice.kind !== 'cancel' ? { call: { kind: 'settle', threadId: p.thread.id, choice: p.choice }, why: null } : { call: null, why: 'Pick how to settle the pair.' };
+      return p.choice && p.choice.kind !== 'cancel' ? { call: { kind: 'settle', threadId: p.thread.id, choice: p.choice }, why: null } : { call: null, why: 'Pick how to settle the pair, and complete its fields.' };
     case 'cut':
       return { call: { kind: 'cut', cardId: p.cardId }, why: null };
     case 'swap':

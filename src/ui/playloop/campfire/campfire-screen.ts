@@ -60,7 +60,14 @@ interface AfterSeal {
   seen: number;
   /** Tags seen while a case was on the Open pile, kept once it leaves it. */
   labels: Record<string, string>;
+  /** Cases whose accept this panel sent and a fresh accept effect confirmed (the state changed). */
+  accepted: Set<string>;
+  /** The case whose accept was sent last, waiting for its effect. */
+  sent: string | null;
 }
+
+/** The seal a hold started on: it completes only while that same proposal is still on the table and on screen. */
+let holdOn: { key: string | null; button: HTMLElement } | null = null;
 
 const local: {
   side: 'shelf' | 'ash' | 'open';
@@ -92,6 +99,7 @@ interface Live {
 }
 
 let live: Live | null = null;
+let owner: ScreenProps<CampfireView>['api'] | null = null;
 
 function compute(L: Pick<Live, 'p' | 'proposal' | 'preview' | 'seal'>): void {
   const v = L.p.view;
@@ -144,19 +152,29 @@ function holdReset(): void {
   if (local.holdTimer) clearTimeout(local.holdTimer);
   local.holdTimer = null;
   local.hold = M.HOLD_IDLE;
+  holdOn?.button.classList.remove('is-holding');
+  holdOn = null;
+}
+
+/** A hold completes only on the button it began on, still connected, with the same proposal on the table. */
+function holdSeal(): void {
+  const h = holdOn;
+  holdReset();
+  if (!h || !h.button.isConnected || !live || snapKeyOf(live.proposal) !== h.key) return;
+  doSeal();
 }
 
 /** Perform the proposal on the table: the only path from the campfire to a committing act. */
 function doSeal(): void {
   const L = live;
-  if (!L || !L.proposal || !L.seal.call) return;
+  if (!L || !L.stage.isConnected || !L.proposal || !L.seal.call) return;
   holdReset();
   const call = L.seal.call;
   const pv = L.preview;
   const p = L.proposal;
   const fxId = L.p.ui.effect?.id ?? 0;
   // A new text binds nothing until accepted: remember its cases so the panel can offer acceptMapping after the seal.
-  local.after = (call.kind === 'fuse' || call.kind === 'sharpen') && pv?.resultId && pv.needsAcceptance.length > 0 ? { resultId: pv.resultId, text: pv.after?.text ?? '', cases: [...pv.needsAcceptance], bound: new Set(), seen: fxId, labels: {} } : null;
+  local.after = (call.kind === 'fuse' || call.kind === 'sharpen') && pv?.resultId && pv.needsAcceptance.length > 0 ? { resultId: pv.resultId, text: pv.after?.text ?? '', cases: [...pv.needsAcceptance], bound: new Set(), seen: fxId, labels: {}, accepted: new Set(), sent: null } : null;
   local.reopened = null;
   const cardId = call.kind === 'fuse' || call.kind === 'sharpen' ? (pv?.resultId ?? null) : call.kind === 'swap' ? call.shelfId : call.kind === 'settle' ? null : call.cardId;
   local.lastSeal = { kind: call.kind, cardId, before: fxId };
@@ -216,6 +234,7 @@ function restore(roots: HTMLElement[], focus: ReturnType<typeof focusMark>, scro
 function rerender(): void {
   const L = live;
   if (!L || !L.stage.isConnected) return;
+  holdReset();
   const f = focusMark();
   const s = scrollMarks();
   compute(L);
@@ -228,6 +247,7 @@ function rerender(): void {
 function refresh(): void {
   const L = live;
   if (!L || !L.stage.isConnected) return;
+  holdReset();
   compute(L);
   if (L.resultHost) L.resultHost.replaceChildren(previewPart(L, 'result'));
   if (L.detailHost) L.detailHost.replaceChildren(previewPart(L, 'detail'));
@@ -250,6 +270,15 @@ function refreshBooks(L: Live): void {
 export function CampfireScreen(p: ScreenProps<CampfireView>): { stage: HTMLElement; wood: HTMLElement } {
   installKeys();
   holdReset();
+  // Presentation state belongs to one run: a new controller (a new run) starts clean, effect ids included.
+  if (owner !== p.api) {
+    owner = p.api;
+    drafts.fuse = {};
+    drafts.settle = {};
+    drafts.edit = null;
+    Object.assign(local, { side: 'shelf', after: null, reopened: null, lastSeal: null, animated: new Set<number>(), snapKey: null });
+    live = null;
+  }
   const focus = focusMark();
   const scrolls = scrollMarks();
   const v = p.view;
@@ -268,6 +297,9 @@ export function CampfireScreen(p: ScreenProps<CampfireView>): { stage: HTMLEleme
       local.lastSeal = null;
     }
     if (local.after && fx.kind === 'accept' && fx.id > local.after.seen) {
+      // A fresh accept effect means the act changed the state: the mapping is accepted, whether or not coverage flipped.
+      if (local.after.sent) local.after.accepted.add(local.after.sent);
+      local.after.sent = null;
       for (const id of fx.bound) if (local.after.cases.includes(id)) local.after.bound.add(id);
       local.after.seen = fx.id;
     }
@@ -759,29 +791,25 @@ function sealBarKids(L: Live): Kid[] {
     local.hold = h;
     if (h.kind !== 'holding') return;
     b.classList.add('is-holding');
+    holdOn = { key: snapKeyOf(live?.proposal ?? null), button: b };
     if (local.holdTimer) clearTimeout(local.holdTimer);
     local.holdTimer = setTimeout(() => {
       const [next, go] = M.holdStep(local.hold, { type: 'tick', t: performance.now() });
       local.hold = next;
       local.holdTimer = null;
-      if (go) doSeal();
+      if (go) holdSeal();
     }, M.HOLD_MS);
   });
   const letGo = (t: number | null) => {
-    const [next, go] = t === null ? M.holdStep(local.hold, { type: 'cancel' }) : M.holdStep(local.hold, { type: 'up', t });
-    local.hold = next;
-    if (local.holdTimer) clearTimeout(local.holdTimer);
-    local.holdTimer = null;
-    b.classList.remove('is-holding');
-    if (go) doSeal();
+    if (holdOn?.button !== b) return;
+    const [, go] = t === null ? M.holdStep(local.hold, { type: 'cancel' }) : M.holdStep(local.hold, { type: 'up', t });
+    if (go) holdSeal();
+    else holdReset();
   };
   b.addEventListener('pointerup', (e) => letGo(e.timeStamp));
   b.addEventListener('pointerleave', () => letGo(null));
   b.addEventListener('pointercancel', () => letGo(null));
-  // Keyboard activation (Space on the focused seal) seals like Enter; a mouse click alone never does.
-  b.addEventListener('click', (e) => {
-    if (e.detail === 0) doSeal();
-  });
+  // A click alone never seals: the seal is a 0.6 s hold, or Enter (handled by the campfire's key listener).
   return [p.kind === 'settle' ? null : button('Cancel', 'pl-campfire-cancel', cancelProposal, { fk: 'bar-cancel' }), b, L.seal.why ? el('p', 'pl-campfire-why', L.seal.why) : null];
 }
 
@@ -795,7 +823,14 @@ function afterPanel(L: Live, a: AfterSeal): HTMLElement {
       'pl-campfire-case',
       el('span', '', (a.labels[id] = M.caseTag(id, L.p.view) ?? a.labels[id] ?? 'A reviewed case')),
       button('Read', 'pl-campfire-small', () => api.inspect({ caseId: id }), { fk: `after-read:${id}` }),
-      a.bound.has(id) ? el('span', 'pl-campfire-done', 'Now addressed') : button('Accept for this case', 'pl-campfire-small is-primary', () => api.campfire.acceptMapping(a.resultId, id), { fk: `accept:${id}` }),
+      a.bound.has(id)
+        ? el('span', 'pl-campfire-done', 'Accepted · now addressed')
+        : a.accepted.has(id)
+          ? el('span', 'pl-campfire-done', 'Accepted')
+          : button('Accept for this case', 'pl-campfire-small is-primary', () => {
+              a.sent = id;
+              api.campfire.acceptMapping(a.resultId, id);
+            }, { fk: `accept:${id}` }),
     ),
   );
   return el(

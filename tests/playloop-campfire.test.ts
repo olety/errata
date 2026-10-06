@@ -149,12 +149,16 @@ describe('proposals, queries and seals (pure)', () => {
     expect(M.settleChoice({ ...d, slot: 'exception', on: 'y', text: ' unless the user names a test file ' }, t, projects)).toEqual({ kind: 'exception', on: 'y', text: 'unless the user names a test file', when: {} });
     expect(M.settleChoice({ ...d, slot: 'exception', text: 'u', when: 'project', whenValue: 'p1' }, t, projects)).toMatchObject({ when: { projectKey: 'p1' } });
     expect(M.settleChoice({ ...d, slot: 'exception', text: 'u', when: 'command', whenValue: 'pytest tests/' }, t, projects)).toMatchObject({ when: { commandPrefix: 'pytest tests/' } });
-    expect(M.settleChoice({ ...d, slot: 'exception', text: 'u', when: 'path', whenValue: ' ' }, t, projects)).toMatchObject({ when: {} });
+    // A chosen condition must be complete: never an unconditional exception by accident.
+    expect(M.settleChoice({ ...d, slot: 'exception', text: 'u', when: 'path', whenValue: ' ' }, t, projects)).toBeNull();
+    expect(M.settleChoice({ ...d, slot: 'exception', text: 'u', when: 'command', whenValue: '' }, t, projects)).toBeNull();
+    expect(M.settleChoice({ ...d, slot: 'exception', text: 'u', when: 'project', whenValue: 'nope' }, t, projects)).toBeNull();
+    expect(M.settleChoice({ ...d, slot: 'exception', text: 'u', when: 'path', whenValue: 'src/legacy/' }, t, projects)).toMatchObject({ when: { pathPrefix: 'src/legacy/' } });
     const v = { threads: [t], projects, lanes: { claude: [], both: [], codex: [] }, piles: { shelf: [], shelfCount: 0, open: [], openCount: 0 }, ash: [] } as unknown as CampfireView;
     const p = M.proposalOf(v, { kind: 'stack', a: 'x', b: 'y', threadId: t.id, members: t.members }, noDrafts())!;
     expect(p).toMatchObject({ kind: 'settle', choice: null });
     expect(M.queryOf(p)).toBeNull();
-    expect(M.sealOf(p, null).why).toBe('Pick how to settle the pair.');
+    expect(M.sealOf(p, null).why).toBe('Pick how to settle the pair, and complete its fields.');
   });
 
   test('cut, swap, re-target and sharpen ask for their own preview and seal with their own call', () => {
