@@ -363,6 +363,18 @@ const OR = '/home/dev/orchard';
   write('claude/noise-negatives.jsonl', s.rows);
 }
 
+// 12b. Harness refusals in Claude Code's own shapes (tool-error wrapper, hook error) are not failures; a real failing
+//      script whose log merely mentions a rejection IS a genuine failure and, repeated unchanged, a type 2 episode.
+{
+  const s = new CC('a1b2c3d4-c1c1-4c1c-8c1c-0000000000c1', TP, '2026-10-04T09:30:00.000Z');
+  s.user('Ship the release candidate.');
+  for (const n of [1, 2]) s.tool(`toolu_cc1b_w${n}`, 'Bash', { command: 'npm run deploy' }).result(`toolu_cc1b_w${n}`, '<tool_use_error>Blocked: deploys need an approved plan first.</tool_use_error>', { isError: true, tur: 'Error: blocked' });
+  for (const n of [1, 2]) s.tool(`toolu_cc1b_h${n}`, 'Bash', { command: 'make release' }).result(`toolu_cc1b_h${n}`, 'PreToolUse:Bash hook error: release commands are denied in this folder', { isError: true, tur: 'Error: hook' });
+  for (const n of [1, 2]) s.bash(`toolu_cc1b_c${n}`, './scripts/check.sh', 'review: 2 changes were rejected by user earlier\nFAILED: 3 checks', 2);
+  s.say('The deploy and release are blocked; the check script fails on 3 checks.');
+  write('claude/noise-harness.jsonl', s.rows);
+}
+
 // 13. Named negatives (Codex CLI): a declined exec twice and a sandbox denial twice; neither is a failure.
 {
   const c = new CX('2026-10-04T10:00:00.000Z');

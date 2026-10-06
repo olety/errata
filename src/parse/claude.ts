@@ -194,7 +194,9 @@ export class ClaudeParser {
     let exitCode: number | null = null;
     const m = /^(?:Error: )?Exit code (\d+)/.exec(text);
     if (m) exitCode = Number(m[1]);
-    if ((typeof tur === 'string' && /rejected/i.test(tur)) || /^The user doesn't want to proceed/.test(text)) status = 'rejected';
+    // Claude Code marks a declined tool call with a toolUseResult like "User rejected tool use"; a log line that merely
+    // mentions a rejection is the command's own output.
+    if ((typeof tur === 'string' && /^(?:Error: )?User rejected/i.test(tur)) || /^The user doesn't want to proceed/.test(text)) status = 'rejected';
     else if ((isObj(tur) && tur.interrupted === true) || text.startsWith('[Request interrupted by user')) status = 'interrupted';
     else if (blk.is_error === true) status = 'error';
     else status = 'ok';

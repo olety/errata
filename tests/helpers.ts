@@ -17,6 +17,7 @@ export const CC = {
   expected: 'claude/expected-fail.jsonl',
   subagent: 'claude/subagents/agent-a7f00001.jsonl',
   noise: 'claude/noise-negatives.jsonl',
+  noiseHarness: 'claude/noise-harness.jsonl',
   rewrite: 'claude/edit-rewrite.jsonl',
   directiveA: 'claude/directive-a.jsonl',
   workflowA: 'claude/workflow-a.jsonl',

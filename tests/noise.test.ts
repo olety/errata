@@ -23,6 +23,17 @@ describe('named negatives (fixtures)', () => {
     expect(repeatedCommandEpisodes(s)).toEqual([]);
   });
 
+  test("Claude Code's tool-error wrapper and a hook error are refusals; a log that mentions a rejection is still a real failure", async () => {
+    const s = await fixture(CC.noiseHarness);
+    const by = (p: string) => allCalls(s).filter((c) => c.command?.includes(p)).map((c) => c.result!.negative ?? 'genuine');
+    expect(by('npm run deploy')).toEqual(['permission-denied', 'permission-denied']);
+    expect(by('make release')).toEqual(['permission-denied', 'permission-denied']);
+    expect(by('check.sh')).toEqual(['genuine', 'genuine']);
+    const [e, ...rest] = repeatedCommandEpisodes(s);
+    expect(rest).toEqual([]);
+    expect(e!.fingerprint).toBe('./scripts/check.sh');
+  });
+
   test('Codex: a declined exec and a sandbox network denial are not failures', async () => {
     const s = await fixture(CX.noise);
     expect(allCalls(s).map((c) => c.result!.negative)).toEqual(['harness-rejected', 'harness-rejected', 'permission-denied', 'permission-denied']);

@@ -21,21 +21,26 @@ export type NegativeKind =
 
 export const NEGATIVE_LABELS: Record<NegativeKind, string> = {
   'harness-rejected': 'declined before running',
-  'permission-denied': 'blocked by a permission, sandbox or hook',
+  'permission-denied': 'refused before running (a permission, sandbox, hook or harness error)',
   'worktree-refusal': 'refused by worktree isolation',
   'no-match': 'a search that found nothing',
   'expected-red': 'a test written to fail first',
 };
 
+// Anchored at the start of the result (after an optional "Error:" or tool-error wrapper): a log that merely mentions a
+// rejection somewhere in its output is still the command's own result.
 const REJECTED: RegExp[] = [
   /^The user doesn't want to proceed/,
-  /tool use was rejected/i,
+  /^The tool use was rejected/i,
   /^User rejected/i,
-  /\brejected by (?:the )?user\b/i,
+  /^(?:exec )?command (?:was )?rejected by (?:the )?user\b/i,
+  /^(?:patch )?rejected by (?:the )?user\b/i,
   /^\[Request interrupted by user/,
 ];
 
 const DENIED: RegExp[] = [
+  /^PreToolUse:\S* ?hook error\b/i,
+  /^\S+ hook (?:error|blocked|denied)\b/i,
   /Permission to use .{1,240}? (?:has been|was) denied/i,
   /requested permissions? to .{0,200}haven'?t granted/i,
   /\bhaven'?t granted it yet\b/i,
@@ -49,6 +54,7 @@ const DENIED: RegExp[] = [
 
 const WORKTREE: RegExp[] = [
   /This session is isolated in the worktree/i,
+  /\bhasn'?t isolated its changes\b/i,
   /\boutside (?:of )?(?:the|this|your) (?:session'?s )?(?:worktree|isolated worktree)\b/i,
   /\bworktree isolation\b/i,
 ];
@@ -60,10 +66,15 @@ export function textNegative(c: ToolCall): NegativeKind | null {
   if (r.status === 'rejected') return 'harness-rejected';
   if (r.status === 'nomatch') return 'no-match';
   if (r.status !== 'error' && r.status !== 'unknown') return null;
-  const head = r.text.slice(0, 600);
+  const raw = r.text.slice(0, 600).trimStart();
+  // Claude Code wraps tool errors raised by the harness itself (not by the command) in <tool_use_error>.
+  const wrapped = /^<tool_use_error>/.test(raw);
+  const head = raw.replace(/^<tool_use_error>\s*/, '').replace(/^(?:Error:\s*)+/, '');
   if (WORKTREE.some((re) => re.test(head))) return 'worktree-refusal';
   if (DENIED.some((re) => re.test(head))) return 'permission-denied';
   if (REJECTED.some((re) => re.test(head))) return 'harness-rejected';
+  // Any other harness tool error on a command means the command never ran: refused before running.
+  if (wrapped && c.kind === 'shell') return 'permission-denied';
   return null;
 }
 
