@@ -65,7 +65,7 @@ function pairKind(a: Card, b: Card): { kind: FuseKind; why: string } | null {
   const [short, long] = ta.length <= tb.length ? [ta, b.text] : [tb, a.text];
   const longT = contentTokens(long);
   if (short.length > 0 && short.every((t) => longT.includes(t)) && EXCEPTION_WORDS.test(long)) return { kind: 'subsumed', why: 'the longer line says the same and adds an exception' };
-  if (sameClaims(stripUnless(a.claims), stripUnless(b.claims))) return { kind: 'same-claims', why: 'the same instruction in other words' };
+  if (sameClaims(stripUnless(a.claims), stripUnless(b.claims))) return { kind: 'same-claims', why: 'matching structured claims · review wording' };
   return null;
 }
 

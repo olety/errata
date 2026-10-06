@@ -330,7 +330,7 @@
     "Sourced tools replace only the selected public workspace root with /home/sample/<repo>; real source paths and hunk text are unchanged. Authored path bindings are documented separately.",
     "Outputs use contiguous source spans of at most 512 chars, or 2000 for failure/edit context. Write input content over 2000 chars is prefix-trimmed and disclosed per tool.",
     "Human text is exactly script text after placeholder binding; the whole tests/<file>.py template is bound to the actual source test file, even when it is outside tests/.",
-    "P1 remains the literal authored label in the S10 human receipt; manifest P1 maps to Pylons/pyramid.",
+    "The S10 human receipt names the project as pyramid; manifest P1 maps to Pylons/pyramid.",
     "Required full-suite calls, install recovery, changelog, parsing-helper loop, diff review and normalized pytest runs absent from the locked rows are authored under the updated permission.",
     "Authored pytest outputs are short illustrative summaries; missing-dependency traceback is generic. They were not run in source repos. No token usage is invented.",
     "Interrupted tools emit a call only, immediately followed by the agent-specific marker, then the scripted human directive. No success result is emitted for an interrupted call.",
@@ -1154,7 +1154,7 @@
       "jsonl_line_one_based": 4,
       "origin": "authored",
       "authored_kind": "script-human",
-      "text": "in P1 never touch `pyramid/tests/`, it's frozen. do it in `pyramid/config/` instead"
+      "text": "in pyramid never touch `pyramid/tests/`, it's frozen. do it in `pyramid/config/` instead"
     },
     {
       "origin": "authored",
@@ -3226,7 +3226,7 @@
       "jsonl_line_one_based": 4,
       "origin": "authored",
       "authored_kind": "script-human",
-      "text": "in P1 never touch `pyramid/tests/`, it's frozen. do it in `pyramid/config/` instead"
+      "text": "in pyramid never touch `pyramid/tests/`, it's frozen. do it in `pyramid/config/` instead"
     },
     {
       "source_event_index_zero_based": 68,

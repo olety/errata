@@ -434,7 +434,7 @@ function steps(): HTMLElement {
     ['act', 'The act'],
     ['receipt', 'Receipt'],
   ];
-  return h('nav', { class: 'steps' }, S.mode === 'sample' ? h('span', { class: 'chip' }, SAMPLE_LABEL) : null, ...names.map(([k, n]) => h('span', { class: S.step === k ? 'on' : '' }, n)));
+  return h('nav', { class: 'steps' }, h('span', { class: 'brand' }, 'Errata'), S.mode === 'sample' ? h('span', { class: 'chip' }, SAMPLE_LABEL) : null, ...names.map(([k, n]) => h('span', { class: S.step === k ? 'on' : '' }, n)));
 }
 
 function viewImport(): HTMLElement {

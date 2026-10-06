@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "yard4-game",
+      "name": "errata",
       "devDependencies": {
         "@types/bun": "latest",
         "typescript": "^5.6.0",

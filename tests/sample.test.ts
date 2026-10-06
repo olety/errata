@@ -18,6 +18,7 @@ import { cover } from '../src/cover';
 import { deckExportMap, newDeck, presentCards, renderLanes, withCards, type DeckState } from '../src/deck/deck';
 import { applyFuse, conflicts, fuseSuggestions, previewFuse, resolveConflict, sharpenSuggestions } from '../src/deck/campfire';
 import { applyTargets } from '../src/deck/skill-plan';
+import { TUTORIAL } from '../src/ui/sample';
 import { weigh, text as utf8 } from '../src/deck/file';
 import { applyPlan, makePlan, sameBytes, undoBundle } from '../src/apply/engine';
 import { nodeRoot } from '../src/apply/node-root';
@@ -286,6 +287,31 @@ describe('manifest: deck assertions (campfire, Apply, Undo)', () => {
     // Separating to P2 leaves the P1 cases (S01, S06, S11) open: the sample's narrative and its evidence disagree.
     const bound = presentCards(sep).find((c) => c.id === a.id)!;
     expect(bound.scope).toMatchObject({ kind: 'project', label: 'datalad' });
+  });
+
+  test('the tutorial settles the red link with the written exception; every directive case stays addressed (ruling 23:5x)', () => {
+    const r = directiveRoom();
+    const cases = [...r.episodes, ...r.withheld].map((e) => issue(caseFor(e, r)));
+    const a = take(draftCards(r)[0]!, cases);
+    const d = deckWith([a]);
+    const red = conflicts(d)[0]!;
+    const full = presentCards(d).find((c) => c.text === TUTORIAL.redLink.onLine)!;
+    expect([red.a, red.b]).toContain(full.id);
+    const settled = resolveConflict(d, red, { kind: TUTORIAL.redLink.resolution, on: full.id, text: TUTORIAL.redLink.text, when: {} });
+    expect(conflicts(settled)).toEqual([]);
+    expect(utf8(renderLanes(settled).codex.next)).toContain('Run the full test suite before reporting done, unless the user names a test file.');
+    // The standing instruction keeps its global scope, so the P1 and P2 cases stay addressed.
+    const ex = deckExportMap(settled, renderLanes(settled));
+    const kept = presentCards(settled).find((c) => c.id === a.id)!;
+    expect(kept.scope.kind).toBe('global');
+    expect(cases.every((c) => cover(kept, c, ex).covers)).toBe(true);
+  });
+
+  test('fuse reasons: the same-claims kind says matching structured claims and asks for a wording review', () => {
+    const d = newDeck(CLAUDE_MD, AGENTS_MD);
+    const kinds = new Set(fuseSuggestions(d).map((s) => s.kind));
+    expect(kinds.has('subsumed')).toBe(true);
+    for (const s of fuseSuggestions(d)) expect(s.why).not.toContain('the same instruction in other words');
   });
 
   test('Apply writes only to the sample folder, Skill bodies before globals; protected notes stay byte-for-byte; Undo restores exact bytes', async () => {

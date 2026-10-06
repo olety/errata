@@ -34,6 +34,7 @@ button.accent { border-color: var(--rose); color: var(--rose); }
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
 .steps { display: flex; gap: 14px; font-size: 13px; color: var(--ink-soft); margin-bottom: 18px; flex-wrap: wrap; }
 .steps .on { color: var(--ink); font-weight: 700; }
+.steps .brand { font-family: var(--title); font-weight: 800; color: var(--ink); font-size: 15px; }
 table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
 td.num { white-space: nowrap; }

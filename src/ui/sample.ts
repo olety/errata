@@ -1,8 +1,18 @@
-// The synthetic sample: eleven tiny sessions in both real schemas plus a pair of rule files, served from
+// The synthetic sample: twelve tiny sessions in both real schemas plus a pair of rule files, served from
 // public/sample and run through the same pipeline as real logs. Sample Apply writes to the browser's private storage
 // (three folders standing in for ~/.claude, ~/.codex and ~/.agents), never to the player's files.
 
 export const SAMPLE_LABEL = 'synthetic sample';
+
+/**
+ * The tutorial's scripted choices on the sample (lead ruling 2026-10-06 23:5x). The red link between the standing
+ * instruction and "Run the full test suite before reporting done" is settled with a written exception on the
+ * full-suite line, not by separating to one project: three of the four directive sessions are in pyramid, so
+ * separating to datalad would leave them open.
+ */
+export const TUTORIAL = {
+  redLink: { resolution: 'exception' as const, onLine: 'Run the full test suite before reporting done.', text: 'unless the user names a test file' },
+} as const;
 
 interface Manifest {
   label: string;
