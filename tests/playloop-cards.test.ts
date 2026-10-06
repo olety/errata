@@ -98,6 +98,9 @@ describe('pure helpers', () => {
     const base = { provenance: 'Observed', inspector: { trigger: null } };
     expect(cardArt({ ...base, type: 'skill' })).toBe('verify');
     expect(cardArt({ ...base, type: 'protected' })).toBeNull();
+    // The view's art key (CardView.art) decides when present.
+    expect(cardArt({ ...base, type: 'rule', art: 'verify' })).toBe('verify');
+    expect(cardArt({ ...base, type: 'rule', art: null })).toBeNull();
     expect(cardArt({ ...base, type: 'rule', inspector: { trigger: 'repeated command failure · pytest' } })).toBe('retry');
     expect(cardArt({ ...base, type: 'rule', provenance: 'Verified' })).toBe('verify');
     expect(cardArt({ ...base, type: 'rule' })).toBe('scope');

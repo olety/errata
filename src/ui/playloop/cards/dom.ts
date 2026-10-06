@@ -70,11 +70,11 @@ export function fig(n: number): string {
 export type ArtKey = 'retry' | 'scope' | 'verify';
 
 /**
- * Which painted plate fills the art window. Decoration only: it encodes nothing and never changes a number.
- * TODO(contract ask): CardView carries no family or art key, so the plate is picked from the card's own fields
- * (type, provenance, trigger words). Replace with the view's art key when the integrator adds one.
+ * Which painted plate fills the art window. Decoration only: it encodes nothing and never changes a number. The view's
+ * art key (CardView.art, from the card's family) decides; a card without one falls back to its own fields.
  */
-export function cardArt(card: Pick<CardView, 'type' | 'provenance'> & { inspector: { trigger: string | null } }): ArtKey | null {
+export function cardArt(card: Pick<CardView, 'type' | 'provenance'> & { inspector: { trigger: string | null }; art?: CardView['art'] }): ArtKey | null {
+  if (card.art !== undefined) return card.art;
   if (card.type === 'protected' || card.type === 'trait') return null;
   if (card.type === 'skill' || card.provenance.startsWith('Verified')) return 'verify';
   const t = (card.inspector.trigger ?? '').toLowerCase();
