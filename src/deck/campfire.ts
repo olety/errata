@@ -268,6 +268,7 @@ export function conflicts(d: DeckState): Conflict[] {
       const a = cards[i]!;
       const b = cards[j]!;
       if (!targetsMeet(a.targets, b.targets) || !scopesMeet(a, b) || separated(a, b)) continue;
+      if (d.resolvedPairs?.includes([a.id, b.id].sort().join('×'))) continue;
       const pair = anyOpposed(a.claims, b.claims);
       if (!pair) continue;
       const [x, y] = pair;
@@ -330,9 +331,11 @@ export function resolveConflict(d: DeckState, c: Conflict, r: Resolution): DeckS
       return next;
     }
     case 'exception': {
+      // The player's written exception says the two coexist: it shows in the text and resolves this red link.
       const on = r.on === A.id ? A : B;
       const ex: CardException = { text: sanitizeLine(r.text), when: { ...r.when } };
-      return withText(d, on, `${stripStop(on.text)}, ${lowerFirst(stripStop(ex.text))}.`, { exceptions: [...on.exceptions, ex] });
+      const next = withText(d, on, `${stripStop(on.text)}, ${lowerFirst(stripStop(ex.text))}.`, { exceptions: [...on.exceptions, ex] });
+      return Object.freeze({ ...next, resolvedPairs: Object.freeze([...(next.resolvedPairs ?? []), c.id]) });
     }
     case 'cancel': {
       const fresh = [A, B].find((x) => d.cards.some((g) => g.id === x.id));

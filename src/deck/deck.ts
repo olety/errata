@@ -22,6 +22,8 @@ export interface DeckState {
   readonly removedManaged: readonly string[];
   /** Game cards in the proposal (taken drafts, fused results, sharpened managed lines). */
   readonly cards: readonly Card[];
+  /** Red links the player resolved by writing an explicit exception (pair ids "a×b", sorted). */
+  readonly resolvedPairs?: readonly string[];
 }
 
 const dec = new TextDecoder();
@@ -202,6 +204,17 @@ export function deckExportMap(d: DeckState, lanes: Lanes): ExportMap {
     return set;
   };
   return { claude: ids('claude', lanes.claude), codex: ids('codex', lanes.codex) };
+}
+
+/**
+ * Re-read files under an existing deck: keep taken cards, removed managed lines, resolved red links, and every edit
+ * whose line still exists (prose ids come from file, text and occurrence, so an unchanged line keeps its id).
+ */
+export function rebaseDeck(d: DeckState, claude: Uint8Array | null, codex: Uint8Array | null, codexOverride: Uint8Array | null): DeckState {
+  const fresh = newDeck(claude, codex, codexOverride);
+  const ids = new Set(fresh.imported.map((c) => c.id));
+  const edits = Object.fromEntries(Object.entries(d.edits).filter(([id]) => ids.has(id)));
+  return Object.freeze({ ...fresh, edits: Object.freeze(edits), removedManaged: Object.freeze(d.removedManaged.filter((id) => ids.has(id))), cards: d.cards, ...(d.resolvedPairs ? { resolvedPairs: d.resolvedPairs } : {}) });
 }
 
 export function withCards(d: DeckState, cards: readonly Card[]): DeckState {

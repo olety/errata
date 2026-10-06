@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { applyFuse, conflicts, cutCard, fuseSuggestions, preservedTokens, previewFuse, resolveConflict, sharpen } from '../src/deck/campfire';
-import { deckExportMap, newDeck, presentCards, renderLanes, withCards } from '../src/deck/deck';
+import { deckExportMap, newDeck, presentCards, rebaseDeck, renderLanes, withCards } from '../src/deck/deck';
 import { acceptMapping, cardDigest, setTaken } from '../src/deck/card';
 import { bytes, text } from '../src/deck/file';
 import type { Card, Case } from '../src/deck/types';
@@ -68,6 +68,17 @@ describe('fuse suggestions', () => {
   });
 });
 
+describe('rebase', () => {
+  test('loading AGENTS.md later keeps the CLAUDE.md edits, taken cards and resolved links', () => {
+    const d0 = newDeck(bytes('- Keep commits small.\n- keep commits small\n'), null);
+    const [s] = fuseSuggestions(d0);
+    const d1 = applyFuse(d0, s!, s!.autoText!);
+    const d2 = rebaseDeck(d1, d1.originals.claude, bytes('- Use uv.\n'), null);
+    expect(text(renderLanes(d2).claude.next)).toBe(text(renderLanes(d1).claude.next));
+    expect(presentCards(d2).map((c) => c.text)).toEqual(['Keep commits small.', 'Use uv.']);
+  });
+});
+
 describe('conflicts', () => {
   // Both lines in one file: a Claude rule and a Codex rule never conflict with each other.
   const files = () => newDeck(bytes('- Run the full test suite before reporting done.\n- Only run the focused test file; never the full test suite.\n'), null);
@@ -93,6 +104,7 @@ describe('conflicts', () => {
     const a = presentCards(next).find((x) => x.id === c!.a)!;
     expect(a.text).toBe('Run the full test suite before reporting done, unless the user names a test file.');
     expect(a.exceptions[0]!.text).toBe('unless the user names a test file');
+    expect(conflicts(next)).toEqual([]);
   });
 
   test('cancel puts a card taken this run back on the shelf; prose alone stays red', () => {

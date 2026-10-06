@@ -14,7 +14,7 @@ import { CODEX_OVERRIDE, type LaneResult } from '../deck/lanes';
 import { sanitizeLine, text as utf8, weigh } from '../deck/file';
 import { lineDiff, renderDiff } from '../deck/diff';
 import { cover, coverage, CHECKS } from '../cover';
-import { deckExportMap, newDeck, presentCards, renderLanes, withCards, type DeckState } from '../deck/deck';
+import { deckExportMap, newDeck, presentCards, rebaseDeck, renderLanes, withCards, type DeckState } from '../deck/deck';
 import { applyFuse, conflicts, cutCard, fuseSuggestions, previewChange, previewFuse, resolveConflict, sharpen, sharpenSuggestions, type Conflict, type FuseSuggestion } from '../deck/campfire';
 import { applyTargets, type ApplyTargets } from '../deck/skill-plan';
 import { applyPlan, makePlan, restoreOriginalSeen, undoBundle } from '../apply/engine';
@@ -352,9 +352,9 @@ function rootsFor(): Root[] | null {
   return roots;
 }
 
-async function grant(which: 'claude' | 'codex' | 'agents'): Promise<void> {
+async function grant(which: 'claude' | 'codex' | 'agents', mode: 'read' | 'readwrite' = 'readwrite'): Promise<void> {
   try {
-    const dir = await pick({ id: `${which}-home`, mode: 'readwrite' });
+    const dir = await pick({ id: `${which}-home`, mode });
     S.dirs[which] = dir;
     S.roots = null;
     if (which === 'claude' || which === 'codex') {
@@ -363,10 +363,11 @@ async function grant(which: 'claude' | 'codex' | 'agents'): Promise<void> {
       const claude = S.dirs.claude ? await readIn(S.dirs.claude, 'CLAUDE.md') : null;
       const codex = S.dirs.codex ? await readIn(S.dirs.codex, 'AGENTS.md') : null;
       const override = S.dirs.codex ? await readIn(S.dirs.codex, CODEX_OVERRIDE) : null;
-      // Taken cards carry over; edits to imported prose are dropped because the files were just reread.
-      S.deck = withCards(newDeck(claude, codex, override), S.deck.cards);
+      // Taken cards, campfire edits to lines that still exist and resolved red links carry over.
+      S.deck = rebaseDeck(S.deck, claude, codex, override);
     }
-    await prepareDiff();
+    if (currentNode()?.kind === 'apply') await prepareDiff();
+    else render();
   } catch (e) {
     if ((e as DOMException).name !== 'AbortError') fail(e);
   }
@@ -561,6 +562,7 @@ function viewMirror(): HTMLElement {
       }),
       'Remember my reviews on this device (stored only in this browser).',
     ),
+    S.mode === 'real' && !S.dirs.codexLoaded && hasFSA && h('div', { class: 'row' }, h('span', { class: 'sub' }, 'Optional: load AGENTS.md now so its weight and any disagreements show during the act. Read only; write access is asked at Apply.'), h('button', { onclick: () => void grant('codex', 'read') }, 'Choose ~/.codex')),
     h('div', { class: 'row' }, h('button', { class: 'primary', onclick: () => set({ step: 'act', node: 0, sub: 0 }) }, 'Start the act')),
   );
 }
