@@ -335,7 +335,9 @@ function snapKeyOf(p: M.Proposal | null): string | null {
 
 /** The seal preview for a pending stack, settlement, cut, swap or re-target, read from ui.pending. */
 export function SealPreview(p: { preview: ChangePreviewView | null }): HTMLElement {
-  const ctx: PreviewCtx = { title: () => null, caseLabel: () => null, onCase: null, empty: 'Nothing is proposed.' };
+  // Each case is named by the preview's own refs (agent · project · date), never "A reviewed case" when a ref exists.
+  const refs = p.preview?.refs ?? [];
+  const ctx: PreviewCtx = { title: () => null, caseLabel: (id) => { const r = refs.find((x) => x.caseId === id); return r ? M.tagText(r) : null; }, onCase: null, empty: 'Nothing is proposed.' };
   return el('div', 'pl-campfire-sealpreview', resultPart(p.preview, ctx), detailPart(p.preview, ctx));
 }
 

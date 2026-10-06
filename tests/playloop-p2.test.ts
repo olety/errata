@@ -13,6 +13,7 @@ import type { Root } from '../src/apply/types';
 import * as A from '../src/ui/playloop/adapter';
 import { Controller, keyIntent } from '../src/ui/playloop/controller';
 import type * as C from '../src/ui/playloop/contract';
+import * as M from '../src/ui/playloop/campfire/model';
 import { TUTORIAL } from '../src/ui/sample';
 import { SAMPLE_ROOT, sampleAgentsMd, sampleAnalysis, sampleClaudeMd } from './helpers';
 
@@ -297,5 +298,18 @@ describe('the honesty sweep stays swept', () => {
       for (const m of text.matchAll(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g)) if (banned.test(m[0])) hits.push(`${f}: ${m[0].slice(0, 60)}`);
     }
     expect(hits).toEqual([]);
+  });
+});
+
+describe('the campfire names every case a preview lists (refs)', () => {
+  test('a cut preview names its reopened cases by agent, project and date, with no Open page needed', () => {
+    const s = toFirstFire();
+    const fire = A.selectCampfire(s);
+    const played = fire.lanes.both.find((c) => c.provenance !== 'From your file')!;
+    const pv = A.selectChangePreview(s, { cutId: played.id })!;
+    const labels = pv.cases.opened.map((id) => M.caseTag(id, fire, pv.refs));
+    expect(labels.every((l) => l !== null && /^(Claude|Codex) · \S+ · \d{4}-\d{2}-\d{2}$/.test(l))).toBe(true);
+    // Without the refs the same cases have no name here (they are not Open pages yet).
+    expect(pv.cases.opened.map((id) => M.caseTag(id, fire))).toEqual(pv.cases.opened.map(() => null));
   });
 });
