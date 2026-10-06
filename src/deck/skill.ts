@@ -50,7 +50,7 @@ function fieldProblems(name: string | null, description: string | null): string[
   if (description === null) problems.push('Missing required description in frontmatter.');
   else {
     if (!description.trim()) problems.push('Skill description must not be empty.');
-    if (description.length > SKILL_FILE.descriptionMax) problems.push('Skill description is over 1024 characters.');
+    if (Array.from(description).length > SKILL_FILE.descriptionMax) problems.push('Skill description is over 1024 characters.');
   }
   return problems;
 }

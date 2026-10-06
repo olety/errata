@@ -108,10 +108,14 @@ describe('renderSkill', () => {
   });
 
   test('enforces description bounds and an empty steps list', () => {
-    expect(renderSkill({ ...example, description: 'd'.repeat(1024) }).problems).toEqual([]);
-    const long = renderSkill({ ...example, description: 'd'.repeat(1025) });
-    expect(hasProblem(long.problems, 'over 1024 characters')).toBe(true);
-    expect(hasProblem(validateSkillFile(long.text, long.slug), 'over 1024 characters')).toBe(true);
+    for (const character of ['d', '🙂']) {
+      const atLimit = renderSkill({ ...example, description: character.repeat(1024) });
+      expect(atLimit.problems).toEqual([]);
+      expect(validateSkillFile(atLimit.text, atLimit.slug)).toEqual([]);
+      const long = renderSkill({ ...example, description: character.repeat(1025) });
+      expect(hasProblem(long.problems, 'over 1024 characters')).toBe(true);
+      expect(hasProblem(validateSkillFile(long.text, long.slug), 'over 1024 characters')).toBe(true);
+    }
     expect(hasProblem(renderSkill({ ...example, description: ' \r\n ' }).problems, 'description must not be empty')).toBe(true);
     const empty = renderSkill({ ...example, steps: [] });
     expect(hasProblem(empty.problems, 'steps list must not be empty')).toBe(true);
