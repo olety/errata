@@ -13,7 +13,7 @@ Errata turns your Claude Code and Codex sessions into a card game. Your deck is 
   - the skill folders `~/.claude/skills` and `~/.agents/skills`, when you play a Skill card
 - It never reads `auth.json` or anything else in those folders.
 - Secrets are redacted as each line is parsed. Redacted text never reaches a card.
-- Everything runs in your browser tab. There is no server and no upload.
+- Everything runs in your browser tab. There is no server and no upload. The page makes no network request to any other site, before or after it loads: its fonts, art and sample are served from the same address as the page.
 - Write access is asked for only at Apply.
 - The synthetic sample is built from licensed public rows. Its sources and licences are listed in `public/sample/manifest.json`.
 

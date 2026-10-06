@@ -213,8 +213,8 @@ describe('pure layout helpers', () => {
 // ------------------------------------------------------------------ the pixel check (headless Chrome, real fonts)
 
 const CHROME = chromePath();
-const FONTS =
-  'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Lora:ital,wght@1,400;1,500&display=block';
+/** The app's own self-hosted fonts (public/fonts), served by the page server below: the check needs no network. */
+const FONTS = '/fonts/fonts.css';
 
 interface Face {
   key: string;

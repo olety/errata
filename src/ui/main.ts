@@ -420,7 +420,7 @@ function viewImport(): HTMLElement {
       ),
       !hasFSA && h('p', { class: 'mt-slip mt-privacy' }, 'This browser cannot open folders. Drop session files instead; Apply then gives you the lines to paste.'),
       drop,
-      h('p', { class: 'mt-slip mt-privacy tilt-b' }, 'Only projects/**/*.jsonl under ~/.claude and rollout-*.jsonl under ~/.codex/sessions are read, each file in full. Secrets are redacted as each line is parsed.'),
+      h('p', { class: 'mt-slip mt-privacy tilt-b' }, 'Only projects/**/*.jsonl under ~/.claude and rollout-*.jsonl under ~/.codex/sessions are read, each file in full. Secrets are redacted as each line is parsed. The page makes no network request to any other site, before or after it loads, and sends nothing you read or write anywhere.'),
       sel &&
         h(
           'div',

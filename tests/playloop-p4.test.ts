@@ -2,6 +2,8 @@
 // says what a play costs once when it brings the managed block header, the boss tally names the line not yet judged,
 // and the page makes no network request of its own. Engine and adapter level, plus static sweeps over the source.
 import { beforeAll, describe, expect, test } from 'bun:test';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { newDeck } from '../src/deck/deck';
 import * as A from '../src/ui/playloop/adapter';
@@ -245,5 +247,65 @@ describe('item 3: the boss tally names the line not yet judged', () => {
     expect(insp).toContain("judged === 'open' ? button('pl-cards-btn', 'Does not apply'");
     const ctl = await Bun.file(join(ROOT, 'src/ui/playloop/controller.ts')).text();
     expect(ctl).toContain('declineImport: (cardId) => this.commit(A.actDeclineImport(this.state, cardId)');
+  });
+});
+
+describe('item 5: no request to any other site', () => {
+  // A namespace is a name, not a request; the repo and Pages links may appear in text.
+  const ALLOWED = new Set(['http://www.w3.org/2000/svg', 'http://www.w3.org/1999/xlink', 'https://github.com/olety/errata', 'https://olety.github.io/errata/']);
+  const urls = (text: string) => [...text.matchAll(/https?:\/\/[^\s"'`)<>%\\]+/g)].map((m) => m[0]);
+  const foreign = (text: string) => urls(text).filter((u) => !ALLOWED.has(u));
+
+  test('index.html links only the self-hosted fonts; no Google Fonts link or preconnect is left', () => {
+    const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
+    expect(foreign(html)).toEqual([]);
+    expect(html).toContain('<link rel="stylesheet" href="/fonts/fonts.css" />');
+    expect(html).not.toMatch(/googleapis|gstatic|preconnect/);
+  });
+
+  test('every font file is local woff2 with its OFL licence beside it, and SOURCES.md records where each came from', () => {
+    const dir = join(ROOT, 'public/fonts');
+    const css = readFileSync(join(dir, 'fonts.css'), 'utf8');
+    expect(foreign(css)).toEqual([]);
+    const files = [...css.matchAll(/url\('\.\/([^']+)'\)/g)].map((m) => m[1]!);
+    const families = [...new Set([...css.matchAll(/font-family: '([^']+)'/g)].map((m) => m[1]!))].sort();
+    expect(families).toEqual(['JetBrains Mono', 'Lora', 'Shippori Mincho B1', 'Zen Kaku Gothic New']);
+    const sources = readFileSync(join(dir, 'SOURCES.md'), 'utf8');
+    for (const f of new Set(files)) {
+      expect(readFileSync(join(dir, f)).subarray(0, 4).toString('latin1')).toBe('wOF2');
+      expect(sources).toContain(`\`${f}\``);
+    }
+    for (const fam of families) {
+      const ofl = readFileSync(join(dir, `OFL-${fam.replace(/ /g, '-')}.txt`), 'utf8');
+      expect(ofl).toContain('SIL OPEN FONT LICENSE Version 1.1');
+    }
+    // The weights the stylesheets use are all present (no synthesised bold for the titles' 800 or the mono 600).
+    for (const [fam, w] of [['Shippori Mincho B1', 500], ['Shippori Mincho B1', 600], ['Shippori Mincho B1', 800], ['Zen Kaku Gothic New', 400], ['Zen Kaku Gothic New', 500], ['Zen Kaku Gothic New', 700], ['JetBrains Mono', 400], ['JetBrains Mono', 600], ['Lora', 400]] as const) {
+      expect(css).toMatch(new RegExp(`font-family: '${fam}';\\n  font-style: \\w+;\\n  font-weight: ${w};`));
+    }
+  });
+
+  test('the built page: index.html, its CSS and its scripts name no other site', () => {
+    const out = mkdtempSync(join(tmpdir(), 'errata-build-'));
+    try {
+      const r = Bun.spawnSync(['bunx', 'vite', 'build', '--outDir', out, '--emptyOutDir', '--logLevel', 'error'], { cwd: ROOT, env: { ...process.env, ERRATA_BASE: '/errata/' } });
+      expect(r.exitCode).toBe(0);
+      const html = readFileSync(join(out, 'index.html'), 'utf8');
+      expect(html).toContain('href="/errata/fonts/fonts.css"');
+      const assets = readdirSync(join(out, 'assets')).filter((f) => f.endsWith('.css') || f.endsWith('.js'));
+      expect(assets.some((f) => f.endsWith('.css'))).toBe(true);
+      const hits = [html, ...assets.map((f) => readFileSync(join(out, 'assets', f), 'utf8')), readFileSync(join(out, 'fonts/fonts.css'), 'utf8')].flatMap(foreign);
+      expect(hits).toEqual([]);
+      expect(existsSync(join(out, 'fonts/OFL-Lora.txt'))).toBe(true);
+    } finally {
+      rmSync(out, { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  test('the import page and the README say so in words', async () => {
+    const main = await Bun.file(join(ROOT, 'src/ui/main.ts')).text();
+    expect(main).toContain('The page makes no network request to any other site, before or after it loads');
+    const readme = await Bun.file(join(ROOT, 'README.md')).text();
+    expect(readme).toContain('no network request to any other site, before or after it loads');
   });
 });
