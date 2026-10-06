@@ -1,0 +1,960 @@
+{
+  "positives": [
+    {
+      "id": "openai-at-start",
+      "input": "sk-zbII5ch4R4H4rl75pKg2O6640Z4ejiltOOJN2ZaX begins this captured stdout",
+      "secrets": [
+        "sk-zbII5ch4R4H4rl75pKg2O6640Z4ejiltOOJN2ZaX"
+      ]
+    },
+    {
+      "id": "openai-at-end",
+      "input": "Captured stderr ends with sk-proj-Mkir4t4q6UyPwKd9RkfPp6I7qSki6kZUkejzUR60DrPJxA2G",
+      "secrets": [
+        "sk-proj-Mkir4t4q6UyPwKd9RkfPp6I7qSki6kZUkejzUR60DrPJxA2G"
+      ]
+    },
+    {
+      "id": "openai-shell-export",
+      "input": "export OPENAI_API_KEY=\"sk-svcacct-vWtcW2WpvJ4AVsACLUQUQJN33LjUUYJheyoB5KuCzh\"",
+      "secrets": [
+        "sk-svcacct-vWtcW2WpvJ4AVsACLUQUQJN33LjUUYJheyoB5KuCzh"
+      ]
+    },
+    {
+      "id": "openai-markdown",
+      "input": "```sh\ncurl -H \"X-Api-Key: sk-189A6j7auDLS4Y7RIaVbl1pa\" https://example.invalid/v1\n```",
+      "secrets": [
+        "sk-189A6j7auDLS4Y7RIaVbl1pa"
+      ]
+    },
+    {
+      "id": "anthropic-json",
+      "input": "{\"request\":{\"credential\":\"sk-ant-Ql7RRJhB5NtgydLrat45rSbN7JxVKogHausX\"}}",
+      "secrets": [
+        "sk-ant-Ql7RRJhB5NtgydLrat45rSbN7JxVKogHausX"
+      ]
+    },
+    {
+      "id": "anthropic-env",
+      "input": "ANTHROPIC_API_KEY=sk-ant-api03-eG1FwCym8YfsmGmo1cYmnTI9TJ2xovSRHu9hPq25vsoBTcIOQl1XJ2\nLOG_LEVEL=info",
+      "secrets": [
+        "sk-ant-api03-eG1FwCym8YfsmGmo1cYmnTI9TJ2xovSRHu9hPq25vsoBTcIOQl1XJ2"
+      ]
+    },
+    {
+      "id": "anthropic-stack",
+      "input": "Traceback (most recent call last):\n  RuntimeError: refused credential sk-ant-fXAnK7pd4UZsW2zeORDHm4Et",
+      "secrets": [
+        "sk-ant-fXAnK7pd4UZsW2zeORDHm4Et"
+      ]
+    },
+    {
+      "id": "github-ghp",
+      "input": "git credential helper emitted ghp_XTZaFDAKKLCRdqGRdl9nuXcTUSDcyusC1RXu",
+      "secrets": [
+        "ghp_XTZaFDAKKLCRdqGRdl9nuXcTUSDcyusC1RXu"
+      ]
+    },
+    {
+      "id": "github-gho",
+      "input": "git credential helper emitted gho_lrk3qStuftfFyVq8b49UCtdRiFSAAJgMiAk8",
+      "secrets": [
+        "gho_lrk3qStuftfFyVq8b49UCtdRiFSAAJgMiAk8"
+      ]
+    },
+    {
+      "id": "github-ghu",
+      "input": "git credential helper emitted ghu_O8s5k7XjDdGp3BAZhsmVizpuOmAHpFzKoTLk",
+      "secrets": [
+        "ghu_O8s5k7XjDdGp3BAZhsmVizpuOmAHpFzKoTLk"
+      ]
+    },
+    {
+      "id": "github-github_pat",
+      "input": "git credential helper emitted github_pat_ehc6Cgt2pCX9cXdtR237rVT1sUGpkZOAtRb4",
+      "secrets": [
+        "github_pat_ehc6Cgt2pCX9cXdtR237rVT1sUGpkZOAtRb4"
+      ]
+    },
+    {
+      "id": "github-ts-source",
+      "input": "const credential = \"ghp_XTZaFDAKKLCRdqGRdl9nuXcTUSDcyusC1RXu\";",
+      "secrets": [
+        "ghp_XTZaFDAKKLCRdqGRdl9nuXcTUSDcyusC1RXu"
+      ]
+    },
+    {
+      "id": "aws-env",
+      "input": "AWS_ACCESS_KEY_ID=AKIAGZRPM2GC2EVQNJR8",
+      "secrets": [
+        "AKIAGZRPM2GC2EVQNJR8"
+      ]
+    },
+    {
+      "id": "aws-yaml",
+      "input": "credentials:\n  accessKeyId: AKIAQY4UJU5CHKCNIS7G",
+      "secrets": [
+        "AKIAQY4UJU5CHKCNIS7G"
+      ]
+    },
+    {
+      "id": "aws-trace",
+      "input": "Error: AWS request rejected\n  at sign (AKIAYUBRS6V35QSNEVOU):27:9",
+      "secrets": [
+        "AKIAYUBRS6V35QSNEVOU"
+      ]
+    },
+    {
+      "id": "slack-xoxa",
+      "input": "export SLACK_TOKEN=xoxa-026071007357-HEJ9UnjdiYC2fgnJANSa8O1X",
+      "secrets": [
+        "xoxa-026071007357-HEJ9UnjdiYC2fgnJANSa8O1X"
+      ]
+    },
+    {
+      "id": "slack-xoxb",
+      "input": "curl -H \"Authorization: Bearer xoxb-135779003525-u4WkfL5TEsNiEwhUfknRGv2d\" https://example.invalid/slack",
+      "secrets": [
+        "xoxb-135779003525-u4WkfL5TEsNiEwhUfknRGv2d"
+      ]
+    },
+    {
+      "id": "slack-xoxp",
+      "input": "```yaml\nslack:\n  credential: xoxp-301117512433-fKwkhXegc0IkRlOki0eVjZW0\n```",
+      "secrets": [
+        "xoxp-301117512433-fKwkhXegc0IkRlOki0eVjZW0"
+      ]
+    },
+    {
+      "id": "google-ts",
+      "input": "const mapsCredential = \"AIzaNwFE9RO1owPm-f-h3Vx-z7FYT3DBUTlJiZq\";",
+      "secrets": [
+        "AIzaNwFE9RO1owPm-f-h3Vx-z7FYT3DBUTlJiZq"
+      ]
+    },
+    {
+      "id": "google-query",
+      "input": "GET https://example.invalid/maps?key=AIzaP85ekLMyH9IXl_Ry_aM7IkQdn6tN_RE1ezQ",
+      "secrets": [
+        "AIzaP85ekLMyH9IXl_Ry_aM7IkQdn6tN_RE1ezQ"
+      ]
+    },
+    {
+      "id": "google-json",
+      "input": "{\"input\":\"maps auth failed for AIza4YYvfA_MYyDACHWqq6U0TNV96Qmbe74CAyn\"}",
+      "secrets": [
+        "AIza4YYvfA_MYyDACHWqq6U0TNV96Qmbe74CAyn"
+      ]
+    },
+    {
+      "id": "bearer-baseline",
+      "input": "Bearer hna78fkCUmJHmEvcc4H6cRxRQMTd",
+      "secrets": [
+        "hna78fkCUmJHmEvcc4H6cRxRQMTd"
+      ]
+    },
+    {
+      "id": "bearer-lowercase",
+      "input": "bearer A5YPc07RtUMyDboeUpvDdfUabqeA",
+      "secrets": [
+        "A5YPc07RtUMyDboeUpvDdfUabqeA"
+      ]
+    },
+    {
+      "id": "bearer-mixedcase",
+      "input": "bEaReR 55okPbjOv4b1rCx5hUCKpmXn7ej6",
+      "secrets": [
+        "55okPbjOv4b1rCx5hUCKpmXn7ej6"
+      ]
+    },
+    {
+      "id": "bearer-short",
+      "input": "Bearer 928tLRn",
+      "secrets": [
+        "928tLRn"
+      ]
+    },
+    {
+      "id": "bearer-curl",
+      "input": "curl -H \"X-Custom-Auth: Bearer sLuA9YGzqjv9PjxCOgZiHS+/=a8Q\" https://example.invalid",
+      "secrets": [
+        "sLuA9YGzqjv9PjxCOgZiHS+/=a8Q"
+      ]
+    },
+    {
+      "id": "jwt-standalone",
+      "input": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzeW50aGV0aWMtdXNlci0wIiwiZXhwIjoyMjAwMDAwMDAwfQ.hwIPTm2-cwuEgHZDfVfZBCI55N8MpzQiTc4-UWvgOya",
+      "secrets": [
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzeW50aGV0aWMtdXNlci0wIiwiZXhwIjoyMjAwMDAwMDAwfQ.hwIPTm2-cwuEgHZDfVfZBCI55N8MpzQiTc4-UWvgOya"
+      ]
+    },
+    {
+      "id": "jwt-json",
+      "input": "{\"tool\": \"echo\", \"argument\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzeW50aGV0aWMtdXNlci0xIiwiZXhwIjoyMjAwMDAwMDAwfQ.dVQN7r4KkWgyzMihlA6p037AgAGdqgA5MttQRKbUYz-\"}",
+      "secrets": [
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzeW50aGV0aWMtdXNlci0xIiwiZXhwIjoyMjAwMDAwMDAwfQ.dVQN7r4KkWgyzMihlA6p037AgAGdqgA5MttQRKbUYz-"
+      ]
+    },
+    {
+      "id": "jwt-python-source",
+      "input": "session_value = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzeW50aGV0aWMtdXNlci0yIiwiZXhwIjoyMjAwMDAwMDAwfQ.IOAhxh__IgI5ZIC_v8PHPH6uBoclmE9IHOIhElsI8kD\"",
+      "secrets": [
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzeW50aGV0aWMtdXNlci0yIiwiZXhwIjoyMjAwMDAwMDAwfQ.IOAhxh__IgI5ZIC_v8PHPH6uBoclmE9IHOIhElsI8kD"
+      ]
+    },
+    {
+      "id": "jwt-stack",
+      "input": "ValueError: malformed session\n    session_value=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzeW50aGV0aWMtdXNlci0zIiwiZXhwIjoyMjAwMDAwMDAwfQ.tV4yZN_kCgsXtLvaJ99bvWBJewJR-YSHEPc_-63pbMs",
+      "secrets": [
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzeW50aGV0aWMtdXNlci0zIiwiZXhwIjoyMjAwMDAwMDAwfQ.tV4yZN_kCgsXtLvaJ99bvWBJewJR-YSHEPc_-63pbMs"
+      ]
+    },
+    {
+      "id": "jwt-empty-claims",
+      "input": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.XoyH06T_qIWJuRNgkNR4S_TMcrnU0Fvamc5i5yBkaMZ",
+      "secrets": [
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.XoyH06T_qIWJuRNgkNR4S_TMcrnU0Fvamc5i5yBkaMZ"
+      ]
+    },
+    {
+      "id": "pem-rsa",
+      "input": "```text\n-----BEGIN RSA PRIVATE KEY-----\nmpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo=\naOd0GyfZ9gIeYEsx5CXTVz4ffwYHYYAnNqLDOXN41N347fYc\n-----END RSA PRIVATE KEY-----\n```",
+      "secrets": [
+        "-----BEGIN RSA PRIVATE KEY-----\nmpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo=\naOd0GyfZ9gIeYEsx5CXTVz4ffwYHYYAnNqLDOXN41N347fYc\n-----END RSA PRIVATE KEY-----",
+        "mpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo="
+      ]
+    },
+    {
+      "id": "pem-pkcs8",
+      "input": "```text\n-----BEGIN PRIVATE KEY-----\nmpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo=\nbHPuhq13qrtlmKAKbunRsYzBP3pmhtMepiex9rhKZal2Qe3a\n-----END PRIVATE KEY-----\n```",
+      "secrets": [
+        "-----BEGIN PRIVATE KEY-----\nmpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo=\nbHPuhq13qrtlmKAKbunRsYzBP3pmhtMepiex9rhKZal2Qe3a\n-----END PRIVATE KEY-----",
+        "mpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo="
+      ]
+    },
+    {
+      "id": "pem-ec",
+      "input": "```text\n-----BEGIN EC PRIVATE KEY-----\nmpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo=\nwijV8NlWlFhDGr2I6cJ0EYPVvOm9cqhm65NgpRcEK2ZCEGLz\n-----END EC PRIVATE KEY-----\n```",
+      "secrets": [
+        "-----BEGIN EC PRIVATE KEY-----\nmpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo=\nwijV8NlWlFhDGr2I6cJ0EYPVvOm9cqhm65NgpRcEK2ZCEGLz\n-----END EC PRIVATE KEY-----",
+        "mpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo="
+      ]
+    },
+    {
+      "id": "pem-cut-mid-block",
+      "input": "tool stdout:\n-----BEGIN PRIVATE KEY-----\nmpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo=\nZITzxo3msdFrxQOwyTI4R2s95",
+      "secrets": [
+        "-----BEGIN PRIVATE KEY-----\nmpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo=\nZITzxo3msdFrxQOwyTI4R2s95",
+        "mpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo="
+      ]
+    },
+    {
+      "id": "pem-crlf",
+      "input": "-----BEGIN OPENSSH PRIVATE KEY-----\r\nmpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo=\r\n-----END OPENSSH PRIVATE KEY-----",
+      "secrets": [
+        "-----BEGIN OPENSSH PRIVATE KEY-----\r\nmpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo=\r\n-----END OPENSSH PRIVATE KEY-----",
+        "mpS80zeMd9U/a2u/kCW1hAACXV7X6yk4ZxLYfowBEeo="
+      ]
+    },
+    {
+      "id": "assignment-env-password",
+      "input": "password=DNtkI2VIJd98x4kduK2Lue5",
+      "secrets": [
+        "DNtkI2VIJd98x4kduK2Lue5"
+      ]
+    },
+    {
+      "id": "assignment-env-passwd",
+      "input": "passwd=crFiMuKHyCmL86y6TrDXHXV",
+      "secrets": [
+        "crFiMuKHyCmL86y6TrDXHXV"
+      ]
+    },
+    {
+      "id": "assignment-env-secret",
+      "input": "secret=hkP5Q2AVTBjiQOKNYwUVx3W",
+      "secrets": [
+        "hkP5Q2AVTBjiQOKNYwUVx3W"
+      ]
+    },
+    {
+      "id": "assignment-env-token",
+      "input": "token=68Cp3OvoGPRRuzBsEBu7axC",
+      "secrets": [
+        "68Cp3OvoGPRRuzBsEBu7axC"
+      ]
+    },
+    {
+      "id": "assignment-env-api_key",
+      "input": "api_key=EFKt5YD6jv0xvOxnaz3eclo",
+      "secrets": [
+        "EFKt5YD6jv0xvOxnaz3eclo"
+      ]
+    },
+    {
+      "id": "assignment-env-api-key",
+      "input": "api-key=8zNg5ShXze7VVsnowjh4Ofn",
+      "secrets": [
+        "8zNg5ShXze7VVsnowjh4Ofn"
+      ]
+    },
+    {
+      "id": "assignment-shell-export",
+      "input": "export password=\"FLuL3ABmFlEXyxmLup2qjRi\"",
+      "secrets": [
+        "FLuL3ABmFlEXyxmLup2qjRi"
+      ]
+    },
+    {
+      "id": "assignment-yaml",
+      "input": "settings:\n  password: wTBSsGpRUhsBmLeYZFWZbXC\n  enabled: true",
+      "secrets": [
+        "wTBSsGpRUhsBmLeYZFWZbXC"
+      ]
+    },
+    {
+      "id": "assignment-python",
+      "input": "password = 'Q2Rx0V4pdEwMViRZiYt3mEv'",
+      "secrets": [
+        "Q2Rx0V4pdEwMViRZiYt3mEv"
+      ]
+    },
+    {
+      "id": "assignment-ts",
+      "input": "const apiKey = \"EcE4RGcfpxEXFRZSlcYBgTG\";",
+      "secrets": [
+        "EcE4RGcfpxEXFRZSlcYBgTG"
+      ]
+    },
+    {
+      "id": "assignment-json",
+      "input": "{\"api_key\": \"PJ0V6zVAkwkOz7UquWU5FZj\", \"operation\": \"lookup\"}",
+      "secrets": [
+        "PJ0V6zVAkwkOz7UquWU5FZj"
+      ]
+    },
+    {
+      "id": "assignment-escaped-json",
+      "input": "{\\\"api_key\\\": \\\"jcjOMErufZk53xPCNytvhpI\\\"}",
+      "secrets": [
+        "jcjOMErufZk53xPCNytvhpI"
+      ]
+    },
+    {
+      "id": "assignment-json-tool-wrapper",
+      "input": "{\"command\": \"python -c 'opts = {\\\"api_key\\\": \\\"Ud5D4vC9416Ta9cwiUuvJi4\\\"}'\"}",
+      "secrets": [
+        "Ud5D4vC9416Ta9cwiUuvJi4"
+      ]
+    },
+    {
+      "id": "assignment-markdown",
+      "input": "```env\nsecret=wUKwAhV6Or7ZkX0l6K9F4tw\n```",
+      "secrets": [
+        "wUKwAhV6Or7ZkX0l6K9F4tw"
+      ]
+    },
+    {
+      "id": "assignment-stack",
+      "input": "Traceback:\n  RuntimeError: credential error; password=9YwP6ekgYOkX5BOksqMRB9f",
+      "secrets": [
+        "9YwP6ekgYOkX5BOksqMRB9f"
+      ]
+    },
+    {
+      "id": "assignment-leading",
+      "input": "password: KWoA5CXW4zoLwhBvAINkf1A\nnormal footer",
+      "secrets": [
+        "KWoA5CXW4zoLwhBvAINkf1A"
+      ]
+    },
+    {
+      "id": "assignment-trailing",
+      "input": "normal preface\nsecret=Pzwdwdhta769icZVddoTwk3",
+      "secrets": [
+        "Pzwdwdhta769icZVddoTwk3"
+      ]
+    },
+    {
+      "id": "assignment-short-one",
+      "input": "password=9",
+      "secrets": [
+        "9"
+      ]
+    },
+    {
+      "id": "assignment-short-two",
+      "input": "password=Q7",
+      "secrets": [
+        "Q7"
+      ]
+    },
+    {
+      "id": "assignment-short-three",
+      "input": "password=m4Z",
+      "secrets": [
+        "m4Z"
+      ]
+    },
+    {
+      "id": "assignment-quoted-space",
+      "input": "password=\"ssqNblxbA UoSzfwD7ZMx\"",
+      "secrets": [
+        "ssqNblxbA UoSzfwD7ZMx",
+        "UoSzfwD7ZMx"
+      ]
+    },
+    {
+      "id": "assignment-quoted-comma",
+      "input": "password=\"QmSVo3742C,2hF7X1g6LkSTkC\"",
+      "secrets": [
+        "QmSVo3742C,2hF7X1g6LkSTkC",
+        "2hF7X1g6LkSTkC"
+      ]
+    },
+    {
+      "id": "assignment-env-semicolon",
+      "input": "password=rYZ6SDPEaE;qDipWLtCIilFnU",
+      "secrets": [
+        "rYZ6SDPEaE;qDipWLtCIilFnU",
+        "qDipWLtCIilFnU"
+      ]
+    },
+    {
+      "id": "assignment-env-hash",
+      "input": "password=mx2U4Mh075Qr#63FbBwqBXU",
+      "secrets": [
+        "mx2U4Mh075Qr#63FbBwqBXU"
+      ]
+    },
+    {
+      "id": "assignment-quoted-bracket",
+      "input": "password=\"Ce2zLvPHVA]52AX13Rtce8gf\"",
+      "secrets": [
+        "Ce2zLvPHVA]52AX13Rtce8gf",
+        "52AX13Rtce8gf"
+      ]
+    },
+    {
+      "id": "auth-header-basic",
+      "input": "Authorization: Basic wbdK5cyeQQWptVCRmNyERgzlC1Qcfr",
+      "secrets": [
+        "wbdK5cyeQQWptVCRmNyERgzlC1Qcfr"
+      ]
+    },
+    {
+      "id": "auth-header-bearer",
+      "input": "Authorization: Bearer d1jvz1bee1JKCLBHORsog0uLsrq9Q8",
+      "secrets": [
+        "d1jvz1bee1JKCLBHORsog0uLsrq9Q8"
+      ]
+    },
+    {
+      "id": "auth-header-token",
+      "input": "Authorization: Token 5ubmysNQ7ESUbmKH3uqlGCZ3Eoq6q0",
+      "secrets": [
+        "5ubmysNQ7ESUbmKH3uqlGCZ3Eoq6q0"
+      ]
+    },
+    {
+      "id": "auth-header-digest",
+      "input": "Authorization: Digest 09jTlXVa4MZ07l9gvJ21QnisFBwBwH",
+      "secrets": [
+        "09jTlXVa4MZ07l9gvJ21QnisFBwBwH"
+      ]
+    },
+    {
+      "id": "auth-header-bot",
+      "input": "Authorization: Bot ptevVAHWczehaOeUCga1Fiti62Woqr",
+      "secrets": [
+        "ptevVAHWczehaOeUCga1Fiti62Woqr"
+      ]
+    },
+    {
+      "id": "auth-header-equals",
+      "input": "Authorization=0jjUfZm7hZxbh2SXCc5JY0CVqhrj",
+      "secrets": [
+        "0jjUfZm7hZxbh2SXCc5JY0CVqhrj"
+      ]
+    },
+    {
+      "id": "auth-header-json",
+      "input": "{\"Authorization\": \"Bearer 9MOX4kHLwVwhkSv6UHJfZSdEg4n9T7\"}",
+      "secrets": [
+        "9MOX4kHLwVwhkSv6UHJfZSdEg4n9T7"
+      ]
+    },
+    {
+      "id": "auth-header-escaped-json",
+      "input": "{\\\"Authorization\\\": \\\"Bearer ytpnEkJQGrRgH9snDHbiuz7rHp2IGt\\\"}",
+      "secrets": [
+        "ytpnEkJQGrRgH9snDHbiuz7rHp2IGt"
+      ]
+    },
+    {
+      "id": "auth-header-short",
+      "input": "Authorization: Bearer NMtHt52",
+      "secrets": [
+        "NMtHt52"
+      ]
+    },
+    {
+      "id": "auth-header-lower",
+      "input": "authorization: bearer 0WYmcgdNyKGJo2as3uDEmoJe8G",
+      "secrets": [
+        "0WYmcgdNyKGJo2as3uDEmoJe8G"
+      ]
+    },
+    {
+      "id": "url-git-https",
+      "input": "git remote add origin https://fixture-user:PIfLvukpblxyk7i9gwTyC3@example.invalid/repo.git",
+      "secrets": [
+        "PIfLvukpblxyk7i9gwTyC3"
+      ]
+    },
+    {
+      "id": "url-git-ftp",
+      "input": "git remote add origin ftp://fixture-user:OKGH5gmZSnZmBP6RNc1c3B@example.invalid/repo.git",
+      "secrets": [
+        "OKGH5gmZSnZmBP6RNc1c3B"
+      ]
+    },
+    {
+      "id": "url-db",
+      "input": "DATABASE_URL=postgresql://fixture-user:nRZHxTOL5Ays0HJvW08HA0@example.invalid/repo.git",
+      "secrets": [
+        "nRZHxTOL5Ays0HJvW08HA0"
+      ]
+    },
+    {
+      "id": "url-percent-password",
+      "input": "https://fixture:Ukb4lFDuXB99bB%3AWO5zM5JF5x4Q@example.invalid/repo",
+      "secrets": [
+        "Ukb4lFDuXB99bB%3AWO5zM5JF5x4Q"
+      ]
+    },
+    {
+      "id": "url-username-only-credential",
+      "input": "git clone https://2X4UGQYhiHL0wphaXT7CStPfF21P5Fc6@example.invalid/repo.git",
+      "secrets": [
+        "2X4UGQYhiHL0wphaXT7CStPfF21P5Fc6"
+      ]
+    },
+    {
+      "id": "url-both-sensitive-components",
+      "input": "https://4cRluuFdE36jqZ3XyssLYr8h:Ia8v1jVFPqXwRM699lIz@example.invalid/repo",
+      "secrets": [
+        "4cRluuFdE36jqZ3XyssLYr8h",
+        "Ia8v1jVFPqXwRM699lIz"
+      ]
+    },
+    {
+      "id": "url-query-two-secrets",
+      "input": "GET https://example.invalid/debug?token=MrQ56juMk8N2r3P1lOMnG&api_key=4YdOKfo3kHhBslDvyoEAGVmt2&page=2",
+      "secrets": [
+        "MrQ56juMk8N2r3P1lOMnG",
+        "4YdOKfo3kHhBslDvyoEAGVmt2"
+      ]
+    },
+    {
+      "id": "curl-query-two-secrets",
+      "input": "curl \"https://example.invalid/?token=0Sd3RJcoaOXfMQoQrO1A&api_key=LljZrbLvfV1wFJ7zD4khpQ\"",
+      "secrets": [
+        "0Sd3RJcoaOXfMQoQrO1A",
+        "LljZrbLvfV1wFJ7zD4khpQ"
+      ]
+    },
+    {
+      "id": "keyish-secret",
+      "input": "secret -> 1ae54a4807812efda85b0e3d7980713dac89e65c",
+      "secrets": [
+        "1ae54a4807812efda85b0e3d7980713dac89e65c"
+      ]
+    },
+    {
+      "id": "keyish-token",
+      "input": "token -> L74PW5R+FD7EQeewb+h4kSQShxXfA1KdJS/wi8LIxpM+=",
+      "secrets": [
+        "L74PW5R+FD7EQeewb+h4kSQShxXfA1KdJS/wi8LIxpM+="
+      ]
+    },
+    {
+      "id": "keyish-credential",
+      "input": "credential -> 0df341f39023b6477c83d1200c14e24ed7fefff7",
+      "secrets": [
+        "0df341f39023b6477c83d1200c14e24ed7fefff7"
+      ]
+    },
+    {
+      "id": "keyish-private_key",
+      "input": "private_key -> 5HsLfH+hrIbgQeDm9WqjhpqIm1zhQakv4Dr+JU+nyqnZ=",
+      "secrets": [
+        "5HsLfH+hrIbgQeDm9WqjhpqIm1zhQakv4Dr+JU+nyqnZ="
+      ]
+    },
+    {
+      "id": "keyish-x-api-key",
+      "input": "x-api-key -> 9736feda98e023be8fd7d7c19dd99e7bf28f4737",
+      "secrets": [
+        "9736feda98e023be8fd7d7c19dd99e7bf28f4737"
+      ]
+    },
+    {
+      "id": "keyish-signature",
+      "input": "signature -> vToVYWR5GCu2tU5Tr4h++egwlCh8YKzZhDM2UF30wJ8F=",
+      "secrets": [
+        "vToVYWR5GCu2tU5Tr4h++egwlCh8YKzZhDM2UF30wJ8F="
+      ]
+    },
+    {
+      "id": "keyish-slash-adjacent",
+      "input": "credential/ufQZaPdGq2Drw0V8egePeLncrZXqbfAQ6qZAWYyO",
+      "secrets": [
+        "ufQZaPdGq2Drw0V8egePeLncrZXqbfAQ6qZAWYyO"
+      ]
+    },
+    {
+      "id": "keyish-dash-adjacent",
+      "input": "credential-mufxAayeTgGrT2fnYAuVqnmxQV5IWce8yphsTnJL",
+      "secrets": [
+        "mufxAayeTgGrT2fnYAuVqnmxQV5IWce8yphsTnJL"
+      ]
+    },
+    {
+      "id": "keyish-long-gap",
+      "input": "credential (captured opaque value): rnBSnPbncO2WL0zFz6xLctKmA6O74f6WHtXvrq8q",
+      "secrets": [
+        "rnBSnPbncO2WL0zFz6xLctKmA6O74f6WHtXvrq8q"
+      ]
+    },
+    {
+      "id": "two-vendor-secrets",
+      "input": "first=sk-ZKHSmf8fEJg3yR1HvqNOEEOy3CoxzmDq; second=ghp_PTu0YgE9HHv0zjZ4T8CvASAZibmX6aioMv",
+      "secrets": [
+        "sk-ZKHSmf8fEJg3yR1HvqNOEEOy3CoxzmDq",
+        "ghp_PTu0YgE9HHv0zjZ4T8CvASAZibmX6aioMv"
+      ]
+    },
+    {
+      "id": "two-assignment-secrets",
+      "input": "password=wq0MInMUVp0HPEW9FJfjx token=0Ve61avnXi1bd6xG3ee",
+      "secrets": [
+        "wq0MInMUVp0HPEW9FJfjx",
+        "0Ve61avnXi1bd6xG3ee"
+      ]
+    }
+  ],
+  "negatives": [
+    {
+      "id": "uuid-0",
+      "input": "request id: c043b0d1-ff6b-492e-a652-a57f14ea7356",
+      "note": "Synthetic UUID, not an authentication value."
+    },
+    {
+      "id": "uuid-1",
+      "input": "{\"request_id\":\"7b49ba8b-fa00-432d-a7b0-efe76f59a524\"}",
+      "note": "Synthetic UUID, not an authentication value."
+    },
+    {
+      "id": "uuid-2",
+      "input": "/tmp/bdb4ba42-6e96-4961-a659-26891acb1bac/result.txt",
+      "note": "Synthetic UUID, not an authentication value."
+    },
+    {
+      "id": "git-sha-0",
+      "input": "commit 2b3ea5759b2be4e4cba8fe6207a88753c8552b05",
+      "note": "40-hex git commit ID after commit; not a credential."
+    },
+    {
+      "id": "git-sha-1",
+      "input": "commit 0f5c98c17bccc73d4502f9c08fb94874731eecc2\nAuthor: Fixture User",
+      "note": "40-hex git commit ID after commit; not a credential."
+    },
+    {
+      "id": "git-sha-2",
+      "input": "commit 2d32ba324873ed8ac69168ba919ba02888ff07aa (HEAD -> feature/logs)",
+      "note": "40-hex git commit ID after commit; not a credential."
+    },
+    {
+      "id": "sha256-list-0",
+      "input": "912aa5887d483ccaa0bfcb76b8d4d9192639c48003f7c18abc1aac65ae275ada  ./dist/archive-0.tar.gz\n",
+      "note": "Checksum list entry; not a credential."
+    },
+    {
+      "id": "sha256-list-1",
+      "input": "618d033f73c5777c145828097b0c3cf0a8c9cb822146b859e5ba323edd0ad833  ./dist/archive-1.tar.gz\n",
+      "note": "Checksum list entry; not a credential."
+    },
+    {
+      "id": "sha256-list-2",
+      "input": "4b834f2bdd299781e6c1e84ddac5a599fde0e2827df96ea5fcac72f9bb077c06  ./dist/archive-2.tar.gz\n",
+      "note": "Checksum list entry; not a credential."
+    },
+    {
+      "id": "sha256-multiline",
+      "input": "4680cc357f40baad6536f941fbddda2abbdae8b64ae29affecd9ce34186e962c  file0.txt\n132e9e7da584eb94798442b550792fde9a3275fce4e6bce153424284c2591955  file1.txt\nf8e5fe1d8f8d2b10134736e574bd8ceee2acea4dcc8e4ad797eae04ce544cb6b  file2.txt\n",
+      "note": "Multi-line sha256sum output."
+    },
+    {
+      "id": "css-color-0",
+      "input": ".badge { color: #A1b2C3; }",
+      "note": "CSS hexadecimal colors, not secrets."
+    },
+    {
+      "id": "css-color-1",
+      "input": "body { background: #fff; border-color: #102030ff; }",
+      "note": "CSS hexadecimal colors, not secrets."
+    },
+    {
+      "id": "css-color-2",
+      "input": ":root { --color: #f09; --hover: #0a7b8c; }",
+      "note": "CSS hexadecimal colors, not secrets."
+    },
+    {
+      "id": "file-path-0",
+      "input": "/workspace/src/token_refresh.ts",
+      "note": "Ordinary source or artifact path."
+    },
+    {
+      "id": "file-path-1",
+      "input": "./tests/password/reset_password.spec.ts",
+      "note": "Ordinary source or artifact path."
+    },
+    {
+      "id": "file-path-2",
+      "input": "C:\\workspace\\secret-tests\\fixture.json",
+      "note": "Ordinary source or artifact path."
+    },
+    {
+      "id": "file-path-3",
+      "input": "/tmp/key-cache/ordinary-result.txt",
+      "note": "Ordinary source or artifact path."
+    },
+    {
+      "id": "prose-no-value-0",
+      "input": "the token count was high",
+      "note": "Mentions a sensitive concept without assigning a value."
+    },
+    {
+      "id": "prose-no-value-1",
+      "input": "reset your password field",
+      "note": "Mentions a sensitive concept without assigning a value."
+    },
+    {
+      "id": "prose-no-value-2",
+      "input": "Keep secrets out of docs; no value is logged.",
+      "note": "Mentions a sensitive concept without assigning a value."
+    },
+    {
+      "id": "prose-no-value-3",
+      "input": "A token refresh can fail before authentication.",
+      "note": "Mentions a sensitive concept without assigning a value."
+    },
+    {
+      "id": "prose-no-value-4",
+      "input": "The api_key property is documented in the schema.",
+      "note": "Mentions a sensitive concept without assigning a value."
+    },
+    {
+      "id": "prose-no-value-5",
+      "input": "passwd is an alias for the password option.",
+      "note": "Mentions a sensitive concept without assigning a value."
+    },
+    {
+      "id": "midword-sk-0",
+      "input": "task-runner",
+      "note": "sk- occurs inside a word, not at a secret prefix boundary."
+    },
+    {
+      "id": "midword-sk-1",
+      "input": "multitask-runner completed",
+      "note": "sk- occurs inside a word, not at a secret prefix boundary."
+    },
+    {
+      "id": "midword-sk-2",
+      "input": "desk-lamp",
+      "note": "sk- occurs inside a word, not at a secret prefix boundary."
+    },
+    {
+      "id": "midword-sk-3",
+      "input": "task-0qrBVPMFRMjmqSlK5e5FNaYLICm5X8GH9cV0",
+      "note": "sk- occurs inside a word, not at a secret prefix boundary."
+    },
+    {
+      "id": "midword-sk-4",
+      "input": "prefixsk-vRju1S2iKNFkGedo0XA7BvyGtG1k5J",
+      "note": "sk- occurs inside a word, not at a secret prefix boundary."
+    },
+    {
+      "id": "short-base64-0",
+      "input": "sample encoding VFdxVVRI",
+      "note": "Short base64 text under 32 characters without a credential context."
+    },
+    {
+      "id": "short-base64-1",
+      "input": "sample encoding aDU5UTZSZGg4QUNJUQ==",
+      "note": "Short base64 text under 32 characters without a credential context."
+    },
+    {
+      "id": "short-base64-2",
+      "input": "sample encoding QWpCckx6Yjk4dWw3YVo5U3hHTFpx",
+      "note": "Short base64 text under 32 characters without a credential context."
+    },
+    {
+      "id": "npm-integrity-0",
+      "input": "  integrity: sha512-g2dl0RSoGR0Pnc08Hpx2hqqGULg6+rb7a2QC8SFDLjyT+vs4xl8tR/H+XAogLS9/jV0K63vZBXR6rTcK9s+L2g==",
+      "note": "npm integrity digest, not a secret."
+    },
+    {
+      "id": "npm-integrity-1",
+      "input": "  integrity: sha512-oFu44XRXu7ci7eyPtDMf1WbBpzVZuUMIOzzyHf7Vn00vnN5oWniu3uCXUq6vz3m/LLao+/wYKedj8Cj0Ugqodg==",
+      "note": "npm integrity digest, not a secret."
+    },
+    {
+      "id": "npm-integrity-2",
+      "input": "  integrity: sha512-ef4vYFpoM6L+QVhjeuj4h2LaPu7AMgzVgAwCutYeuf6eNS8v5y6wIkA/sV4eHrs8/P1hJNB1F78V26ka/LKEOg==",
+      "note": "npm integrity digest, not a secret."
+    },
+    {
+      "id": "test-name-0",
+      "input": "test_token_refresh",
+      "note": "Test name or test command mentions a key-ish word without a value."
+    },
+    {
+      "id": "test-name-1",
+      "input": "test_password_reset_does_not_log_secret",
+      "note": "Test name or test command mentions a key-ish word without a value."
+    },
+    {
+      "id": "test-name-2",
+      "input": "describe(\"test_api_key_validation\", () => {})",
+      "note": "Test name or test command mentions a key-ish word without a value."
+    },
+    {
+      "id": "test-name-3",
+      "input": "pytest tests/test_token_refresh.py::test_token_count",
+      "note": "Test name or test command mentions a key-ish word without a value."
+    },
+    {
+      "id": "japanese-0",
+      "input": "トークン数が多かった。",
+      "note": "Ordinary Japanese text; preserve Unicode and newlines."
+    },
+    {
+      "id": "japanese-1",
+      "input": "パスワード欄をリセットしてください。",
+      "note": "Ordinary Japanese text; preserve Unicode and newlines."
+    },
+    {
+      "id": "japanese-2",
+      "input": "秘密の値はログに含まれていません。",
+      "note": "Ordinary Japanese text; preserve Unicode and newlines."
+    },
+    {
+      "id": "japanese-3",
+      "input": "日本語の表示テスト\n改行を保持してください。",
+      "note": "Ordinary Japanese text; preserve Unicode and newlines."
+    },
+    {
+      "id": "config-token-count",
+      "input": "token_count=4096",
+      "note": "Public count, not a token value."
+    },
+    {
+      "id": "config-password-length",
+      "input": "password_length=2048",
+      "note": "Public validation limit, not a password."
+    },
+    {
+      "id": "config-auth-enabled",
+      "input": "auth_enabled=true",
+      "note": "Boolean config flag, not an auth value."
+    },
+    {
+      "id": "config-api-key-enabled",
+      "input": "api_key_enabled=false",
+      "note": "Feature flag, not the key itself."
+    },
+    {
+      "id": "config-tokenizer",
+      "input": "tokenizer=cl100k_base",
+      "note": "Tokenizer model name, not a token."
+    },
+    {
+      "id": "config-secretary",
+      "input": "secretary=editor",
+      "note": "Ordinary role/property containing secret as a substring."
+    },
+    {
+      "id": "config-authentication",
+      "input": "authentication=required",
+      "note": "Authentication policy label, not a credential."
+    },
+    {
+      "id": "config-test-name",
+      "input": "test_token_refresh=passed",
+      "note": "Test result, not a token assignment."
+    },
+    {
+      "id": "prose-password-field",
+      "input": "password field: editable",
+      "note": "UI prose assigns a property of a field, not a password."
+    },
+    {
+      "id": "schema-secret-bool",
+      "input": "secret: true",
+      "note": "JSON-schema-style secret flag, not an opaque secret."
+    },
+    {
+      "id": "source-symbol-value",
+      "input": "const token = refreshedToken;",
+      "note": "Source reference to a variable, not a logged secret."
+    },
+    {
+      "id": "source-function-value",
+      "input": "password = getPassword()",
+      "note": "Source expression, not an embedded password."
+    },
+    {
+      "id": "keyish-commit-sha",
+      "input": "token refresh commit 2b1926d3e1208c2ed3574feb68901da93cfc5e85",
+      "note": "Commit hash after commit even near a token-related phrase."
+    },
+    {
+      "id": "keyish-file-path",
+      "input": "secret file /workspace/fixtures/r4zpD7IQ0uKlaTrG032JNDy52bHzLMX7kzo2bFG8Bs.txt",
+      "note": "Generated fixture filename, not a credential."
+    },
+    {
+      "id": "keyish-npm-integrity",
+      "input": "tokenizer integrity: sha512-62xtrOEHi4qpWonm4p+1yGbTZVwIYfKijqIdyrkwLjv0q0WWuqKyMgTOXw8bXKvuuX+F9ahsb8CgAfUQnLpYCQ==",
+      "note": "Package integrity digest; tokenizer is not token."
+    },
+    {
+      "id": "ordinary-url-user",
+      "input": "git clone https://git@example.invalid/public.git",
+      "note": "Ordinary short URL username, not a password/token."
+    },
+    {
+      "id": "ordinary-url-no-auth",
+      "input": "https://example.invalid/path?token_count=4096&api_key_enabled=true",
+      "note": "Query parameters are counts and flags, not secret values."
+    },
+    {
+      "id": "ordinary-header-name",
+      "input": "Authorization header is absent",
+      "note": "Mention of header name without header content."
+    },
+    {
+      "id": "ordinary-bearer-prose",
+      "input": "Bearer authentication uses a scheme name",
+      "note": "Prose explaining the bearer scheme, no credential."
+    },
+    {
+      "id": "unicode-u2028",
+      "input": "first line 日本語の行 final line",
+      "note": "Unicode separators are ordinary text, not record delimiters."
+    }
+  ]
+}
