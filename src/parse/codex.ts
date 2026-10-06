@@ -4,7 +4,7 @@
 // apply_patch, event_msg user_message). Push one line at a time; call finish().
 
 import type { ResultStatus, Session, ToolCall } from '../model';
-import { TEXT_LIMITS, projectFromCwd } from '../model';
+import { TEXT_LIMITS, projectFromCwd, projectKeyOf } from '../model';
 import { classifyUserText, codeModeCommands, finishSession, newStats, patchFiles, shellStatus, toolKindFor, TurnBuilder } from './common';
 import type { ParseMeta } from './claude';
 
@@ -28,7 +28,10 @@ export class CodexParser {
 
   constructor(private meta: ParseMeta) {
     this.s = {
-      id: meta.file.replace(/\.jsonl$/, ''),
+      id: `codex:${meta.file.replace(/\.jsonl$/, '')}`,
+      nativeId: meta.file.replace(/\.jsonl$/, ''),
+      projectKey: null,
+      gaps: [],
       agent: 'codex',
       file: meta.file,
       startedAt: null,
@@ -46,11 +49,18 @@ export class CodexParser {
   }
 
   oversized(): void {
+    this.stats.lines++;
     this.stats.oversizedRows++;
+    this.s.gaps.push({ afterSeq: this.stats.lines - 1, kind: 'oversized-row' });
+  }
+
+  tailGap(): void {
+    this.s.gaps.push({ afterSeq: this.stats.lines, kind: 'tail-window' });
   }
 
   push(line: string): void {
     this.stats.lines++;
+    this.b.seq = this.stats.lines;
     let o: unknown;
     try {
       o = JSON.parse(line);
@@ -58,6 +68,7 @@ export class CodexParser {
     } catch {
       this.stats.badLines++;
       this.lastLineBad = true;
+      this.s.gaps.push({ afterSeq: this.stats.lines - 1, kind: 'bad-line' });
       return;
     }
     if (!isObj(o)) return;
@@ -69,7 +80,7 @@ export class CodexParser {
       case 'session_meta':
         return this.sessionMeta(p, ts);
       case 'turn_context':
-        if (!this.s.cwd) this.setCwd(str(p.cwd));
+        this.setCwd(str(p.cwd));
         return;
       case 'response_item':
         return this.responseItem(o, p, ts);
@@ -86,15 +97,21 @@ export class CodexParser {
 
   private setCwd(cwd: string | null): void {
     if (!cwd) return;
+    this.b.projectKey = projectKeyOf(cwd);
+    if (this.s.cwd) return;
     this.s.cwd = this.b.r(cwd, 400);
     this.s.project = projectFromCwd(this.s.cwd);
+    this.s.projectKey = this.b.projectKey;
   }
 
   private sessionMeta(p: Json, ts: string | null): void {
     if (this.sawMeta) return; // forked threads carry a second session_meta for the parent; the first is this thread
     this.sawMeta = true;
     const id = str(p.id) ?? str(p.session_id);
-    if (id) this.s.id = id;
+    if (id) {
+      this.s.nativeId = id;
+      this.s.id = `codex:${id}`;
+    }
     this.s.startedAt = str(p.timestamp) ?? ts;
     this.setCwd(str(p.cwd));
     this.s.client = str(p.originator);
@@ -258,16 +275,15 @@ export class CodexParser {
       if (call) {
         const exitCode = num(p.exit_code);
         const text = str(p.aggregated_output) ?? str(p.stdout) ?? '';
-        const res = { ts, status: shellStatus(call.command, exitCode, 'unknown'), exitCode, text: this.b.r(text, TEXT_LIMITS.result) };
         // The event carries the authoritative exit code; it wins over a text-parsed one.
-        call.result = res;
+        this.b.result(call.callId, { ts, status: shellStatus(call.command, exitCode, 'unknown'), exitCode, text: this.b.r(text, TEXT_LIMITS.result) }, { override: true });
       }
       return;
     }
     if (t === 'patch_apply_end') {
       const callId = str(p.call_id);
       const call = callId ? this.b.calls.get(callId) : undefined;
-      if (call && !call.result) call.result = { ts, status: p.success === false ? 'error' : 'ok', exitCode: null, text: '' };
+      if (call && !call.result) this.b.result(call.callId, { ts, status: p.success === false ? 'error' : 'ok', exitCode: null, text: '' });
     }
     // user_message duplicates the response_item user message; token_count, task_* etc. are not stored.
   }
@@ -282,6 +298,15 @@ export class CodexParser {
       const fallback: ResultStatus = st === 'declined' ? 'rejected' : st === 'failed' ? 'error' : 'unknown';
       const text = str(it.aggregated_output) ?? str(it.stdout) ?? '';
       const command = cmd ? this.b.r(cmd, TEXT_LIMITS.input) : null;
+      const res = { ts, status: shellStatus(cmd, exitCode, fallback), exitCode, text: this.b.r(text, TEXT_LIMITS.result) };
+      // A direct (non code-mode) shell call still waiting for its result: this item mirrors it.
+      if (!this.openExec) {
+        const mirror = [...this.b.calls.values()].reverse().find((c) => c.kind === 'shell' && !c.result && c.parentCallId === null && c.command === command);
+        if (mirror) {
+          this.b.result(mirror.callId, res);
+          return;
+        }
+      }
       let kind: ToolCall['kind'] = 'shell';
       let files: string[] = [];
       if (cmd && /\*\*\* Begin Patch/.test(cmd)) {
@@ -296,7 +321,7 @@ export class CodexParser {
         command,
         files,
         input: command ?? '',
-        result: { ts, status: shellStatus(cmd, exitCode, fallback), exitCode, text: this.b.r(text, TEXT_LIMITS.result) },
+        result: res,
       });
       return;
     }

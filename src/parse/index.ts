@@ -34,7 +34,7 @@ export async function parseSessionFile(f: SessionFile, agent?: Agent): Promise<S
   const a = agent ?? agentForPath(f.rel);
   const meta: ParseMeta = { file: name, agentAuthored: /(^|\/)subagents\//.test(f.rel) || /^agent-/.test(name) };
   const parser = a === 'codex' ? new CodexParser(meta) : new ClaudeParser(meta);
-  const out = await readSessionLines(f.blob, { line: (t) => parser.push(t), oversized: () => parser.oversized() });
+  const out = await readSessionLines(f.blob, { line: (t) => parser.push(t), oversized: () => parser.oversized(), gap: () => parser.tailGap() });
   const s = parser.finish();
   if (out.window === 'tail-window') {
     s.partial = true;

@@ -2,7 +2,7 @@
 // Push one line at a time; call finish() for the Session. Raw rows never leave this module.
 
 import type { ResultStatus, Session, ToolCall } from '../model';
-import { TEXT_LIMITS, projectFromCwd } from '../model';
+import { TEXT_LIMITS, projectFromCwd, projectKeyOf } from '../model';
 import { classifyUserText, finishSession, newStats, shellStatus, toolKindFor, TurnBuilder } from './common';
 
 export interface ParseMeta {
@@ -22,10 +22,14 @@ export class ClaudeParser {
   private b = new TurnBuilder(this.stats);
   private s: Session;
   private lastLineBad = false;
+  private sawSid = false;
 
   constructor(private meta: ParseMeta) {
     this.s = {
-      id: meta.file.replace(/\.jsonl$/, ''),
+      id: `claude:${meta.file.replace(/\.jsonl$/, '')}`,
+      nativeId: meta.file.replace(/\.jsonl$/, ''),
+      projectKey: null,
+      gaps: [],
       agent: 'claude',
       file: meta.file,
       startedAt: null,
@@ -43,11 +47,18 @@ export class ClaudeParser {
   }
 
   oversized(): void {
+    this.stats.lines++;
     this.stats.oversizedRows++;
+    this.s.gaps.push({ afterSeq: this.stats.lines - 1, kind: 'oversized-row' });
+  }
+
+  tailGap(): void {
+    this.s.gaps.push({ afterSeq: this.stats.lines, kind: 'tail-window' });
   }
 
   push(line: string): void {
     this.stats.lines++;
+    this.b.seq = this.stats.lines;
     let o: unknown;
     try {
       o = JSON.parse(line);
@@ -55,6 +66,7 @@ export class ClaudeParser {
     } catch {
       this.stats.badLines++;
       this.lastLineBad = true;
+      this.s.gaps.push({ afterSeq: this.stats.lines - 1, kind: 'bad-line' });
       return;
     }
     if (!isObj(o)) return;
@@ -73,12 +85,19 @@ export class ClaudeParser {
     const s = this.s;
     if (!s.startedAt && ts) s.startedAt = ts;
     const sid = str(o.sessionId);
-    if (sid && s.id === this.meta.file.replace(/\.jsonl$/, '')) s.id = sid;
-    if (!s.cwd) {
-      const cwd = str(o.cwd);
-      if (cwd) {
+    if (sid && !this.sawSid) {
+      this.sawSid = true;
+      s.nativeId = sid;
+      // Subagent files share the parent's sessionId; the file stem keeps their canonical id unique.
+      s.id = this.meta.agentAuthored ? `claude:${sid}/${this.meta.file.replace(/\.jsonl$/, '')}` : `claude:${sid}`;
+    }
+    const cwd = str(o.cwd);
+    if (cwd) {
+      this.b.projectKey = projectKeyOf(cwd);
+      if (!s.cwd) {
         s.cwd = this.b.r(cwd, 400);
         s.project = projectFromCwd(s.cwd);
+        s.projectKey = this.b.projectKey;
       }
     }
     if (!s.gitBranch) {

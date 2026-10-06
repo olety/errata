@@ -7,6 +7,8 @@ export interface LineSink {
   line(text: string): void;
   /** A row above MAX_LINE_BYTES was skipped. */
   oversized(): void;
+  /** The middle of the file was skipped (oversized-session tail rule). */
+  gap?(): void;
 }
 
 /** Splits a byte stream into UTF-8 lines. Rows longer than maxLine are dropped and reported. */
@@ -147,6 +149,7 @@ export async function readSessionLines(blob: BlobLike, sink: LineSink): Promise<
   };
   await pump(blob.slice(0, Math.min(blob.size, MAX_LINE_BYTES + 1)), new LineSplitter(headSink), () => got);
   // Tail: drop the first (partial) line of the window.
+  sink.gap?.();
   const sp = new LineSplitter(sink, { skipFirstPartial: true });
   await pump(blob.slice(blob.size - TAIL_WINDOW_BYTES), sp);
   return { window: 'tail-window', unterminated: sp.end() };

@@ -26,6 +26,10 @@ export type TurnRole = 'human' | 'assistant' | 'injected' | 'interrupt';
 export interface Turn {
   /** Position in Session.turns. */
   i: number;
+  /** Source position (1-based line number in the read window). Orders turns, calls and results; never crosses a gap unnoticed. */
+  seq: number;
+  /** Opaque key of the cwd in force when this turn was logged (see projectKeyOf). Null when unknown. */
+  projectKey: string | null;
   role: TurnRole;
   /** ISO timestamp from the log line, null when the line had none. */
   ts: string | null;
@@ -46,6 +50,8 @@ export type ToolKind = 'shell' | 'edit' | 'read' | 'search' | 'agent' | 'other';
 export type ResultStatus = 'ok' | 'error' | 'nomatch' | 'interrupted' | 'rejected' | 'unknown';
 
 export interface ToolResult {
+  /** Source position of the row that carried the result. */
+  seq: number;
   ts: string | null;
   status: ResultStatus;
   exitCode: number | null;
@@ -56,6 +62,8 @@ export interface ToolResult {
 export interface ToolCall {
   /** Log-native call id (Claude tool_use.id, Codex call_id or item id). Unique within the session. */
   callId: string;
+  /** Source position of the row that carried the call. */
+  seq: number;
   /** Codex code-mode: the exec call this command ran inside. Null otherwise. */
   parentCallId: string | null;
   name: string;
@@ -85,9 +93,18 @@ export interface SessionStats {
   redactions: RedactionCounts;
 }
 
+/** A discontinuity in the source: pairing, run counting and durations never cross one. */
+export interface Gap {
+  /** The gap sits right after this source position (0 = before the first line). */
+  afterSeq: number;
+  kind: 'bad-line' | 'oversized-row' | 'tail-window';
+}
+
 export interface Session {
-  /** Stable id: the log's own session id when present, else the file name. */
+  /** Canonical id, unique across the import: "<agent>:<native id>[/<subagent file>]". */
   id: string;
+  /** The log's own session / thread id (Claude subagent files share their parent's). */
+  nativeId: string;
   agent: Agent;
   /** File name only, never a full path. */
   file: string;
@@ -96,8 +113,10 @@ export interface Session {
   /** Redacted cwd as logged. */
   cwd: string | null;
   gitBranch: string | null;
-  /** Scope chip: last path segment of cwd, null when absent or when cwd is a bare home dir. */
+  /** Scope chip for display: last path segment of cwd, null when absent or a bare home dir. Not an identity. */
   project: string | null;
+  /** Opaque project identity: hash of the full first cwd, computed before redaction. Null when no project. */
+  projectKey: string | null;
   /** Claude entrypoint / Codex originator, for the mirror. */
   client: string | null;
   /** Agent-authored thread (Claude subagent file, Codex subagent thread). Its user turns are not human. */
@@ -105,6 +124,7 @@ export interface Session {
   /** True when the session was read through a tail window or has a truncated last line. */
   partial: boolean;
   partialReason: 'tail-window' | 'truncated-line' | 'bad-lines' | null;
+  gaps: Gap[];
   turns: Turn[];
   stats: SessionStats;
 }
@@ -140,8 +160,26 @@ export function projectFromCwd(cwd: string | null | undefined): string | null {
   if (parts.length === 0) return null;
   // A user's home directory (home/<u>, the macOS home root, a Windows profile) is not a project.
   if (parts.length <= 2 && /^(home|Users)$/i.test(parts[0] ?? '')) return null;
+  if (parts.length === 1 && /^[A-Za-z]:$/.test(parts[0] ?? '')) return null;
   if (parts.length <= 3 && /^[A-Za-z]:$/.test(parts[0] ?? '') && /^Users$/i.test(parts[1] ?? '')) return null;
   const last = parts[parts.length - 1]!;
   if (last.startsWith('[redacted')) return null;
   return last;
+}
+
+/** Opaque project identity from a raw cwd: FNV-1a 32-bit hex of the normalized path. Null when the cwd is no project. */
+export function projectKeyOf(rawCwd: string | null | undefined): string | null {
+  if (!rawCwd || projectFromCwd(rawCwd) === null) return null;
+  const norm = rawCwd.replace(/[\\/]+$/, '').replace(/\\/g, '/');
+  let h = 0x811c9dc5;
+  for (let i = 0; i < norm.length; i++) {
+    h ^= norm.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return 'p' + h.toString(16).padStart(8, '0');
+}
+
+/** True when a gap lies between two source positions (a < b). */
+export function gapBetween(s: Session, a: number, b: number): boolean {
+  return s.gaps.some((g) => g.afterSeq >= a && g.afterSeq < b);
 }

@@ -1,6 +1,6 @@
 // Helpers shared by both parsers.
 
-import type { InjectedKind, InterruptKind, ResultStatus, Session, SessionStats, ToolCall, ToolKind, Turn } from '../model';
+import type { InjectedKind, InterruptKind, ResultStatus, Session, SessionStats, ToolCall, ToolKind, ToolResult, Turn } from '../model';
 import { TEXT_LIMITS } from '../model';
 import { redactBounded } from '../redact';
 
@@ -103,6 +103,10 @@ export function newStats(): SessionStats {
 export class TurnBuilder {
   turns: Turn[] = [];
   calls = new Map<string, ToolCall>();
+  /** Source position of the row being parsed; set by the parser before each row. */
+  seq = 0;
+  /** Project key of the cwd in force; set by the parser when a row carries a cwd. */
+  projectKey: string | null = null;
   constructor(private stats: SessionStats) {}
 
   r(text: string | null | undefined, limit: number = TEXT_LIMITS.message): string {
@@ -110,7 +114,7 @@ export class TurnBuilder {
   }
 
   push(role: Turn['role'], ts: string | null, text: string, extra: Partial<Turn> = {}): Turn {
-    const t: Turn = { i: this.turns.length, role, ts, text, calls: [], ...extra };
+    const t: Turn = { i: this.turns.length, seq: this.seq, projectKey: this.projectKey, role, ts, text, calls: [], ...extra };
     this.turns.push(t);
     return t;
   }
@@ -129,8 +133,9 @@ export class TurnBuilder {
     t.text = t.text ? (t.text + '\n' + add).slice(0, TEXT_LIMITS.message + 1) : add;
   }
 
-  addCall(ts: string | null, c: Omit<ToolCall, 'ts' | 'result'> & { result?: ToolCall['result'] }): ToolCall {
-    const call: ToolCall = { ts, result: null, ...c };
+  addCall(ts: string | null, c: Omit<ToolCall, 'ts' | 'result' | 'seq'> & { result?: Omit<ToolResult, 'seq'> | null }): ToolCall {
+    const { result, ...rest } = c;
+    const call: ToolCall = { ts, seq: this.seq, ...rest, result: result ? { ...result, seq: this.seq } : null };
     // A duplicate id (e.g. a forked thread replaying history) keeps the first call.
     if (this.calls.has(call.callId)) return this.calls.get(call.callId)!;
     this.assistant(ts).calls.push(call);
@@ -139,13 +144,13 @@ export class TurnBuilder {
   }
 
   /** Attach a result to its call. Results whose call is unknown are counted, never bridged. */
-  result(callId: string, res: NonNullable<ToolCall['result']>): ToolCall | null {
+  result(callId: string, res: Omit<ToolResult, 'seq'>, opts: { override?: boolean } = {}): ToolCall | null {
     const c = this.calls.get(callId);
     if (!c) {
       this.stats.orphanResults++;
       return null;
     }
-    if (!c.result) c.result = res;
+    if (!c.result || opts.override) c.result = { ...res, seq: this.seq };
     return c;
   }
 }
