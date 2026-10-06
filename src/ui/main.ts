@@ -4,14 +4,18 @@
 // "#play" opens the plain debug render of every view field.
 
 import './style.css';
+import './material.css';
 import type { Agent } from '../model';
 import { analyse, type Analysis } from '../pipeline';
 import type { RouteNode } from '../rooms';
 import { newDeck, type DeckState } from '../deck/deck';
+import { budgetFor, weigh } from '../deck/file';
+import { asset } from './playloop/cards/dom';
+import { strapText } from './playloop/contract';
+import { actLine, mirrorRows } from './mirror-view';
 import { CODEX_OVERRIDE } from '../deck/lanes';
 import { ensureWritable, fsaRoot, prefixedRoot } from '../apply/fsa-root';
 import type { Root } from '../apply/types';
-import { NEGATIVE_LABELS, type NegativeKind } from '../noise';
 import { claudeCandidates, codexCandidates, droppedCandidates, selectRun, type Candidate, type Selection } from './importer';
 import { resetSample, sampleDirs, sampleFiles, SAMPLE_LABEL } from './sample';
 import type { ParseReply, ParseRequest } from './worker';
@@ -46,6 +50,8 @@ interface State {
   deck: DeckState;
   dirs: { claude: FileSystemDirectoryHandle | null; codex: FileSystemDirectoryHandle | null; agents: FileSystemDirectoryHandle | null; codexLoaded: boolean; claudeLoaded: boolean };
   roots: Root[] | null;
+  /** The two global files as read on the import page once a folder is chosen (null = absent; undefined = not read). */
+  books: { claude?: Uint8Array | null; codex?: Uint8Array | null };
 }
 
 const S: State = {
@@ -61,6 +67,7 @@ const S: State = {
   deck: newDeck(null, null),
   dirs: { claude: null, codex: null, agents: null, codexLoaded: false, claudeLoaded: false },
   roots: null,
+  books: {},
 };
 
 // ---------------------------------------------------------------- tiny DOM helpers (text only)
@@ -100,6 +107,8 @@ async function pickClaude(): Promise<void> {
     set({ busy: 'Listing Claude Code sessions…', error: null });
     const found = await claudeCandidates(dir);
     S.dirs.claude = dir;
+    // The book's strap shows CLAUDE.md's real weight as soon as the folder is chosen (read only; nothing is written).
+    S.books.claude = await readIn(dir, 'CLAUDE.md');
     S.candidates = [...S.candidates.filter((c) => c.agent !== 'claude'), ...found];
     set({ busy: null, mode: 'real', selection: selectRun(S.candidates) });
   } catch (e) {
@@ -207,7 +216,8 @@ async function readCodexHome(): Promise<void> {
     S.dirs.codexLoaded = true;
     S.roots = null;
     const claude = S.dirs.claude ? await readIn(S.dirs.claude, 'CLAUDE.md') : null;
-    S.deck = newDeck(claude, await readIn(dir, 'AGENTS.md'), await readIn(dir, CODEX_OVERRIDE));
+    S.books.codex = await readIn(dir, 'AGENTS.md');
+    S.deck = newDeck(claude, S.books.codex, await readIn(dir, CODEX_OVERRIDE));
     render();
   } catch (e) {
     if ((e as DOMException).name !== 'AbortError') fail(e);
@@ -269,7 +279,7 @@ function startPlayLoop(): void {
   unmountPlay = hash() === '#play' ? mountDebug(app, ctl) : mountScreens(app, ctl);
 }
 
-// ---------------------------------------------------------------- pages: import, reading, mirror
+// ---------------------------------------------------------------- pages: import, reading, mirror (in the material)
 function steps(): HTMLElement {
   const names: [Step, string][] = [
     ['import', 'Import'],
@@ -277,12 +287,44 @@ function steps(): HTMLElement {
     ['mirror', 'Mirror'],
     ['play', 'The act'],
   ];
-  return h('nav', { class: 'steps' }, h('span', { class: 'brand' }, 'Errata'), S.mode === 'sample' ? h('span', { class: 'chip' }, SAMPLE_LABEL) : null, ...names.map(([k, n]) => h('span', { class: S.step === k ? 'on' : '' }, n)));
+  return h('nav', { class: 'mt-steps' }, h('span', { class: 'brand' }, 'Errata'), S.mode === 'sample' ? h('span', { class: 'chip' }, SAMPLE_LABEL) : null, ...names.map(([k, n]) => h('span', { class: S.step === k ? 'on' : '' }, n)));
+}
+
+/** A page in the material: the world plate behind, the title on a paper plate in the sky, the rest on the wood. */
+function material(cls: string, sky: Child[], wood: Child[]): HTMLElement {
+  const page = h('div', { class: `mt ${cls}` }, h('header', { class: 'mt-sky' }, h('div', { class: 'mt-plate' }, steps(), ...sky)), h('section', { class: 'mt-wood' }, ...wood));
+  page.style.setProperty('--mt-plate', `url("${asset('layout/world-table.webp')}")`);
+  page.style.setProperty('--mt-wood', `url("${asset('layout/world-table-wood.webp')}")`);
+  page.style.setProperty('--mt-plate-p', `url("${asset('layout/world-portrait.webp')}")`);
+  page.style.setProperty('--mt-wood-p', `url("${asset('layout/world-portrait-wood.webp')}")`);
+  return page;
+}
+
+/** One book lying closed on the wood: its strap at the file's real weight once read, else "not read yet". */
+function closedBook(name: string, path: string, bytes: Uint8Array | null | undefined, tilt: string, unread: string): HTMLElement {
+  let strap: HTMLElement;
+  let fig: HTMLElement;
+  if (bytes === undefined) {
+    strap = h('div', { class: 'mt-strap' }, h('i', { style: 'width:0%' }));
+    fig = h('p', { class: 'mt-book-fig' }, h('span', { class: 'is-none' }, unread));
+  } else {
+    // Honesty map: the strap = weigh(file).total against budgetFor(file).allowance (the same numbers the table shows).
+    const now = weigh(bytes ?? new Uint8Array(0)).total;
+    const allowance = budgetFor(bytes).allowance;
+    const t = strapText(now, allowance);
+    strap = h('div', { class: `mt-strap${now > allowance ? ' is-over' : ''}` }, h('i', { style: `width:${Math.min(100, Math.round((now / Math.max(allowance, now, 1)) * 1000) / 10)}%` }));
+    fig = h('p', { class: 'mt-book-fig' }, h('span', {}, bytes === null ? 'no file yet: it starts empty' : t.weight), h('span', {}, t.left));
+  }
+  const b = h('div', { class: `mt-book ${tilt}`, role: 'img', 'aria-label': `${name}, closed: ${fig.textContent}` }, h('span', { class: 'mt-book-name' }, name), h('span', { class: 'mt-book-path' }, path), strap, fig);
+  return b;
 }
 
 function viewImport(): HTMLElement {
   const sel = S.selection;
-  const drop = h('div', { class: 'drop' }, 'Or drop .jsonl session files here.');
+  // A file input for the same path as the drop (keyboard, touch, and browsers without folder access).
+  const input = h('input', { type: 'file', accept: '.jsonl', multiple: 'multiple', class: 'mt-file', 'aria-label': 'Choose .jsonl session files' }) as HTMLInputElement;
+  input.addEventListener('change', () => void onDrop([...(input.files ?? [])]));
+  const drop = h('div', { class: 'mt-slip mt-drop tilt-c' }, 'Or drop .jsonl session files here, or pick them: ', input);
   drop.addEventListener('dragover', (e) => {
     e.preventDefault();
     drop.classList.add('hot');
@@ -296,62 +338,68 @@ function viewImport(): HTMLElement {
   const claudeN = sel?.chosen.filter((c) => c.agent === 'claude').length ?? 0;
   const codexN = sel?.chosen.filter((c) => c.agent === 'codex').length ?? 0;
   const day = (t: number | null) => (t ? new Date(t).toISOString().slice(0, 10) : '–');
-  return h(
-    'section',
-    {},
-    h('h1', {}, 'Your rules file is a deck.'),
-    h('p', { class: 'sub' }, 'Read your recent Claude Code and Codex sessions, review what happened, and write better rules into CLAUDE.md and AGENTS.md. Everything stays in this tab.'),
-    h(
-      'div',
-      { class: 'row' },
-      h('button', { class: 'primary', onclick: () => void startSample() }, 'Play the synthetic sample'),
-      hasFSA && h('button', { onclick: () => void pickClaude() }, 'Choose your ~/.claude folder'),
-      hasFSA && h('button', { onclick: () => void pickCodexSessions() }, 'Choose ~/.codex/sessions'),
-    ),
-    !hasFSA && h('p', { class: 'sub' }, 'This browser cannot open folders. Drop session files instead.'),
-    drop,
-    h('p', { class: 'sub' }, 'Only projects/**/*.jsonl under ~/.claude and rollout-*.jsonl under ~/.codex/sessions are read, each file in full. Secrets are redacted as each line is parsed.'),
-    sel &&
+  const choice = (label: string, sub: string, onclick: () => void, cls: string) => h('button', { class: `mt-slip mt-choice ${cls}`, onclick }, h('b', {}, label), h('span', {}, sub));
+  return material(
+    'mt-import',
+    [h('h1', {}, 'Your rules file is a deck.'), h('p', { class: 'mt-sub' }, 'Read your recent Claude Code and Codex sessions, review what happened, and write better rules into CLAUDE.md and AGENTS.md. Everything stays in this tab.')],
+    [
+      h('div', { class: 'mt-row' }, closedBook('CLAUDE.md', '~/.claude/CLAUDE.md', S.books.claude, 'tilt-a', 'not read yet'), closedBook('AGENTS.md', '~/.codex/AGENTS.md', S.books.codex, 'tilt-b', 'read at the mirror or at Apply')),
       h(
         'div',
-        {},
-        h('h2', {}, 'This run'),
-        h(
-          'table',
-          {},
-          h('tr', {}, h('td', {}, 'Window'), h('td', { class: 'num' }, `last ${sel.window.days} days, up to ${sel.window.perAgent} per agent`)),
-          h('tr', {}, h('td', {}, 'Dates'), h('td', { class: 'num' }, `${day(sel.dates.from)} to ${day(sel.dates.to)}`)),
-          h('tr', {}, h('td', {}, 'Claude Code sessions'), h('td', { class: 'num' }, String(claudeN))),
-          h('tr', {}, h('td', {}, 'Codex sessions'), h('td', { class: 'num' }, String(codexN))),
-          h('tr', {}, h('td', {}, 'To read'), h('td', { class: 'num' }, `${mib(sel.bytes)} MiB, about ${sel.estimateSec} s`)),
-          h('tr', {}, h('td', {}, 'Left out'), h('td', { class: 'num' }, `${sel.excluded.tooOld} older · ${sel.excluded.subagent} subagent threads · ${sel.excluded.overPerAgent} beyond the per-agent limit`)),
-        ),
-        sel.overSoftBound && h('p', { class: 'warn' }, `This run is ${mib(sel.bytes)} MiB, over the 128 MiB guide. Every file is still read in full; it may take about ${sel.estimateSec} seconds. You can cancel at any time.`),
-        h('button', { class: 'primary', disabled: sel.chosen.length === 0, onclick: () => void startRun(sel.chosen.map((c) => ({ rel: c.rel, blob: c.file, agent: c.agent }))) }, sel.overSoftBound ? 'Continue anyway' : 'Start the run'),
+        { class: 'mt-row' },
+        choice('Play the synthetic sample', 'Twelve made-up sessions and two small files. Nothing of yours is read.', () => void startSample(), 'is-primary tilt-a'),
+        hasFSA && choice('Choose your ~/.claude folder', 'Your Claude Code sessions and CLAUDE.md, read only.', () => void pickClaude(), 'tilt-b'),
+        hasFSA && choice('Choose ~/.codex/sessions', 'Your Codex rollouts, read only.', () => void pickCodexSessions(), 'tilt-c'),
       ),
+      !hasFSA && h('p', { class: 'mt-slip mt-privacy' }, 'This browser cannot open folders. Drop session files instead; Apply then gives you the lines to paste.'),
+      drop,
+      h('p', { class: 'mt-slip mt-privacy tilt-b' }, 'Only projects/**/*.jsonl under ~/.claude and rollout-*.jsonl under ~/.codex/sessions are read, each file in full. Secrets are redacted as each line is parsed.'),
+      sel &&
+        h(
+          'div',
+          { class: 'mt-slip mt-run tilt-c' },
+          h('h2', {}, 'This run'),
+          h(
+            'table',
+            {},
+            h('tr', {}, h('td', {}, 'Window'), h('td', { class: 'num' }, `last ${sel.window.days} days, up to ${sel.window.perAgent} per agent`)),
+            h('tr', {}, h('td', {}, 'Dates'), h('td', { class: 'num' }, `${day(sel.dates.from)} to ${day(sel.dates.to)}`)),
+            h('tr', {}, h('td', {}, 'Claude Code sessions'), h('td', { class: 'num' }, String(claudeN))),
+            h('tr', {}, h('td', {}, 'Codex sessions'), h('td', { class: 'num' }, String(codexN))),
+            h('tr', {}, h('td', {}, 'To read'), h('td', { class: 'num' }, `${mib(sel.bytes)} MiB, about ${sel.estimateSec} s`)),
+            h('tr', {}, h('td', {}, 'Left out'), h('td', { class: 'num' }, `${sel.excluded.tooOld} older · ${sel.excluded.subagent} subagent threads · ${sel.excluded.overPerAgent} beyond the per-agent limit`)),
+          ),
+          sel.overSoftBound && h('p', { class: 'mt-warn' }, `This run is ${mib(sel.bytes)} MiB, over the 128 MiB guide. Every file is still read in full; it may take about ${sel.estimateSec} seconds. You can cancel at any time.`),
+          h('button', { class: 'primary', disabled: sel.chosen.length === 0, onclick: () => void startRun(sel.chosen.map((c) => ({ rel: c.rel, blob: c.file, agent: c.agent }))) }, sel.overSoftBound ? 'Continue anyway' : 'Start the run'),
+        ),
+    ],
   );
 }
 
 function viewReading(): HTMLElement {
   const p = S.progress;
   const pct = (a: number, b: number) => (b > 0 ? Math.min(100, Math.round((a / b) * 100)) : 0);
-  return h(
-    'section',
-    {},
-    h('h1', {}, S.mode === 'sample' ? 'Reading the synthetic sample' : 'Reading your sessions'),
-    p
-      ? h(
-          'div',
-          {},
-          h('p', { class: 'mono' }, `File ${p.fileIndex} of ${p.files} · ${p.file}`),
-          h('p', { class: 'num' }, `This file ${mib(p.fileBytes)} of ${mib(p.fileSize)} MiB`),
-          h('div', { class: 'bar' }, h('i', { style: `width:${pct(p.fileBytes, p.fileSize)}%` })),
-          h('p', { class: 'num' }, `Overall ${mib(p.bytesDone)} of ${mib(p.bytesTotal)} MiB · ${p.sessionsDone} of ${p.files} sessions read`),
-          h('div', { class: 'bar' }, h('i', { style: `width:${pct(p.bytesDone, p.bytesTotal)}%` })),
-        )
-      : h('p', { class: 'sub' }, 'Starting…'),
-    h('div', { class: 'row' }, h('button', { onclick: () => cancelRead() }, 'Cancel')),
-    h('p', { class: 'sub' }, 'Cancel keeps the sessions already read and drops the one in progress.'),
+  return material(
+    'mt-reading',
+    [h('h1', {}, S.mode === 'sample' ? 'Reading the synthetic sample' : 'Reading your sessions'), h('p', { class: 'mt-sub' }, 'Cancel keeps the sessions already read and drops the one in progress.')],
+    [
+      h(
+        'div',
+        { class: 'mt-slip mt-run' },
+        p
+          ? h(
+              'div',
+              {},
+              h('p', { class: 'mono' }, `File ${p.fileIndex} of ${p.files} · ${p.file}`),
+              h('p', { class: 'num' }, `This file ${mib(p.fileBytes)} of ${mib(p.fileSize)} MiB`),
+              h('div', { class: 'bar' }, h('i', { style: `width:${pct(p.fileBytes, p.fileSize)}%` })),
+              h('p', { class: 'num' }, `Overall ${mib(p.bytesDone)} of ${mib(p.bytesTotal)} MiB · ${p.sessionsDone} of ${p.files} sessions read`),
+              h('div', { class: 'bar' }, h('i', { style: `width:${pct(p.bytesDone, p.bytesTotal)}%` })),
+            )
+          : h('p', {}, 'Starting…'),
+        h('div', { class: 'row' }, h('button', { onclick: () => cancelRead() }, 'Cancel')),
+      ),
+    ],
   );
 }
 
@@ -372,7 +420,7 @@ function nodeLabel(A: Analysis, n: RouteNode): string {
     case 'campfire':
       return 'Campfire · make room';
     case 'boss':
-      return `Later cases · ${n.rooms.reduce((a, k) => a + (A.rooms.find((r) => r.key === k)?.withheld.length ?? 0), 0)} held back until the end`;
+      return `Later cases · ${n.rooms.reduce((a, k) => a + (A.rooms.find((r) => r.key === k)?.withheld.length ?? 0), 0)} held for the boss`;
     case 'audit':
       return 'Final audit';
     case 'apply':
@@ -380,43 +428,62 @@ function nodeLabel(A: Analysis, n: RouteNode): string {
   }
 }
 
+/** The hand mirror: the Trait card's emblem (decoration only). */
+function mirrorEmblem(): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg';
+  const s = document.createElementNS(ns, 'svg');
+  s.setAttribute('viewBox', '0 0 32 44');
+  s.setAttribute('aria-hidden', 'true');
+  for (const d of ['M16 2a11 11 0 1 1 0 22 11 11 0 0 1 0-22Z', 'M16 6.5a6.5 6.5 0 0 0-6.2 4.6', 'M16 24v8M13 32h6l-1.2 9.5h-3.6Z']) {
+    const p = document.createElementNS(ns, 'path');
+    p.setAttribute('d', d);
+    s.append(p);
+  }
+  return s;
+}
+
+/** The character card in the fixed L box: the name from the fixed table, the counts as its line (§8). */
+function characterCard(c: NonNullable<Analysis['mirror']['character']>, total: number): HTMLElement {
+  return h(
+    'div',
+    { class: 'mt-char', role: 'img', 'aria-label': `The sampled build: ${c.name}. ${c.line}. Seen in ${c.evidenceSessions} of ${total} sessions.` },
+    h('div', { class: 'mt-char-top' }, h('span', {}, 'The sampled build'), h('span', {}, 'Trait')),
+    h('div', { class: 'mt-char-art' }, mirrorEmblem()),
+    h('p', { class: 'mt-char-name' }, c.name),
+    h('p', { class: 'mt-char-line' }, c.line),
+    h('div', { class: 'mt-char-foot' }, `seen in ${c.evidenceSessions} of ${total} sessions`),
+  );
+}
+
 function viewMirror(): HTMLElement {
   const A = S.A!;
   const m = A.mirror;
-  const neg = (Object.entries(m.negatives) as [NegativeKind, number][]).filter(([, v]) => v > 0);
-  const rows: [string, string][] = [
-    ['Sessions', `${m.sessions.total} (Claude Code ${m.sessions.claude}, Codex ${m.sessions.codex}) · ${m.dates.from ?? '–'} to ${m.dates.to ?? '–'}`],
-    ['Projects', `${m.projects.total} (sessions with a project: ${m.projects.sessionsWithProject} of ${m.sessions.total})`],
-    ['Partial sessions', `${m.sessions.partial} of ${m.sessions.total}`],
-    ['Your messages', String(m.humanTurns)],
-    ['Excluded system text', `${m.excluded.total} turns that were not you typing (${Object.entries(m.excluded.byKind).map(([k, v]) => `${k} ${v}`).join(', ') || 'none'})`],
-    ['Stops followed by your next message', `${m.interventions.total} of ${m.interrupts} stops · ${m.interventions.lines} drew a line · ${m.interventions.pivots} changed the plan · ${m.interventions.other} other`],
-    ['Same command failing again unchanged', `${m.repeatedCommand.episodes} in ${m.repeatedCommand.sessionsWith} of ${m.sessions.total} sessions`],
-    ['Failed shell runs', `${m.repeatedCommand.genuineFailures} of ${m.repeatedCommand.shellCalls}`],
-    ['Looked like failures, were not', neg.length ? neg.map(([k, v]) => `${v} ${NEGATIVE_LABELS[k]}`).join(' · ') : 'none'],
-    ['Edit sequences (3+ edits to one file)', `${m.editSequences.candidates} candidates in ${m.editSequences.sessionsWith} of ${m.sessions.total} sessions · ${m.editSequences.promoted} with a stop on them`],
-    ['The same instruction in several sessions', `${m.directives.repeated}`],
-    ['Check → diff → report workflow', `${m.workflows.occurrences} times in ${m.workflows.sessions} of ${m.sessions.total} sessions${m.workflows.verified ? ' · verified' : ''}`],
-    ['Tool calls with a recorded result', `${m.calls.withResult} of ${m.calls.total}`],
-    ['Top tools', m.topTools.map(([n, c]) => `${n} ${c}`).join(', ')],
-    ['Secrets redacted while reading', String(m.redactions)],
-  ];
   const read = S.read;
-  return h(
-    'section',
-    {},
-    h('h1', {}, S.mode === 'sample' ? 'What the synthetic sample shows' : 'What your sessions show'),
-    h('p', { class: 'sub' }, 'Counts only. Nothing below is a problem until you say so.'),
-    read && h('p', { class: 'num sub' }, `Read ${mib(read.bytes)} MiB in ${(read.ms / 1000).toFixed(1)} s${read.cancelled ? ' · cancelled, partial run' : ''}${read.failed ? ` · ${read.failed} files could not be read` : ''}`),
-    m.character
-      ? h('div', { class: 'character' }, h('p', { class: 'sub' }, 'The sampled build'), h('h2', {}, m.character.name), h('p', {}, m.character.line))
-      : h('p', { class: 'sub' }, 'Not enough evidence for a character card yet.'),
-    h('table', {}, ...rows.map(([k, v]) => h('tr', {}, h('td', {}, k), h('td', { class: 'num' }, v)))),
-    h('h2', {}, 'The act'),
-    h('ol', { class: 'route' }, ...A.route.nodes.map((n) => h('li', {}, nodeLabel(A, n)))),
-    h('p', { class: 'sub' }, `${A.rooms.length} rooms found; ${A.route.leftovers.length} more stay off this act.`),
-    S.mode === 'real' && !S.dirs.codexLoaded && hasFSA && h('div', { class: 'row' }, h('span', { class: 'sub' }, 'Optional: load AGENTS.md now so its weight and any disagreements show during the act. Read only; write access is asked at Apply.'), h('button', { onclick: () => void readCodexHome() }, 'Choose ~/.codex')),
-    h('div', { class: 'row' }, h('button', { class: 'primary', onclick: () => startPlayLoop() }, 'Start the act')),
+  return material(
+    'mt-mirror',
+    [
+      h('h1', {}, S.mode === 'sample' ? 'What the synthetic sample shows' : 'What your sessions show'),
+      // One line saying what the page is, then the way on at the top (P3 gate fix E).
+      h('p', { class: 'mt-sub' }, 'Counts from the sessions, before any play. Nothing here is a problem until you stamp it.'),
+      h('button', { class: 'primary mt-start', onclick: () => startPlayLoop() }, 'Start the act'),
+    ],
+    [
+      h(
+        'div',
+        { class: 'mt-row' },
+        m.character ? characterCard(m.character, m.sessions.total) : h('p', { class: 'mt-slip' }, 'Not enough evidence for a character card yet.'),
+        h(
+          'div',
+          { class: 'mt-slip mt-act tilt-b' },
+          h('h2', {}, 'The act'),
+          h('p', { class: 'mt-note' }, actLine(A)),
+          h('ol', {}, ...A.route.nodes.map((n) => h('li', {}, nodeLabel(A, n)))),
+          read && h('p', { class: 'mt-note' }, `Read ${mib(read.bytes)} MiB in ${(read.ms / 1000).toFixed(1)} s${read.cancelled ? ' · cancelled, partial run' : ''}${read.failed ? ` · ${read.failed} files could not be read` : ''}`),
+        ),
+      ),
+      h('dl', { class: 'mt-counts' }, ...mirrorRows(m).map(([k, v], i) => h('div', { class: `mt-slip mt-count ${['tilt-a', 'tilt-b', 'tilt-c', ''][i % 4]}` }, h('dt', {}, k), h('dd', {}, v)))),
+      S.mode === 'real' && !S.dirs.codexLoaded && hasFSA && h('div', { class: 'mt-slip mt-privacy' }, h('p', {}, 'Optional: load AGENTS.md now so its weight and any disagreements show during the act. Read only; write access is asked at Apply.'), h('button', { onclick: () => void readCodexHome() }, 'Choose ~/.codex')),
+    ],
   );
 }
 
@@ -436,7 +503,9 @@ function paint(): void {
   if (S.step === 'play') return;
   document.body.classList.remove('is-play');
   const view = S.step === 'import' ? viewImport() : S.step === 'reading' ? viewReading() : viewMirror();
-  app.replaceChildren(h('div', { class: 'page' }, steps(), S.error ? h('p', { class: 'warn' }, S.error) : '', S.busy ? h('p', { class: 'sub' }, S.busy) : '', view));
+  const wood = view.querySelector('.mt-wood');
+  if (wood && (S.error || S.busy)) wood.prepend(h('p', { class: `mt-slip mt-privacy${S.error ? ' mt-warn' : ''}`, role: 'status' }, S.error ?? S.busy ?? ''));
+  app.replaceChildren(view);
 }
 
 render();

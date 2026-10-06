@@ -1,0 +1,128 @@
+/* The import, reading and mirror pages in the game's material (P3): the world plate behind, the two books lying closed
+   on the wood, the choices and the counts as paper slips. Same tokens and fonts as the table; no gradients, no glow.
+   The plate's sky holds the title; its painted table edge is the shore line the wood starts at. Classes: mt-. */
+
+.mt {
+  /* Plate geometry, from the plate's own pixels (layout/geom.ts measured the table edge and the wood band). */
+  --mt-pw: max(100vw, 1180px);
+  --mt-shore: clamp(300px, 40vh, 400px);
+  --mt-top: calc(var(--mt-shore) - var(--mt-pw) * 0.4212);
+  position: relative;
+  min-height: 100vh;
+  color: var(--pl-cards-ink, #41291f);
+  background:
+    var(--mt-plate) center var(--mt-top) / var(--mt-pw) auto no-repeat,
+    var(--mt-wood) center calc(var(--mt-top) + var(--mt-pw) * 0.4323) / var(--mt-pw) auto repeat-y,
+    #4a2b1d;
+  padding-bottom: 48px;
+}
+@media (max-width: 599px) {
+  .mt {
+    --mt-pw: 100vw;
+    --mt-shore: clamp(250px, 46vh, 360px);
+    --mt-top: calc(var(--mt-shore) - var(--mt-pw) * 0.8672);
+    background:
+      var(--mt-plate-p) center var(--mt-top) / var(--mt-pw) auto no-repeat,
+      var(--mt-wood-p) center calc(var(--mt-top) + var(--mt-pw) * 0.8828) / var(--mt-pw) auto repeat-y,
+      #4a2b1d;
+  }
+}
+
+/* The sky band: brand and steps, the title, one line. Ink sits on a paper plate so it reads over any cloud. */
+.mt-sky { min-height: var(--mt-shore); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 22px 16px 18px; }
+.mt-plate {
+  width: min(760px, 100%); padding: 12px 20px 14px; text-align: center;
+  background: var(--pl-cards-paper, #fff9ee); border: 1px solid var(--pl-cards-line-2, #cfb89a); border-radius: 6px;
+  box-shadow: 0 2px 0 rgba(58, 33, 22, 0.06), 0 10px 26px rgba(58, 33, 22, 0.2);
+}
+.mt-steps { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; margin: 0 0 6px; font-size: 13px; color: var(--pl-cards-ink-2, #69503f); }
+.mt-steps .on { color: var(--pl-cards-ink, #41291f); font-weight: 700; }
+.mt-steps .brand { font-family: var(--title); font-weight: 800; color: var(--pl-cards-ink, #41291f); font-size: 15px; }
+.mt-steps .chip { border: 1px solid var(--pl-cards-line-2, #cfb89a); border-radius: 99px; padding: 0 8px; }
+.mt h1 { font-size: 30px; margin: 2px 0 4px; }
+.mt-sub { margin: 0; color: var(--pl-cards-ink-2, #69503f); font-size: 15px; line-height: 1.45; }
+.mt-sky .mt-start { margin-top: 12px; }
+
+/* The wood band: everything below the shore lies on the table. */
+.mt-wood { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 22px 16px 0; }
+.mt-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 18px; width: min(1120px, 100%); }
+
+/* A paper slip: one piece of paper on the wood. Buttons are slips too. */
+.mt-slip {
+  position: relative; display: block; margin: 0; padding: 12px 16px; text-align: left;
+  font: 400 14px/1.45 var(--body); color: var(--pl-cards-ink, #41291f);
+  background: var(--pl-cards-paper, #fff9ee); border: 1px solid var(--pl-cards-line-2, #cfb89a); border-radius: 3px;
+  box-shadow: 0 1px 0 rgba(58, 33, 22, 0.08), 0 4px 8px rgba(58, 33, 22, 0.22), 0 14px 26px rgba(58, 33, 22, 0.28);
+}
+.mt-slip.tilt-a { rotate: -0.8deg; }
+.mt-slip.tilt-b { rotate: 0.6deg; }
+.mt-slip.tilt-c { rotate: -0.4deg; }
+button.mt-slip { cursor: pointer; min-height: 44px; }
+button.mt-slip:hover:not(:disabled) { background: var(--pl-cards-paper-2, #f6ebd8); translate: 0 -2px; }
+button.mt-slip:focus-visible { outline: 3px solid var(--pl-cards-paper, #fff9ee); outline-offset: 3px; }
+button.mt-slip:disabled { opacity: 0.55; cursor: not-allowed; }
+@media (prefers-reduced-motion: no-preference) { button.mt-slip { transition: translate 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color 160ms ease-out; } }
+.mt-choice { width: 252px; }
+.mt-choice b { display: block; font-family: var(--title); font-size: 18px; line-height: 1.25; margin-bottom: 2px; }
+.mt-choice span { display: block; font-size: 13px; color: var(--pl-cards-ink-2, #69503f); }
+.mt-choice.is-primary { border: 2px solid var(--pl-cards-ink, #41291f); }
+.mt-choice.is-primary::after { content: ''; position: absolute; right: 12px; top: 12px; width: 14px; height: 14px; border-radius: 50%; background: var(--pl-cards-rose, #b86a74); }
+.mt-drop { width: min(800px, 100%); text-align: center; border-style: dashed; color: var(--pl-cards-ink-2, #69503f); }
+.mt-drop.hot { border-color: var(--pl-cards-ink, #41291f); color: var(--pl-cards-ink, #41291f); }
+.mt-privacy { width: min(800px, 100%); font-size: 13.5px; }
+.mt-file { margin-left: 6px; font: 13px var(--body); color: var(--pl-cards-ink-2, #69503f); }
+.mt-warn { color: #9b3b47; font-weight: 500; }
+
+/* The two books, lying closed: a paper cover with its spine, the file name and path, and the leather strap. */
+.mt-book {
+  position: relative; width: 236px; padding: 14px 16px 12px 30px; text-align: left;
+  background: var(--pl-cards-paper-2, #f6ebd8); border: 1px solid var(--pl-cards-line-2, #cfb89a); border-radius: 2px 5px 5px 2px;
+  box-shadow: 3px 3px 0 -1px var(--pl-cards-paper, #fff9ee), 3px 3px 0 0 var(--pl-cards-line-2, #cfb89a), 0 6px 10px rgba(58, 33, 22, 0.26), 0 18px 30px rgba(58, 33, 22, 0.3);
+}
+.mt-book::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 16px; background: var(--pl-cards-ink-2, #69503f); border-radius: 2px 0 0 2px; }
+.mt-book.tilt-a { rotate: -2deg; }
+.mt-book.tilt-b { rotate: 1.5deg; }
+.mt-book-name { display: block; font-family: var(--title); font-weight: 800; font-size: 19px; }
+.mt-book-path { display: block; font: 12px var(--mono); color: var(--pl-cards-ink-2, #69503f); margin-bottom: 8px; }
+.mt-strap { position: relative; height: 9px; background: var(--pl-cards-paper, #fff9ee); border: 1px solid var(--pl-cards-line-2, #cfb89a); border-radius: 2px; margin: 4px 0 6px; }
+.mt-strap > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--pl-cards-ink-2, #69503f); }
+.mt-strap.is-over > i { background: var(--pl-cards-ink, #41291f); }
+.mt-book-fig { margin: 0; font-size: 12.5px; line-height: 16px; }
+.mt-book-fig span { display: block; }
+.mt-book-fig span + span { color: var(--pl-cards-ink-2, #69503f); }
+.mt-book-fig .is-none { color: var(--pl-cards-ink-2, #69503f); font-style: italic; }
+
+/* The selection slip ("This run") and the mirror's count slips. */
+.mt-run { width: min(560px, 100%); }
+.mt-run table, .mt-act table { margin: 6px 0 10px; font-size: 13.5px; }
+.mt-run td, .mt-act td { border-bottom: 1px solid var(--pl-cards-line, #e4d3ba); padding: 4px 6px; }
+.mt-counts { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; width: min(1120px, 100%); }
+.mt-count { padding: 10px 14px; }
+.mt-count dt { font-size: 12.5px; color: var(--pl-cards-ink-2, #69503f); }
+.mt-count dd { margin: 2px 0 0; font: 13.5px/1.4 var(--mono); font-variant-ligatures: none; overflow-wrap: anywhere; }
+.mt-act { width: min(460px, 100%); }
+.mt-act h2, .mt-run h2 { font-size: 19px; margin: 0 0 4px; }
+.mt-act ol { margin: 6px 0 4px; padding-left: 22px; font-size: 13.5px; }
+.mt-act li { margin: 2px 0; }
+.mt-note { font-size: 13px; color: var(--pl-cards-ink-2, #69503f); margin: 4px 0 0; }
+
+/* The character card: one card in the fixed L box (208 × 291), zones like every card. Decoration: a hand mirror. */
+.mt-char {
+  display: grid; grid-template-rows: 30px 118px 30px 1fr 30px; width: 208px; height: 291px; padding: 10px 11px; flex: none;
+  background: var(--pl-cards-paper, #fff9ee); border: 1px solid var(--pl-cards-line-2, #cfb89a); border-radius: 9px;
+  box-shadow: 0 1px 0 rgba(58, 33, 22, 0.06), 0 3px 6px rgba(58, 33, 22, 0.16), 0 12px 26px rgba(58, 33, 22, 0.24);
+}
+.mt-char-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--pl-cards-ink-2, #69503f); }
+.mt-char-art { display: grid; place-items: center; border: 1px solid var(--pl-cards-line, #e4d3ba); border-radius: 3px; background: var(--pl-cards-paper-2, #f6ebd8); }
+.mt-char-art svg { width: 64px; height: 88px; fill: none; stroke: var(--pl-cards-ink, #41291f); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.mt-char-name { align-self: center; margin: 0; font: 800 18px/22px var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mt-char-line { margin: 0; font-size: 14px; line-height: 18px; }
+.mt-char-foot { align-self: end; font-size: 12px; color: var(--pl-cards-ink-2, #69503f); border-top: 1px solid var(--pl-cards-line, #e4d3ba); padding-top: 4px; }
+
+@media (max-width: 599px) {
+  .mt h1 { font-size: 24px; }
+  .mt-sub { font-size: 14px; }
+  .mt-choice, .mt-book { width: 100%; }
+  .mt-book.tilt-a, .mt-book.tilt-b { rotate: 0deg; }
+  .mt-counts { grid-template-columns: 1fr; }
+}
