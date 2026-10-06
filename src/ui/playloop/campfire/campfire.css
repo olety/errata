@@ -901,3 +901,11 @@
 .pl-campfire-phone .pl-campfire-centre {
   overflow: visible;
 }
+.pl-campfire-coach.is-tutorial {
+  border-style: dashed;
+}
+.pl-campfire-thread.is-spotlit,
+.pl-campfire-slot.is-spotlit > :first-child {
+  outline: 3px dashed var(--pl-campfire-ink);
+  outline-offset: 3px;
+}

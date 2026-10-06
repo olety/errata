@@ -350,7 +350,7 @@ function cardSlot(L: Live, card: CardView, where: string, opts: { size: 'S' | 'M
   const { ui, api, drag, view: v } = L.p;
   const node = Card({ card, size: opts.size, selected: ui.selected === card.id, drag: opts.source ? drag : null, onInspect: (id) => api.inspect({ cardId: id }) });
   const eligible = v.pinned ? v.pinnedCandidates.some((c) => c.cardId === card.id && c.glow) : false;
-  const slot = el('div', `pl-campfire-slot pl-campfire-slot-${opts.size}${eligible ? ' is-eligible' : ''}${L.anim && L.anim.cardId === card.id ? ` is-${L.anim.kind}` : ''}${opts.cls ? ` ${opts.cls}` : ''}`, node);
+  const slot = el('div', `pl-campfire-slot pl-campfire-slot-${opts.size}${eligible ? ' is-eligible' : ''}${spot(L, { card: card.id }) ? ' is-spotlit' : ''}${L.anim && L.anim.cardId === card.id ? ` is-${L.anim.kind}` : ''}${opts.cls ? ` ${opts.cls}` : ''}`, node);
   slot.dataset.cfCard = card.id;
   // The slot is the card box itself, so the target rectangle is exact whatever the card draws.
   const box = opts.size === 'S' ? M.CARD_S : opts.size === 'L' ? M.CARD_L : { w: ui.bands.card.w, h: ui.bands.card.h };
@@ -359,6 +359,14 @@ function cardSlot(L: Live, card: CardView, where: string, opts: { size: 'S' | 'M
   if (eligible) slot.append(el('span', 'pl-campfire-flag', 'Eligible for the pinned page'));
   if (opts.target) drag.bindTarget(`card:${card.id}:${where}`, { kind: 'card', cardId: card.id }, slot);
   return slot;
+}
+
+/** The tutorial's spotlight (ui.tutorial.focus), when the integrator's tutorial route names a thread or a card here. */
+function spot(L: Live, what: { thread: string } | { card: string }): boolean {
+  const f = L.p.ui.tutorial?.focus;
+  if (!f) return false;
+  if ('thread' in what) return f.kind === 'thread' && f.threadId === what.thread;
+  return f.kind === 'card' && f.cardId === what.card;
 }
 
 function threadsPanel(L: Live): HTMLElement {
@@ -371,7 +379,7 @@ function threadsPanel(L: Live): HTMLElement {
         el('span', 'pl-campfire-thread-reason', t.reason),
         el('span', 'pl-campfire-thread-members', ...t.members.map((id) => el('span', '', summaryOf(L, id)))),
       ],
-      `pl-campfire-thread is-${t.color}`,
+      `pl-campfire-thread is-${t.color}${spot(L, { thread: t.id }) ? ' is-spotlit' : ''}`,
       () => L.p.api.campfire.focus({ a: t.members[0]!, b: t.members[1]!, threadId: t.id }),
       { pressed: t.id === focused, fk: `thread:${t.id}` },
     );
@@ -379,7 +387,8 @@ function threadsPanel(L: Live): HTMLElement {
   });
   const list = el('div', 'pl-campfire-thread-list', ...(rows.length ? rows : [el('p', 'pl-campfire-muted', 'No threads at this fire: nothing to merge or settle.')]));
   list.dataset.sk = 'y:threads';
-  return el('section', 'pl-campfire-panel pl-campfire-threads', L.p.view.coach ? el('p', 'pl-campfire-coach', L.p.view.coach) : null, el('h2', 'pl-campfire-h', 'Threads'), list);
+  const tut = L.p.ui.tutorial;
+  return el('section', 'pl-campfire-panel pl-campfire-threads', tut ? el('p', 'pl-campfire-coach is-tutorial', tut.text) : null, L.p.view.coach ? el('p', 'pl-campfire-coach', L.p.view.coach) : null, el('h2', 'pl-campfire-h', 'Threads'), list);
 }
 
 function centre(L: Live): HTMLElement {
