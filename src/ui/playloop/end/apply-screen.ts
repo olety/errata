@@ -8,7 +8,7 @@ import type { ApplyDiffView, ApplyView, ScreenProps } from '../contract';
 import { COPY } from '../contract';
 import { Books } from '../cards';
 import { ART } from './art';
-import { button, el, INERT, receipt, rich } from './dom';
+import { button, el, INERT, linkedLine, receipt, rich } from './dom';
 import { applyMotion, applyPlan, diffRows, fmt, newApplyMemory, plateBox, summaryPlan, type ApplyPlan, type DiffRow } from './model';
 
 /** Presentation memory across repaints (see applyMotion): the pane choice, each ink and the crack play once. */
@@ -28,7 +28,7 @@ export function ApplyScreen(p: ScreenProps<ApplyView>): { stage: HTMLElement; wo
 
   const pane = seen.chosen ?? plan.pane;
   const diffsPane = el('div', 'pl-end-pane', diffsBody(v, plan));
-  const runPane = el('div', 'pl-end-pane', runBody(v));
+  const runPane = el('div', 'pl-end-pane', runBody(v, p));
   diffsPane.hidden = pane !== 'diffs';
   runPane.hidden = pane !== 'run';
   const tabs = el('div', 'pl-end-tabs');
@@ -113,13 +113,13 @@ function rowEl(d: ApplyDiffView, row: DiffRow): HTMLElement {
 
 // ------------------------------------------------------------------ the end screen
 
-function runBody(v: ApplyView): HTMLElement {
+function runBody(v: ApplyView, p: ScreenProps<ApplyView>): HTMLElement {
   const s = summaryPlan(v.summary);
   const section = (title: string, ...kids: (Node | null)[]) => el('section', 'pl-end-runsec', el('h3', 'pl-end-runhead', title), ...kids);
   return el(
     'div',
     'pl-end-run',
-    section('The tally', el('ol', 'pl-end-lines', ...s.lines.map((l) => el('li', '', l)))),
+    section('The tally', el('ol', 'pl-end-lines', ...s.lines.map((l) => el('li', '', ...linkedLine(l, s.unjudged, (cardId) => p.api.inspect({ cardId })))))),
     section(
       'Your files',
       el('ul', 'pl-end-files', ...s.files.map((f) => el('li', '', el('b', '', f.file), ' ', el('span', 'pl-end-fig', f.text), f.raised ? el('span', 'pl-end-raised', ` · ${f.raised}`) : null))),

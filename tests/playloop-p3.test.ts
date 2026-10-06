@@ -326,8 +326,8 @@ describe('numbers the second cold run could not trace', () => {
 
   test('the boss tally says what its unknown count counts', () => {
     const b = A.selectBoss(A.actAdvance(A.actAdvance(toFirstFire())));
-    const line = A.selectApply(toApply(toFirstFire())).summary.lines.find((l) => l.includes('suggested mapping'));
-    expect(line).toMatch(/\d+ lines? from your files ha(s|ve) (a )?suggested mappings? you never judged/);
+    const line = A.selectApply(toApply(toFirstFire())).summary.lines.find((l) => l.includes('not yet judged'));
+    expect(line).toMatch(/\d+ lines? not yet judged: '[^']+…'/);
     expect(b).toBeDefined();
   });
 });

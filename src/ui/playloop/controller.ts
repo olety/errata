@@ -411,6 +411,7 @@ export class Controller {
         swap: (shelfId, deckId) => this.commit(A.actSwap(this.state, shelfId, deckId), { pending: null, selected: null }, 'swap'),
         acceptMapping: (cardId, caseId) => this.commit(A.actAcceptMapping(this.state, cardId, caseId), {}, 'accept'),
         acceptImport: (cardId) => this.commit(A.actAcceptImport(this.state, cardId), {}, 'accept'),
+        declineImport: (cardId) => this.commit(A.actDeclineImport(this.state, cardId), {}, 'accept'),
         raiseAllowance: (lane, to) => this.commit(A.actRaiseAllowance(this.state, lane, to)),
       },
       boss: {

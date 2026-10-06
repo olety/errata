@@ -9,7 +9,7 @@ import type { BossHeadView, BossView, CardView, ReceiptView, ScreenProps } from 
 import { FILE_OF } from '../contract';
 import { Books, Card } from '../cards';
 import { ART } from './art';
-import { button, el, heron, INERT, receipt, rich, tag } from './dom';
+import { button, el, heron, INERT, linkedLine, receipt, rich, tag } from './dom';
 import { bookRows, bossMotion, bossPlan, fmt, newBossMemory, PLATE, plateBox, type BossPlan, type HeadLook } from './model';
 
 /** Presentation memory across repaints (see bossMotion): each animation plays once. */
@@ -55,7 +55,7 @@ export function BossScreen(p: ScreenProps<BossView>): { stage: HTMLElement; wood
   if (plan.below > 0) stage.append(belowMarks(plan.below));
   if (cur) stage.append(currentHead(cur, plan, v, p, { rise, bind }));
   stage.append(slip(plan, v, p, { rise, ink, inkScore }));
-  if (v.turn !== 'summary' && b.mode !== 'phone') stage.append(tally(plan));
+  if (v.turn !== 'summary' && b.mode !== 'phone') stage.append(tally(plan, p));
 
   // ---------------------------------------------------------------- the wood: the final deck in its books
   return { stage, wood: wood(v, plan, p) };
@@ -155,7 +155,7 @@ function slip(plan: BossPlan, v: BossView, p: ScreenProps<BossView>, f: { rise: 
     if (reading) s.append(reading);
     if (plan.reasons.length) s.append(reasonsList(plan));
   } else {
-    s.append(scoreSheet(plan, f.inkScore));
+    s.append(scoreSheet(plan, f.inkScore, p));
   }
 
   const controls = el('div', 'pl-end-controls');
@@ -205,13 +205,13 @@ function reasonsList(plan: BossPlan): HTMLElement {
 }
 
 /** The score, exactly as printed by the view, with its validity; set-asides beside it and listed by date. */
-function scoreSheet(plan: BossPlan, ink: boolean): HTMLElement {
+function scoreSheet(plan: BossPlan, ink: boolean, p: ScreenProps<BossView>): HTMLElement {
   const sc = plan.score;
   return el(
     'div',
     `pl-end-score pl-end-score-${sc.validity}${ink ? ' pl-end-inkscore' : ''}`,
     el('ol', 'pl-end-lines', ...sc.lines.map((l, i) => {
-      const li = el('li', '', l);
+      const li = el('li', '', ...linkedLine(l, sc.unjudged, (cardId) => p.api.inspect({ cardId })));
       li.style.setProperty('--i', String(i));
       return li;
     })),
@@ -227,8 +227,8 @@ function aside(r: ReceiptView): HTMLElement {
 }
 
 /** The live tally beside the heads: the same printed lines, never shown as final. */
-function tally(plan: BossPlan): HTMLElement {
-  return el('aside', 'pl-end-tally', el('span', 'pl-end-label', plan.score.note), el('ol', 'pl-end-lines', ...plan.score.lines.map((l) => el('li', '', l))));
+function tally(plan: BossPlan, p: ScreenProps<BossView>): HTMLElement {
+  return el('aside', 'pl-end-tally', el('span', 'pl-end-label', plan.score.note), el('ol', 'pl-end-lines', ...plan.score.lines.map((l) => el('li', '', ...linkedLine(l, plan.score.unjudged, (cardId) => p.api.inspect({ cardId }))))));
 }
 
 /** The final deck's cards in their books. Only glowing cards glow, and only once the head can be answered. */

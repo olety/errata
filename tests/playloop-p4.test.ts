@@ -7,7 +7,8 @@ import { newDeck } from '../src/deck/deck';
 import * as A from '../src/ui/playloop/adapter';
 import type { BookView } from '../src/ui/playloop/contract';
 import { BLOCK_HEADER_LONG, BUDGET, costText, FITS_WHY, fitsText, ghostText, overBudgetText, strapText } from '../src/ui/playloop/contract';
-import { applyPlan, fitsMeaning, fitsWhy } from '../src/ui/playloop/end/model';
+import { applyPlan, bossPlan, fitsMeaning, fitsWhy } from '../src/ui/playloop/end/model';
+import { renderLanes } from '../src/deck/deck';
 import { sampleAgentsMd, sampleAnalysis, sampleClaudeMd } from './helpers';
 
 const ROOT = join(import.meta.dir, '..');
@@ -160,5 +161,89 @@ describe('item 2: the header cost on the card', () => {
     const insp = await Bun.file(join(ROOT, 'src/ui/playloop/cards/inspector.ts')).text();
     expect(insp).toContain('...HeaderNote(c)');
     expect(insp).toContain('BLOCK_HEADER_LONG');
+  });
+});
+
+/** From the first fire to the boss summary: settle red with Keep one, set every later head aside, skip the workshop. */
+function toBossSummary(): A.PlayState {
+  let s = judgeAndDeal(fresh());
+  s = A.actPlay(s, A.selectRoom(s)!.hand[0]!.id, 'beast').state;
+  for (let i = 0; i < 40; i++) {
+    const sc = A.selectScreen(s);
+    if (sc.kind === 'boss' && A.selectBoss(s).turn === 'summary') return s;
+    if (sc.kind === 'campfire') {
+      const red = sc.view.threads.find((t) => t.color === 'red');
+      if (red) s = A.actSettle(s, red.id, { kind: 'keep', keep: red.newer! });
+    }
+    if (sc.kind === 'room' || sc.kind === 'event') {
+      if (sc.view.kind === 'workshop') s = A.actSkip(s).state;
+      else if (sc.view.phase === 'judge') for (const h of sc.view.heads) s = A.actStamp(s, h.caseId, 'not-a-problem');
+    }
+    if (sc.kind === 'boss') {
+      for (let k = 0; k < 10 && A.selectBoss(s).current; k++) s = A.actBossNext(A.actBossStamp(s, A.selectBoss(s).current!, 'not-a-problem'));
+      continue;
+    }
+    s = A.actAdvance(s);
+  }
+  throw new Error('never reached the boss summary');
+}
+
+describe('item 3: the boss tally names the line not yet judged', () => {
+  test("the tally says \"1 line not yet judged: 'Report what you changed…'\" and links that line's card", () => {
+    const s = toBossSummary();
+    const b = A.selectBoss(s);
+    const report = s.deck.imported.find((c) => c.text.startsWith('Report what you changed'))!;
+    expect(b.score.unjudged).toEqual([{ cardId: report.id, excerpt: 'Report what you changed…' }]);
+    expect(b.score.lines[2]).toContain("1 line not yet judged: 'Report what you changed…'");
+    // The boss plan carries the links to the screen; the end screen's tally carries the same.
+    expect(bossPlan(b).score.unjudged).toEqual(b.score.unjudged);
+    expect(A.selectApply(s).summary.unjudged).toEqual(b.score.unjudged);
+    expect(A.excerptOf('Use uv, not pip.')).toBe('Use uv, not pip.');
+    expect(A.excerptOf('Never force-push, except to your own feature branch')).toBe('Never force-push, except to…');
+  });
+
+  test('the link opens its inspector row: Accept this reading / Does not apply, on the line as it is now', () => {
+    const s = toBossSummary();
+    const id = A.selectBoss(s).score.unjudged[0]!.cardId;
+    const insp = A.selectInspector(s, { cardId: id });
+    expect(insp?.kind).toBe('card');
+    const card = insp!.kind === 'card' ? insp!.card : null;
+    expect(card!.inspector.needsAcceptance).toBe(true);
+    expect(card!.inspector.importJudgment).toBe('open');
+  });
+
+  test('Does not apply: the line is judged, the file is unchanged, the tally says so and the locked score asks to lock again', () => {
+    const s0 = toBossSummary();
+    const id = A.selectBoss(s0).score.unjudged[0]!.cardId;
+    expect(A.selectBoss(s0).score.validity).toBe('locked');
+    const s1 = A.actDeclineImport(s0, id);
+    const lanes0 = renderLanes(s0.deck);
+    const lanes1 = renderLanes(s1.deck);
+    expect(Buffer.from(lanes1.claude.next).equals(Buffer.from(lanes0.claude.next))).toBe(true);
+    expect(Buffer.from(lanes1.codex.next).equals(Buffer.from(lanes0.codex.next))).toBe(true);
+    expect(A.selectBoss(s1).score.validity).toBe('stale');
+    const s2 = A.actLockScore(s1);
+    expect(A.selectBoss(s2).score.unjudged).toEqual([]);
+    expect(A.selectBoss(s2).score.lines[2]).toContain('every line from your files is judged');
+    const insp = A.selectInspector(s2, { cardId: id });
+    expect(insp!.kind === 'card' && insp!.card.inspector.importJudgment).toBe('declined');
+    // Changing your mind: Accept replaces the "does not apply" judgment.
+    const s3 = A.actAcceptImport(s2, id);
+    const after = A.selectInspector(s3, { cardId: id });
+    expect(after!.kind === 'card' && after!.card.inspector.importJudgment).toBe('accepted');
+    expect(s3.deck.declinedImports?.[id]).toBeUndefined();
+  });
+
+  test('a line with no suggested reading cannot be judged "does not apply"', () => {
+    const s = fresh();
+    const notes = s.deck.imported.find((c) => c.text.startsWith('Monorepo tooling'))!;
+    expect(A.actDeclineImport(s, notes.id)).toBe(s);
+  });
+
+  test('the controller and the inspector offer Does not apply only while the line is open', async () => {
+    const insp = await Bun.file(join(ROOT, 'src/ui/playloop/cards/inspector.ts')).text();
+    expect(insp).toContain("judged === 'open' ? button('pl-cards-btn', 'Does not apply'");
+    const ctl = await Bun.file(join(ROOT, 'src/ui/playloop/controller.ts')).text();
+    expect(ctl).toContain('declineImport: (cardId) => this.commit(A.actDeclineImport(this.state, cardId)');
   });
 });

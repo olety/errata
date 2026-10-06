@@ -141,6 +141,11 @@ export interface CardInspectorView {
   evidence: { agent: Agent; date: string | null; sessionLabel: string }[];
   /** Imported or edited lines whose mapping the player must accept from the inspector. */
   needsAcceptance: boolean;
+  /**
+   * An imported line with a suggested mapping: the player's judgment for its text as it is now (the inspector row
+   * "Accept this reading" / "Does not apply", P4 item 3). Null for every other card.
+   */
+  importJudgment: 'accepted' | 'declined' | 'open' | null;
   /** Skills: the first lines of the SKILL.md body and its estimate, outside the allowance. */
   skill: { firstLines: string[]; estimate: number } | null;
   /** Not dealt: why (per-case ineligibility reasons). */
@@ -522,6 +527,8 @@ export interface BossView {
     original: { addressed: number; confirmed: number; unknown: number; established: boolean };
     /** The printed lines, set-asides always beside the score. */
     lines: string[];
+    /** The lines from your files not yet judged, each as printed in `lines` ('Report what you changed…'), to link (P4 item 3). */
+    unjudged: UnjudgedLineView[];
     /** live = still being answered · locked = keyed to the final deck revision · stale = the deck changed since: lock again. */
     validity: 'live' | 'locked' | 'stale';
   };
@@ -552,9 +559,17 @@ export interface ApplyBlockerView {
 }
 
 /** The end screen's accounting (§7, §9, §0a.11), computed by the adapter. */
+/** A line from your files whose suggested mapping is not yet judged: its card and the excerpt the tally prints. */
+export interface UnjudgedLineView {
+  cardId: string;
+  excerpt: string;
+}
+
 export interface RunSummaryView {
   /** The boss's printed lines: later cases with set-asides, earlier confirmed cases, the original files. */
   lines: string[];
+  /** As BossView.score.unjudged: each excerpt in `lines` links to its inspector row. */
+  unjudged: UnjudgedLineView[];
   open: OpenPageView[];
   openCount: number;
   /** Every set-aside disposition in the run, by date. */
@@ -747,6 +762,8 @@ export interface ControllerApi {
     swap(shelfId: string, deckId: string): void;
     acceptMapping(cardId: string, caseId: string): void;
     acceptImport(cardId: string): void;
+    /** Judge an imported line's suggested mapping "does not apply" (P4 item 3). */
+    declineImport(cardId: string): void;
     raiseAllowance(lane: Agent, to: number): void;
   };
   boss: {

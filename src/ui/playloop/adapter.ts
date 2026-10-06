@@ -12,7 +12,7 @@ import { draftCards } from '../../deck/templates';
 import { faceCopy } from '../../deck/face';
 import { BEGIN, END, lineWeight, parseGlobal, sanitizeLine, text as utf8 } from '../../deck/file';
 import { recordOf, type RememberedApply } from '../persist';
-import { acceptImportMapping, deckExportMap, isProse, presentCards, rebaseDeck, renderLanes, suggestMapping, withCards, withEdit, type DeckState } from '../../deck/deck';
+import { acceptImportMapping, declineImportMapping, deckExportMap, importJudgment, isProse, presentCards, rebaseDeck, renderLanes, suggestMapping, withCards, withEdit, type DeckState } from '../../deck/deck';
 import { applyFuse, conflicts, cutCard, fuseSuggestions, previewChange, previewFuse, previewSettlement, removeCard, resolveConflict, sharpen, type Conflict, type FuseSuggestion, type Preview, type Resolution } from '../../deck/campfire';
 import { cover, coverage, coverPreview } from '../../cover';
 import { acceptOnHead, answerBoss, bossTally, headResults, openPile, playCard, previewDrop, retarget, tallyCurrent, weightPreview, withProposed, type BossTally, type DropTarget, type WeightLane, type WeightPreview } from '../../play';
@@ -310,6 +310,7 @@ function cardView(s: PlayState, c: Card, ctx?: { room: Room; heads: Case[]; unav
         return { agent: l.agent, date: l.date, sessionLabel: l.label };
       }),
       needsAcceptance: !!c.mappingSuggested && suggestMapping(c.text).responseKey !== 'unmapped',
+      importJudgment: c.family === 'imported' ? importJudgment(s.deck, c.id) : null,
       skill,
       unavailable: ctx?.unavailable ?? [],
     },
@@ -1159,6 +1160,12 @@ export function actAcceptImport(s: PlayState, cardId: string): PlayState {
   return upd(s, { deck: acceptImportMapping(s.deck, cardId) });
 }
 
+/** Judge an imported line's suggested mapping "does not apply" for its current text; the file is unchanged (P4 item 3). */
+export function actDeclineImport(s: PlayState, cardId: string): PlayState {
+  const d = declineImportMapping(s.deck, cardId);
+  return d === s.deck ? s : upd(s, { deck: d });
+}
+
 /** Raise a lane's allowance explicitly; printed on the end screen as "allowance raised to N by you". */
 export function actRaiseAllowance(s: PlayState, lane: Agent, to: number): PlayState {
   // Only upward, only to a whole number of tokens, and only on a file the game read.
@@ -1190,12 +1197,24 @@ function earlierUnreviewed(s: PlayState): number {
   return placedRooms(s).filter((r) => r.kind !== 'workshop').flatMap((r) => r.episodes).filter((e) => ['unreviewed', 'unclear'].includes(dispOf(s, e.id))).length;
 }
 
-/** "1 line from your files has a suggested mapping you never judged" (cold run 2: a bare "1 unknown" did not trace). */
-function unknownText(n: number): string {
-  return `${n} ${n === 1 ? 'line from your files has a suggested mapping' : 'lines from your files have suggested mappings'} you never judged`;
+/** The first four words of an imported line, for the tally: 'Report what you changed…' (P4 item 3). */
+export function excerptOf(text: string): string {
+  const words = text.trim().split(/\s+/);
+  return words.length <= 4 ? words.join(' ') : `${words.slice(0, 4).join(' ').replace(/[,;:.]+$/, '')}…`;
 }
 
-function scoreLines(t: BossTally, sealed: number, earlierWrapped: number): string[] {
+/** Honesty map: unjudged = bossTally().original.unjudged, the original files' lines with a suggested mapping never judged. */
+function unjudgedOf(s: PlayState, t: BossTally): C.UnjudgedLineView[] {
+  return t.original.unjudged.map((id) => ({ cardId: id, excerpt: excerptOf(s.deck.imported.find((c) => c.id === id)?.text ?? id) }));
+}
+
+/** "1 line not yet judged: 'Report what you changed…'" (P4 item 3; cold run 2: a bare "1 unknown" did not trace). */
+function unknownText(u: readonly C.UnjudgedLineView[]): string {
+  const n = u.length;
+  return n === 0 ? 'every line from your files is judged' : `${n} ${n === 1 ? 'line' : 'lines'} not yet judged: ${u.map((x) => `'${x.excerpt}'`).join(', ')}`;
+}
+
+function scoreLines(t: BossTally, sealed: number, earlierWrapped: number, unjudged: readonly C.UnjudgedLineView[]): string[] {
   const aside = t.setAside.notAProblem + t.setAside.changeOfPlan + t.setAside.unclear;
   const asideText = `${aside} set aside (${t.setAside.notAProblem} not a problem, ${t.setAside.changeOfPlan} a change of plan, ${t.setAside.unclear} unclear)`;
   // The unreviewed count always prints beside the fraction, zero included (§0a.6).
@@ -1207,7 +1226,7 @@ function scoreLines(t: BossTally, sealed: number, earlierWrapped: number): strin
         ? `Later cases: ${t.later.addressed} of ${t.later.confirmed} addressed · ${asideText}${waiting}`
         : `Later cases: none confirmed a problem · ${asideText}${waiting}`,
     `Earlier confirmed cases: ${t.earlier.addressed} of ${t.earlier.confirmed} addressed by the final deck · ${earlierWrapped} unreviewed`,
-    t.original.established ? `Your current files, same cases: ${t.original.addressed} of ${t.original.confirmed} · ${unknownText(t.original.unknown)}` : `${C.COPY.applicabilityUnknown} · ${unknownText(t.original.unknown)}`,
+    t.original.established ? `Your current files, same cases: ${t.original.addressed} of ${t.original.confirmed} · ${unknownText(unjudged)}` : `${C.COPY.applicabilityUnknown} · ${unknownText(unjudged)}`,
   ];
 }
 
@@ -1250,7 +1269,7 @@ export function selectBoss(s: PlayState): C.BossView {
     current: cur?.id ?? null,
     candidates,
     noEligibleCard: noEligible,
-    score: { later: t.later, setAside: t.setAside, unreviewed: t.unreviewed, earlier: { addressed: t.earlier.addressed, confirmed: t.earlier.confirmed }, original: t.original, lines: scoreLines(t, sealedCases.length, earlierUnreviewed(s)), validity },
+    score: { later: t.later, setAside: t.setAside, unreviewed: t.unreviewed, earlier: { addressed: t.earlier.addressed, confirmed: t.earlier.confirmed }, original: t.original, lines: scoreLines(t, sealedCases.length, earlierUnreviewed(s), unjudgedOf(s, t)), unjudged: unjudgedOf(s, t), validity },
     canContinue: true,
   };
 }
@@ -1408,7 +1427,8 @@ function runSummary(s: PlayState): C.RunSummaryView {
   setAside.sort((a, b) => (a.receipt.date ?? '').localeCompare(b.receipt.date ?? ''));
   const kinds = ['add', 'fuse', 'settle', 'cut', 'restore', 'sharpen', 'retarget', 'swap'] as const;
   return {
-    lines: scoreLines(t, sealed.length, earlierUnreviewed(s)),
+    lines: scoreLines(t, sealed.length, earlierUnreviewed(s), unjudgedOf(s, t)),
+    unjudged: unjudgedOf(s, t),
     open: piles.open,
     openCount: piles.openCount,
     setAside,

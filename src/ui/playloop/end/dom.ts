@@ -101,3 +101,24 @@ export function heron(cls: string): SVGSVGElement {
   }
   return svg;
 }
+
+/**
+ * A printed tally line with each not-yet-judged excerpt ('Report what you changed…') as a link that opens that line's
+ * inspector row (Accept / Does not apply, P4 item 3). The text is the view's; only the quoted excerpts become buttons.
+ */
+export function linkedLine(text: string, links: readonly { cardId: string; excerpt: string }[], open: (cardId: string) => void): Node[] {
+  const out: Node[] = [];
+  let rest = text;
+  for (const l of links) {
+    const q = `'${l.excerpt}'`;
+    const at = rest.indexOf(q);
+    if (at < 0) continue;
+    if (at > 0) out.push(document.createTextNode(rest.slice(0, at)));
+    const b = button(q, 'pl-end-link', () => open(l.cardId));
+    b.title = 'Open this line in the inspector: Accept this reading, or Does not apply';
+    out.push(b);
+    rest = rest.slice(at + q.length);
+  }
+  if (rest) out.push(document.createTextNode(rest));
+  return out;
+}

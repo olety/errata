@@ -89,7 +89,7 @@ function CardBody(c: CardView, v: Extract<InspectorView, { kind: 'card' }> | nul
   }
 
   // Mapping approval: one row per case, Accept when eligible and not yet accepted (check 8).
-  if (i.needsAcceptance) body.append(el('div', 'pl-cards-insp-act', button('pl-cards-btn pl-cards-btn-ink', 'Accept this reading', () => api.campfire.acceptImport(c.id)), el('span', 'pl-cards-insp-note', 'This text changed or came from your file: its cases count only once you accept it.')));
+  if (i.needsAcceptance) body.append(JudgeRow(c.id, i.importJudgment, api));
   // A draft's mappings are accepted by playing it; only a card already in the proposal offers Accept here.
   const inProposal = c.inFiles[0] !== undefined;
   if (v && v.mappings[0] !== undefined) body.append(Section('Cases this line can answer', ...v.mappings.map((m) => MappingRow(m, api, inProposal))));
@@ -140,6 +140,25 @@ function HeaderNote(c: CardView): HTMLElement[] {
       ...c.cost.markers.flatMap((m, i) => [i ? ' · ' : '', el('code', '', m)]),
     ),
   ];
+}
+
+/**
+ * The judgment row for a line whose reading is suggested (P4 item 3): Accept this reading, or, for a line from your file,
+ * Does not apply (the line stays as it is and answers nothing; the boss tally stops listing it as not yet judged).
+ */
+function JudgeRow(cardId: string, judged: CardView['inspector']['importJudgment'], api: ControllerApi): HTMLElement {
+  const accept = button('pl-cards-btn pl-cards-btn-ink', judged === 'declined' ? 'Accept this reading instead' : 'Accept this reading', () => api.campfire.acceptImport(cardId));
+  const decline = judged === 'open' ? button('pl-cards-btn', 'Does not apply', () => api.campfire.declineImport(cardId)) : null;
+  const note =
+    judged === 'declined'
+      ? 'You judged: does not apply. The line stays in your file as it is and answers no case.'
+      : judged === 'open'
+        ? 'This line came from your file. Its cases count only once you accept the reading. Does not apply keeps it as it is.'
+        : 'This text changed: its cases count only once you accept it.';
+  const row = el('div', 'pl-cards-insp-act pl-cards-insp-judge', accept, decline, el('span', 'pl-cards-insp-note', note));
+  row.setAttribute('role', 'group');
+  row.setAttribute('aria-label', 'Judge this reading');
+  return row;
 }
 
 function MappingRow(m: MappingReviewView, api: ControllerApi, inProposal: boolean): HTMLElement {

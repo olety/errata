@@ -28,6 +28,11 @@ export interface DeckState {
   /** Imported lines whose suggested mapping the player accepted (for the text as it is now). */
   readonly acceptedImports?: Readonly<Record<string, string>>;
   /**
+   * Imported lines whose suggested mapping the player judged "does not apply" (for the text as it is now). The line
+   * stays in the file and answers nothing; the boss tally no longer counts it as not yet judged.
+   */
+  readonly declinedImports?: Readonly<Record<string, string>>;
+  /**
    * Per-case acceptances for imported lines (card id → case id → the digest of the line as accepted). Game cards keep
    * theirs on the card; imported lines are rebuilt from the files, so theirs live here and merge in presentCards.
    */
@@ -298,6 +303,7 @@ export function rebaseDeck(d: DeckState, claude: Uint8Array | null, codex: Uint8
     cards: d.cards,
     ...(d.settlements ? { settlements: d.settlements } : {}),
     ...(d.acceptedImports ? { acceptedImports: d.acceptedImports } : {}),
+    ...(d.declinedImports ? { declinedImports: d.declinedImports } : {}),
     ...(d.importCaseMappings ? { importCaseMappings: d.importCaseMappings } : {}),
   });
 }
@@ -315,9 +321,29 @@ export function withEdit(d: DeckState, id: string, e: LineEdit | null): DeckStat
 
 export const bytesOf = (s: string) => enc.encode(s);
 
-/** The player accepts the suggested mapping of an imported line, for its current text. */
+/** The player accepts the suggested mapping of an imported line, for its current text (a prior "does not apply" goes). */
 export function acceptImportMapping(d: DeckState, id: string): DeckState {
   const c = presentCards(d).find((x) => x.id === id);
   if (!c || !isProse(c)) return d;
-  return Object.freeze({ ...d, acceptedImports: Object.freeze({ ...(d.acceptedImports ?? {}), [id]: c.text }) });
+  const { [id]: _, ...declined } = d.declinedImports ?? {};
+  return Object.freeze({ ...d, acceptedImports: Object.freeze({ ...(d.acceptedImports ?? {}), [id]: c.text }), declinedImports: Object.freeze(declined) });
+}
+
+/**
+ * The player judges an imported line's suggested mapping "does not apply", for its current text (a prior accept goes).
+ * Nothing about the file changes; only the judgment is recorded, and an edit to the line asks again.
+ */
+export function declineImportMapping(d: DeckState, id: string): DeckState {
+  const c = presentCards(d).find((x) => x.id === id);
+  if (!c || !isProse(c) || suggestMapping(c.text).responseKey === 'unmapped') return d;
+  const { [id]: _, ...accepted } = d.acceptedImports ?? {};
+  return Object.freeze({ ...d, acceptedImports: Object.freeze(accepted), declinedImports: Object.freeze({ ...(d.declinedImports ?? {}), [id]: c.text }) });
+}
+
+/** How the player judged an imported line's suggested mapping, for its text as it is now; null when it has none. */
+export function importJudgment(d: DeckState, id: string): 'accepted' | 'declined' | 'open' | null {
+  const c = presentCards(d).find((x) => x.id === id);
+  if (!c || !isProse(c) || suggestMapping(c.text).responseKey === 'unmapped') return null;
+  if (d.acceptedImports?.[id] === c.text) return 'accepted';
+  return d.declinedImports?.[id] === c.text ? 'declined' : 'open';
 }

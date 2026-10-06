@@ -287,6 +287,7 @@ export function deckRevision(d: DeckState): string {
     .join('|');
   h = fnv(acc, h);
   h = fnv(JSON.stringify(d.acceptedImports ?? {}), h);
+  h = fnv(JSON.stringify(d.declinedImports ?? {}), h);
   h = fnv((d.settlements ?? []).map((s) => s.key).sort().join('|'), h);
   return h.toString(16).padStart(8, '0');
 }
@@ -314,10 +315,11 @@ export interface BossTally {
   earlier: { addressed: number; confirmed: number; open: string[] };
   /**
    * The original files on the same reviewed cohort (§0a.11). Counts only imported lines whose per-case mapping the
-   * player accepted; `unknown` = imported lines with a suggested mapping never judged; `established` is false when
+   * player accepted; `unknown` = imported lines with a suggested mapping never judged (`unjudged`: their ids, in file
+   * order; accepted or "does not apply" both count as judged); `established` is false when
    * no original-file mapping was accepted at all ("applicability not established").
    */
-  original: { addressed: number; confirmed: number; unknown: number; established: boolean };
+  original: { addressed: number; confirmed: number; unknown: number; unjudged: string[]; established: boolean };
 }
 
 /** The boss score on the deck as it stands. Lock it by keeping the revision; tallyCurrent() says when it is stale. */
@@ -338,7 +340,8 @@ export function bossTally(d: DeckState, withheld: readonly Case[], earlier: read
   const cohort = [...earlier, ...withheld];
   const orig = coverage(presentCards(base), cohort, deckExportMap(base, renderLanes(base)));
   const accepted = new Set(Object.keys(d.importCaseMappings ?? {}));
-  const unknown = base.imported.filter((c) => suggestMapping(c.text).responseKey !== 'unmapped' && !accepted.has(c.id) && d.acceptedImports?.[c.id] === undefined).length;
+  const unjudged = base.imported.filter((c) => suggestMapping(c.text).responseKey !== 'unmapped' && !accepted.has(c.id) && d.acceptedImports?.[c.id] === undefined && d.declinedImports?.[c.id] === undefined).map((c) => c.id);
+  const unknown = unjudged.length;
   return {
     revision: deckRevision(d),
     heads,
@@ -346,7 +349,7 @@ export function bossTally(d: DeckState, withheld: readonly Case[], earlier: read
     setAside: { notAProblem: count('not-a-problem'), changeOfPlan: count('pivot'), unclear: count('unclear') },
     unreviewed: count('unreviewed'),
     earlier: { addressed: ear.addressed, confirmed: ear.confirmed, open: openCases(cards, earlier, ex) },
-    original: { addressed: orig.addressed, confirmed: orig.confirmed, unknown, established: accepted.size > 0 },
+    original: { addressed: orig.addressed, confirmed: orig.confirmed, unknown, unjudged, established: accepted.size > 0 },
   };
 }
 

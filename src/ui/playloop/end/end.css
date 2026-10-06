@@ -295,6 +295,15 @@
 
 .pl-end-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
 .pl-end-btn { min-height: 44px; }
+/* P4: a not-yet-judged excerpt in the tally is a link to its inspector row; the hit area reaches 44 px above and below
+   the text without moving the line. */
+button.pl-end-link,
+button.pl-end-link:hover:not(:disabled) {
+  display: inline; position: relative; min-height: 0; margin: -13px 0; padding: 13px 0; border: 0; border-radius: 0;
+  background: none; font: inherit; color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; cursor: pointer;
+}
+button.pl-end-link:hover:not(:disabled) { text-decoration-thickness: 2px; }
+button.pl-end-link:focus-visible { outline: 2px solid var(--pl-end-ink); outline-offset: -10px; }
 .pl-end-primary { background: var(--pl-end-ink); color: var(--pl-end-paper); }
 .pl-end-boss button:disabled,
 .pl-end-apply button:disabled,

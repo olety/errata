@@ -103,7 +103,7 @@ export interface BossPlan {
   /** "No eligible card": one row per candidate with its reason. */
   reasons: { cardId: string; title: string; summary: string; reason: string }[];
   controls: BossControl[];
-  score: { lines: string[]; validity: BossView['score']['validity'] } & ScoreNote;
+  score: { lines: string[]; unjudged: BossView['score']['unjudged']; validity: BossView['score']['validity'] } & ScoreNote;
   /** At the summary: the set-aside heads, in reveal order (oldest first), each with its stamp. */
   setAside: { head: BossHeadView; label: string }[];
 }
@@ -180,7 +180,7 @@ export function bossPlan(v: BossView): BossPlan {
     glow,
     reasons,
     controls,
-    score: { lines: v.score.lines, validity: v.score.validity, ...scoreNote(v.score.validity) },
+    score: { lines: v.score.lines, unjudged: v.score.unjudged, validity: v.score.validity, ...scoreNote(v.score.validity) },
     setAside,
   };
 }
@@ -415,6 +415,7 @@ export const OP_LABEL: Record<RunSummaryView['operations'][number]['kind'], stri
 
 export interface SummaryPlan {
   lines: string[];
+  unjudged: RunSummaryView['unjudged'];
   open: RunSummaryView['open'];
   openCount: number;
   setAside: { receipt: ReceiptView; label: string }[];
@@ -427,6 +428,7 @@ export interface SummaryPlan {
 export function summaryPlan(s: RunSummaryView): SummaryPlan {
   return {
     lines: s.lines,
+    unjudged: s.unjudged,
     open: s.open,
     openCount: s.openCount,
     setAside: s.setAside.map((x) => ({ receipt: x.receipt, label: stampLabel(x.disposition)! })),
