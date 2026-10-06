@@ -91,6 +91,28 @@ export function stepGesture(g: Gesture, e: GestureEvent): [Gesture, GestureOutpu
   }
 }
 
+// ------------------------------------------------------------------ pure: names for drop targets
+
+/** What a tap or Enter on a target does with the selected card, for screen readers and the accessibility tree. */
+export function targetLabel(t: DragTarget): string {
+  switch (t.kind) {
+    case 'beast':
+      return 'The beast: play the selected card here';
+    case 'book':
+      return `${t.lane === 'claude' ? 'CLAUDE.md' : 'AGENTS.md'}: add the selected card to this file only`;
+    case 'shelf':
+      return 'The shelf: skip this hand, free';
+    case 'head':
+      return 'This head: play or answer with the selected card';
+    case 'card':
+      return 'Stack the selected card on this card';
+    case 'fire':
+      return 'The fire: propose cutting the selected card';
+    case 'book-retarget':
+      return `${t.lane === 'claude' ? 'CLAUDE.md' : 'AGENTS.md'}: propose writing the selected card to this file too`;
+  }
+}
+
 // ------------------------------------------------------------------ DOM binding
 
 export interface DragHooks {
@@ -100,8 +122,11 @@ export interface DragHooks {
   onHover(cardId: string, target: DragTarget | null, at: { x: number; y: number }): void;
   onDrop(cardId: string, target: DragTarget | null): void;
   onCancel(cardId: string): void;
-  /** Tap–tap: the first tap selects the card. */
-  onTap(cardId: string): void;
+  /**
+   * Tap–tap: the first tap selects the card. `under` is the registered target the card sits in (a campfire slot), so a
+   * tap on another card while one is selected can stack instead of moving the selection.
+   */
+  onTap(cardId: string, under: DragTarget | null): void;
   /** Long-press, right-click, F or the external Inspect control. */
   onInspect(cardId: string): void;
   /** A tap on a registered target while a card is selected. */
@@ -121,6 +146,8 @@ const kindOf = (e: PointerEvent): PointerKind => (e.pointerType === 'touch' ? 't
 /** Binds cards and targets to pointer input. One drag at a time. Call destroy() when the screen unmounts. */
 export class DragCore {
   private regs = new Map<string, Reg>();
+  /** The last element bound for each card (to find the target a tapped card sits in). */
+  private cards = new Map<string, HTMLElement>();
   private g: Gesture = IDLE;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private from: { x: number; y: number } | null = null;
@@ -144,16 +171,35 @@ export class DragCore {
     this.off.push(() => win.removeEventListener('pointermove', move), () => win.removeEventListener('pointerup', up), () => win.removeEventListener('pointercancel', cancel), () => win.removeEventListener('keydown', key));
   }
 
-  /** Make an element a drop and tap target. Returns the unregister function. */
+  /**
+   * Make an element a drop and tap target. Returns the unregister function. Every target is a named button for
+   * assistive tech and the keyboard (Enter or Space taps it), unless it already is one.
+   */
   bindTarget(id: string, target: DragTarget, el: HTMLElement): () => void {
     this.regs.set(id, { id, target, el });
-    const click = () => {
+    const click = (e: MouseEvent) => {
+      // A click on a card inside this target is that card's tap (onTap decides: select, or stack on it).
+      const card = (e.target as Element | null)?.closest?.('[data-pl-card]');
+      if (card && el.contains(card)) return;
       if (this.g.kind === 'idle') this.hooks.onTapTarget(target);
     };
+    const key = (e: KeyboardEvent) => {
+      if (e.target !== el || (e.key !== 'Enter' && e.key !== ' ')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this.hooks.onTapTarget(target);
+    };
     el.addEventListener('click', click);
+    if (el.tagName !== 'BUTTON') {
+      if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+      if (el.tabIndex < 0) el.tabIndex = 0;
+      el.addEventListener('keydown', key);
+    }
+    if (!el.hasAttribute('aria-label')) el.setAttribute('aria-label', targetLabel(target));
     return () => {
       this.regs.delete(id);
       el.removeEventListener('click', click);
+      el.removeEventListener('keydown', key);
     };
   }
 
@@ -172,6 +218,8 @@ export class DragCore {
     el.addEventListener('pointerdown', down);
     el.addEventListener('contextmenu', context);
     el.style.touchAction = 'pan-x';
+    el.dataset.plCard = cardId;
+    this.cards.set(cardId, el);
     return () => {
       el.removeEventListener('pointerdown', down);
       el.removeEventListener('contextmenu', context);
@@ -193,6 +241,21 @@ export class DragCore {
   /** Forget every registered target (the mount calls this before each paint; components bind again). */
   resetTargets(): void {
     this.regs.clear();
+    this.cards.clear();
+  }
+
+  /** The smallest registered target whose element holds this card's element, or null. */
+  private under(cardId: string): DragTarget | null {
+    const c = this.cards.get(cardId);
+    if (!c || !c.isConnected) return null;
+    let best: { t: DragTarget; area: number } | null = null;
+    for (const r of this.regs.values()) {
+      if (r.el === c || !r.el.contains(c)) continue;
+      const b = r.el.getBoundingClientRect();
+      const area = b.width * b.height;
+      if (!best || area < best.area) best = { t: r.target, area };
+    }
+    return best?.t ?? null;
   }
 
   /** A press or drag is in progress (renderers should not rebuild the card under the pointer). */
@@ -232,7 +295,7 @@ export class DragCore {
         this.last = null;
         break;
       case 'tap':
-        this.hooks.onTap(out.cardId);
+        this.hooks.onTap(out.cardId, this.under(out.cardId));
         break;
       case 'inspect':
         this.hooks.onInspect(out.cardId);

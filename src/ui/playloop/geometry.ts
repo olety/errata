@@ -11,6 +11,8 @@ export const STATUS_H = 50;
 export const TOUCH = { min: 44, gap: 8 } as const;
 /** The creature never gets less than this; below it the screen scrolls instead of shrinking text. */
 export const MIN_CREATURE = 120;
+/** Below this width the Table becomes a scrolling page (P3 gate fix F: phones). */
+export const FLOW_BELOW = 500;
 
 export interface Viewport {
   w: number;
@@ -69,6 +71,7 @@ export function layout(v: Viewport): Bands {
     ...widths,
     rowWidth,
     scroll,
+    flow: W < FLOW_BELOW,
     touch: { ...TOUCH },
   };
 }

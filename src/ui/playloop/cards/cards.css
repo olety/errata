@@ -119,6 +119,10 @@
 .pl-cards-art img { position: relative; display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .pl-cards-seal { position: relative; display: block; width: 60%; height: 100%; margin: 0 auto; fill: none; stroke: var(--pl-cards-ink-2); stroke-width: 1.4; }
 .pl-cards-seal .is-fill { fill: var(--pl-cards-halo); stroke: none; }
+/* A line read from your file: a closed book and a quill in the ink colour, no creature (decoration only). */
+.pl-cards-emblem { position: relative; display: block; width: 62%; height: 100%; margin: 0 auto; fill: none; stroke: var(--pl-cards-ink); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+/* The card is a focusable button: the focus ring sits outside the box, so the zones never move. */
+.pl-cards-card:focus-visible { outline: 3px solid var(--pl-cards-ink); outline-offset: 3px; }
 .pl-cards-scope {
   position: absolute; left: 0; bottom: 0; max-width: 80%;
   padding: 1px 6px 1px 5px;
@@ -154,8 +158,14 @@
 .pl-cards-prov { white-space: nowrap; font-weight: 500; }
 .pl-cards-room { display: contents; }
 .pl-cards-room > span { white-space: nowrap; text-align: right; color: var(--pl-cards-ink); }
-.pl-cards-room > span:first-child { grid-column: 2; }
+/* P3: provenance in words ("seen in 3 sessions") takes the first row; the room line ("answers 3 cases here") the second. */
+.pl-cards-foot.has-room { grid-template-columns: minmax(0, 1fr); }
+.pl-cards-room > span { text-align: left; }
+.pl-cards-room > span:first-child { grid-column: 1 / -1; }
 .pl-cards-room > span + span { grid-column: 1 / -1; }
+/* At S a long provenance ("seen passing in 2 sessions") wraps onto the footer's second row. */
+.pl-cards-S .pl-cards-foot:not(.has-room) { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; }
+.pl-cards-S .pl-cards-foot:not(.has-room) .pl-cards-prov { white-space: normal; line-height: var(--pl-ll); }
 /* At S the overview drops provenance (it stays in the inspector) and gives the room line both rows. */
 .pl-cards-S .pl-cards-foot.has-room .pl-cards-prov { display: none; }
 .pl-cards-S .pl-cards-room > span:first-child { grid-column: 1 / -1; }
@@ -243,6 +253,11 @@
 .pl-cards-book-fig .pl-cards-mono, .pl-cards-book-ghost .pl-cards-mono { color: var(--pl-cards-ink); font-weight: 600; }
 .pl-cards-book-fig .pl-cards-mono { white-space: nowrap; }
 .pl-cards-book-ghost { color: var(--pl-cards-ink); }
+/* The strap's two lines: the file's weight, then the room left (or how far over). */
+.pl-cards-fig-line { display: block; color: var(--pl-cards-ink); }
+.pl-cards-ghost-parts { display: block; font-size: 11px; line-height: 13px; color: var(--pl-cards-ink-2); }
+.pl-cards-fig-line + .pl-cards-fig-line { color: var(--pl-cards-ink-2); }
+.pl-cards-fig-line.is-over { color: #9b3b47; font-weight: 600; }
 .pl-cards-book-note { margin: 0; font-size: 12px; line-height: 15px; color: var(--pl-cards-ink-2); }
 .pl-cards-book-note.is-blocked { color: var(--pl-cards-ink); font-weight: 500; }
 .pl-cards-proposed {

@@ -50,11 +50,11 @@ function pipeline(c: Controller, drafts: M.Drafts = noDrafts()) {
   return { v, p, q, preview, seal: p ? M.sealOf(p, preview) : { call: null, why: null } };
 }
 
-const thread = (over: Partial<ThreadView> = {}): ThreadView => ({ id: 'a+b', color: 'gold', members: ['a', 'b'], reason: 'the same words', autoText: null, ...over });
+const thread = (over: Partial<ThreadView> = {}): ThreadView => ({ id: 'a+b', color: 'gold', members: ['a', 'b'], reason: 'the same words', autoText: null, shared: null, newer: null, ...over });
 
 const preview = (over: Partial<ChangePreviewView> = {}): ChangePreviewView => {
   const g = { before: 10, after: 8, delta: -2, line: -2, blockHeader: 0, other: 0, text: '−2' };
-  return { before: [], after: null, resultId: null, refused: null, lines: [], ghost: { claude: g, codex: { ...g, before: 5, after: 5, delta: 0, line: 0, text: 'no change' } }, cases: { affected: 0, deckBefore: 1, deckAfter: 1, opened: [], addressed: [], text: 'Affected cases: 0 · deck total: 1 → 1' }, needsAcceptance: [], refs: [], ...over };
+  return { before: [], after: null, resultId: null, refused: null, lines: [], ghost: { claude: g, codex: { ...g, before: 5, after: 5, delta: 0, line: 0, text: 'no change' } }, cases: { affected: 0, deckBefore: 1, deckAfter: 1, opened: [], addressed: [], text: 'cases answered by the whole deck: 1 → 1 (this change affects 0)' }, needsAcceptance: [], refs: [], changed: ['CLAUDE.md'], ...over };
 };
 
 describe('the seal: a 0.6 s hold or Enter', () => {
@@ -138,7 +138,10 @@ describe('proposals, queries and seals (pure)', () => {
     const t = thread({ id: 'x×y', color: 'red', members: ['x', 'y'], reason: 'One card says to run full; the other says not to.' });
     const projects = [{ key: 'p1', label: 'pyramid' }];
     const d = M.defaultSettle(t, projects);
-    expect(d).toMatchObject({ slot: null, keep: 'x', bind: 'x', on: 'x', projectKey: 'p1', when: 'always' });
+    // With no newer member named, Keep one starts on the first; the exception goes on the other line.
+    expect(d).toMatchObject({ slot: null, keep: 'x', bind: 'x', on: 'y', projectKey: 'p1', when: 'always' });
+    // Keep one starts on the newer line, the one played this act (P3 gate fix 14); the exception on the older one.
+    expect(M.defaultSettle({ ...t, newer: 'y' }, projects)).toMatchObject({ keep: 'y', bind: 'y', on: 'x' });
     expect(M.settleChoice(d, t, projects)).toBeNull();
     expect(M.settleChoice({ ...d, slot: 'keep', keep: 'y' }, t, projects)).toEqual({ kind: 'keep', keep: 'y' });
     expect(M.settleChoice({ ...d, slot: 'keep', keep: 'z' }, t, projects)).toBeNull();
@@ -275,7 +278,7 @@ describe('on the sample, through the controller', () => {
     const { p, q, preview: pv, seal } = pipeline(c);
     expect(p).toMatchObject({ kind: 'fuse', editing: false, top: uv.members[1], under: uv.members[0], members: uv.members });
     expect(q).toEqual({ threadId: uv.id });
-    expect(pv!.cases.text).toBe('Affected cases: 0 · deck total: 3 → 3');
+    expect(pv!.cases.text).toBe('cases answered by the whole deck: 3 → 3 (this change affects 0)');
     expect(pv!.ghost.claude.text).toBe('−19');
     expect(seal.call).toEqual({ kind: 'fuse', threadId: uv.id, text: uv.autoText! });
     M.runSeal(c.api, seal.call!);
@@ -312,7 +315,7 @@ describe('on the sample, through the controller', () => {
     const full = v.lanes.codex.find((k) => k.inspector.exact === 'Run the full test suite before reporting done.')!;
     const exc = pipeline(c, drafts({ slot: 'exception', on: full.id, text: 'unless the user names a test file' }));
     expect(exc.preview!.lines.find((l) => l.id === full.id)!.text).toBe('Run the full test suite before reporting done, unless the user names a test file.');
-    expect(exc.preview!.cases.text).toBe('Affected cases: 0 · deck total: 3 → 3');
+    expect(exc.preview!.cases.text).toBe('cases answered by the whole deck: 3 → 3 (this change affects 0)');
     expect(exc.seal.call!.kind).toBe('settle');
     M.runSeal(c.api, exc.seal.call!);
     expect(fire(c).threads.some((t) => t.color === 'red')).toBe(false);
@@ -326,7 +329,7 @@ describe('on the sample, through the controller', () => {
     expect(p).toEqual({ kind: 'cut', cardId: card.id });
     expect(pv!.before.map((b) => b.id)).toEqual([card.id]);
     expect(pv!.cases.opened.length).toBe(3);
-    expect(pv!.cases.text).toBe('Affected cases: 3 · deck total: 3 → 0');
+    expect(pv!.cases.text).toBe('cases answered by the whole deck: 3 → 0 (this change affects 3)');
     M.runSeal(c.api, seal.call!);
     expect(fire(c).ashCount).toBe(1);
     expect(fire(c).piles.openCount).toBe(3);
@@ -343,7 +346,7 @@ describe('on the sample, through the controller', () => {
     c.api.drop(card.id, { kind: 'book-retarget', lane: 'codex' });
     const { p, preview: pv, seal } = pipeline(c);
     expect(p).toEqual({ kind: 'retarget', cardId: card.id, targets: 'both', from: 'book' });
-    expect(pv!.ghost.codex.text).toBe('+46 line · +23 block header');
+    expect(pv!.ghost.codex.text).toBe('+46 line · +23 block header (the one-time marker lines)');
     M.runSeal(c.api, seal.call!);
     expect(fire(c).lanes.both.map((k) => k.id)).toContain(card.id);
   });

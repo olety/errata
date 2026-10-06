@@ -53,7 +53,14 @@ export function mountScreens(root: HTMLElement, ctl: Controller): () => void {
     onHover: (cardId, target) => void api.preview(cardId, target),
     onDrop: (cardId, target) => (target ? api.drop(cardId, target) : api.cancel()),
     onCancel: () => api.cancel(),
-    onTap: (cardId) => api.select(ctl.ui.selected === cardId ? null : cardId),
+    // A tap on another card while one is selected stacks it there when that card is a target (the campfire); otherwise
+    // it selects that card. A tap on the selected card keeps it selected (dealing selects the first card, and a player
+    // who clicks it next must not lose it); Escape or "Clear selection" clears it.
+    onTap: (cardId, under) => {
+      const sel = ctl.ui.selected;
+      if (sel && sel !== cardId && under?.kind === 'card') api.tapTarget(under);
+      else api.select(cardId);
+    },
     onInspect: (cardId) => api.inspect({ cardId }),
     onTapTarget: (target) => api.tapTarget(target),
     ribbon: (from, to) => (ctl.ui.reducedMotion ? undefined : ribbon.draw(from, to)),
@@ -77,8 +84,9 @@ export function mountScreens(root: HTMLElement, ctl: Controller): () => void {
         const props: C.ScreenProps<C.RoomView> = { view: v, ui, api, drag };
         header = RouteHeader({ route: v.route, title: v.beast.name, subtitle: v.beast.subtitle, api: inspectHead });
         stage = screen.kind === 'event' ? EventScreen(props) : RoomScreen(props);
+        // The books and piles stay dim while heads wait for stamps (P3 gate fix E): the slip is the first thing to do.
         wood = div(
-          'pl-wood',
+          `pl-wood${v.phase === 'judge' && v.review.remaining > 0 ? ' is-waiting' : ''}`,
           Books({
             books: v.books,
             preview: ui.drag?.preview ?? null,
@@ -136,6 +144,8 @@ export function mountScreens(root: HTMLElement, ctl: Controller): () => void {
     // prints its own beside the threads it points at.
     const line = screen.kind === 'campfire' ? null : coach(ui);
     if (line) status.append(line);
+    // Phones below 500 px: the page scrolls (the body lets it), the Table is in the flow.
+    document.body.classList.toggle('is-flow', b.flow);
     const table = Table({ bands: b, header, stage, wood, status });
     // The tutorial's spotlight on a card (the campfire spotlights its own threads).
     const f = ui.tutorial?.focus;
@@ -147,6 +157,11 @@ export function mountScreens(root: HTMLElement, ctl: Controller): () => void {
       inspector = Inspector({ card, receipt: null, layout: b.mode === 'phone' ? 'sheet' : 'side', api, view: ui.inspector });
     }
     root.replaceChildren(table, ...(inspector ? [inspector] : []), ribbon.el);
+    // In the flow the room's controls stick just above the status strip, whatever its height (the coach can wrap).
+    if (b.flow) {
+      const st = table.querySelector<HTMLElement>('.pl-layout-status');
+      if (st) table.style.setProperty('--pl-status-h', `${st.offsetHeight}px`);
+    }
   };
 
   const onKey = (e: KeyboardEvent) => {

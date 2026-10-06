@@ -121,7 +121,7 @@ describe('contract fields the workers asked for', () => {
     const v = A.selectRoom(s)!;
     const pv = A.selectDrag(s, v.hand[0]!.id, { kind: 'beast' });
     expect(pv.heads.map((h) => [label(h.caseId), h.tag.agent, h.tag.date])).toEqual(v.heads.map((h) => [label(h.caseId), h.tag.agent, h.tag.date]));
-    expect(v.hand[0]!.art).toBe('scope');
+    expect(v.hand[0]!.art).toBe('wyrm');
     expect(v.hand[0]!.sealed).toBe(false);
   });
 
@@ -242,12 +242,14 @@ describe('Apply and Undo: the three stamps read undone after a successful Undo',
 });
 
 describe('the tutorial coach on the sample (§11, §0a.16): one line per gesture, gone when done', () => {
-  test('room 1, the event, the first fire in order (uv spotlit first, then the exception merge, then the red pair), the boss', () => {
+  test('room 1, the event, the first fire in order (the red pair first, then the uv merge, then the exception merge)', () => {
     const c = new Controller(fresh(), null, { viewport: { w: 1440, h: 900 } });
     const t = () => c.uiView().tutorial;
+    // The first coach line names the first action (P3 gate fix E) and keeps the §0a.1 tutorial line.
+    expect(t()!.text).toStartWith('Read the slip. Stamp it.');
     expect(t()!.text).toContain('Instructions become cards; other text stays protected.');
     c.key('a');
-    expect(t()!.text).toBe('Stamp each head from its own words: 2 still to stamp.');
+    expect(t()!.text).toStartWith('Stamp each head from its own words: 2 still to stamp.');
     c.key('a');
     c.key('a');
     expect(t()!.text).toBe('Every head is stamped. Deal the hand.');
@@ -255,9 +257,11 @@ describe('the tutorial coach on the sample (§11, §0a.16): one line per gesture
     const room = c.screen();
     if (room.kind !== 'room') throw new Error('not a room');
     expect(room.view.hand.length).toBe(1);
-    expect(t()).toEqual({ text: 'One response fits what the logs show. Drag the card onto the beast: it adds to your proposed files for every agent whose head glows.', focus: { kind: 'card', cardId: room.view.hand[0]!.id } });
+    const w = room.view.hand[0]!.weight;
+    expect(t()).toEqual({ text: `One response fits what the logs show. Drag the card onto the beast, or click it and then the beast: it adds to your proposed files for every agent whose head glows. +${w} tok is what the line adds to your file.`, focus: { kind: 'card', cardId: room.view.hand[0]!.id } });
     c.key('Enter');
-    expect(t()!.text).toBe('A red thread: two lines in your files now disagree. The fire settles it. Continue when you are ready.');
+    // The campfire is named by where it is on the route (P3 gate fix D).
+    expect(t()!.text).toBe('A red thread: two lines in your files now disagree. The campfire, two rooms on, settles it. Continue when you are ready.');
     c.key('Enter');
     expect(c.screen().kind).toBe('event');
     expect(t()!.text).toContain('A change of plan flies off');
@@ -265,19 +269,23 @@ describe('the tutorial coach on the sample (§11, §0a.16): one line per gesture
     c.key('Enter');
     const fire = c.screen();
     if (fire.kind !== 'campfire') throw new Error('not at the fire');
-    const uv = fire.view.threads.find((x) => x.color === 'gold' && x.members.length === 3)!;
+    // The red thread the player was warned about is pre-selected and coached first.
+    const red = fire.view.threads.find((x) => x.color === 'red')!;
+    expect(fire.view.focusedPair?.threadId).toBe(red.id);
+    expect(t()!.focus).toEqual({ kind: 'thread', threadId: red.id });
+    c.api.drop(red.members[0]!, { kind: 'card', cardId: red.members[1]! });
+    expect(t()!.text).toContain('Keep one starts on your new line');
+    const full = (c.screen() as { view: C.CampfireView }).view.lanes.codex.find((k) => k.inspector.exact === TUTORIAL.redLink.onLine)!;
+    c.api.campfire.settle(red.id, { kind: 'exception', on: full.id, text: TUTORIAL.redLink.text, when: {} });
+    const uv = (c.screen() as { view: C.CampfireView }).view.threads.find((x) => x.color === 'gold' && x.members.length === 3)!;
     expect(t()!.focus).toEqual({ kind: 'thread', threadId: uv.id });
     expect(t()!.text).toContain(uv.reason);
     c.api.drop(uv.members[0]!, { kind: 'card', cardId: uv.members[1]! });
-    expect(t()!.text).toContain('hold the seal or press Enter');
+    expect(t()!.text).toContain('click the seal or press Enter');
     c.api.campfire.fuse(uv.id, uv.autoText!);
     const fp = (c.screen() as { view: C.CampfireView }).view.threads.find((x) => x.color === 'gold')!;
     expect(t()).toEqual({ text: 'Exceptions survive a merge: stack the force-push pair and the longer line keeps its exception.', focus: { kind: 'thread', threadId: fp.id } });
     c.api.campfire.fuse(fp.id, fp.autoText!);
-    const red = (c.screen() as { view: C.CampfireView }).view.threads.find((x) => x.color === 'red')!;
-    expect(t()!.focus).toEqual({ kind: 'thread', threadId: red.id });
-    const full = (c.screen() as { view: C.CampfireView }).view.lanes.codex.find((k) => k.inspector.exact === TUTORIAL.redLink.onLine)!;
-    c.api.campfire.settle(red.id, { kind: 'exception', on: full.id, text: TUTORIAL.redLink.text, when: {} });
     expect(t()!.text).toBe('The fire is quiet. Leaving is free.');
   });
 
@@ -295,7 +303,8 @@ describe('the honesty sweep stays swept', () => {
     for (const f of new Glob('src/ui/**/*.ts').scanSync({ cwd: join(import.meta.dir, '..') })) {
       const text = await Bun.file(join(import.meta.dir, '..', f)).text();
       // Strings only (comments and identifiers are not copy).
-      for (const m of text.matchAll(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g)) if (banned.test(m[0])) hits.push(`${f}: ${m[0].slice(0, 60)}`);
+      // The one allowed use is the lead's binding denial on a room clear (P3 gate fix 4): "Nothing is prevented".
+      for (const m of text.matchAll(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g)) if (banned.test(m[0].replace('Nothing is prevented;', ''))) hits.push(`${f}: ${m[0].slice(0, 60)}`);
     }
     expect(hits).toEqual([]);
   });

@@ -33,6 +33,18 @@ function headMark(h: HeadView): string {
   }
 }
 
+/**
+ * "Stamp the rest like this one": offered after at least one head is stamped while others still wait. The stamp is the
+ * one the player gave most recently (the last stamped head in the queue order that is not wrapped by "unclear").
+ */
+function stampedLike(v: RoomView): { stamp: Exclude<HeadView['disposition'], 'unreviewed'>; ids: string[] } | null {
+  const waiting = v.heads.filter((h) => h.disposition === 'unreviewed').map((h) => h.caseId);
+  const done = v.heads.filter((h) => h.disposition !== 'unreviewed');
+  if (waiting.length === 0 || done.length === 0) return null;
+  const d = done[done.length - 1]!.disposition as Exclude<HeadView['disposition'], 'unreviewed'>;
+  return { stamp: d, ids: waiting };
+}
+
 /** One complete receipt at a time with a visible queue and immediate advance; the four stamps (§0a.6, §0a.13). */
 export function ReceiptStage(p: { room: RoomView; api: ControllerApi }): HTMLElement {
   const v = p.room;
@@ -83,6 +95,22 @@ export function ReceiptStage(p: { room: RoomView; api: ControllerApi }): HTMLEle
       stamps.append(b);
     }
     root.append(stamps);
+    // After the first stamp, a secondary control stamps each remaining head the same way, one act per head, each
+    // re-stampable from the queue (P3 gate fix G). It is offered only once the player has read and stamped one.
+    const last = stampedLike(v);
+    if (live && last) {
+      const word = STAMP_WORD[last.stamp] ?? last.stamp;
+      const rest = button(
+        'pl-room-btn pl-room-rest',
+        `Stamp the ${last.ids.length} still waiting “${word}”, like the last one`,
+        () => {
+          flush();
+          for (const id of last.ids) p.api.stamp(id, last.stamp);
+        },
+        { aria: `Stamp the ${last.ids.length} unstamped heads ${word}, each one on its own; any of them can be stamped again from the queue` },
+      );
+      root.append(rest);
+    }
     if (!live && v.phase === 'dealt') root.append(el('p', 'pl-room-slip-note', COPY.pullBack));
   }
 

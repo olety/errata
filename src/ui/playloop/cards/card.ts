@@ -3,7 +3,7 @@
 // Import from ../contract only. Never the adapter or the engine.
 import type { CardView, DropBinder } from '../contract';
 import { COPY } from '../contract';
-import { ART_FOCUS, asset, button, cardArt, el, inline, Sigil, svg, TypeGlyph } from './dom';
+import { ART_FOCUS, asset, button, cardArt, el, ImportedEmblem, inline, Sigil, svg, TypeGlyph } from './dom';
 import './cards.css';
 
 export interface CardProps {
@@ -15,6 +15,11 @@ export interface CardProps {
   drag: DropBinder | null;
   /** Long-press, right-click, F or the external 44 px Inspect control. */
   onInspect(cardId: string): void;
+  /**
+   * Optional: Enter or Space on the focused card (the card is a focusable button). The hand selects it; the campfire
+   * selects it, or stacks the selected card on it. Without it, Enter and Space fall through to the table's keys.
+   */
+  onActivate?(cardId: string): void;
 }
 
 /** Card boxes in px (§10): one box per size, 5:7. The zones never move. */
@@ -49,21 +54,36 @@ export function Card(p: CardProps): HTMLElement {
   root.dataset.card = c.id;
   root.dataset.type = c.type;
   root.dataset.size = p.size;
-  root.setAttribute('role', 'group');
-  root.setAttribute('aria-label', `${c.face.title}. ${c.face.summary}`);
+  // The card is a focusable button: a click selects it (the drag core's tap), Enter or Space too (onActivate).
+  root.setAttribute('role', 'button');
+  root.tabIndex = 0;
+  root.setAttribute('aria-pressed', String(p.selected));
+  root.setAttribute('aria-label', `Card: ${c.face.title}. ${c.face.summary}. ${c.inFiles.length ? `Weighs` : `Adds`} ${c.weight} tokens, ${COPY.estimated}.${c.footer ? ` ${c.footer.text}.` : ''} ${c.provenance}.`);
+  if (p.onActivate) {
+    root.addEventListener('keydown', (e) => {
+      if (e.target !== root || (e.key !== 'Enter' && e.key !== ' ')) return;
+      // Enter on the card already selected falls through: the table's Enter plays it on the beast.
+      if (e.key === 'Enter' && p.selected) return;
+      e.preventDefault();
+      e.stopPropagation();
+      p.onActivate!(c.id);
+    });
+  }
 
   // 1 · top band: weight orb with "estimated", two agent sigils, the type glyph, the dog-ear (decoration only).
   // At S (132 px of text) the sigils ride on the art panel's corner so "estimated" keeps its place beside the orb.
   const sigils = el('span', 'pl-cards-sigils', Sigil('claude', c.sigils.claude), Sigil('codex', c.sigils.codex));
-  const top = el('div', 'pl-cards-top', el('span', 'pl-cards-orb', el('b', 'pl-cards-num', `+${c.weight}`), el('small', '', COPY.estimated)), p.size === 'S' ? null : sigils, TypeGlyph(c.type));
-  top.querySelector('.pl-cards-orb')!.setAttribute('title', `This line's weight: ${c.weight} tokens, ${COPY.estimated}`);
+  // The orb says its unit (P3 gate fix 1): "+46 tok", what the line adds to its file. The inspector shows the maths.
+  const top = el('div', 'pl-cards-top', el('span', 'pl-cards-orb', el('b', 'pl-cards-num', `+${c.weight}`), el('small', '', 'tok')), p.size === 'S' ? null : sigils, TypeGlyph(c.type));
+  top.querySelector('.pl-cards-orb')!.setAttribute('title', `+${c.weight} tok is what this line adds to its file (tokens, ${COPY.estimated}: bytes ÷ 3)`);
   const ear = el('span', 'pl-cards-ear');
   ear.setAttribute('aria-hidden', 'true');
 
   // 2 · art window: a fixed 4:3 panel with a centred image and the scope ribbon on its lower-left corner.
   const art = el('div', 'pl-cards-art');
   const key = cardArt(c);
-  if (key) {
+  if (key === 'imported') art.append(ImportedEmblem());
+  else if (key) {
     const img = el('img', '');
     img.src = asset(`cards/card-${key}.webp`);
     img.alt = '';
@@ -80,7 +100,8 @@ export function Card(p: CardProps): HTMLElement {
   const summary = el('div', 'pl-cards-summary');
   const foot = el('div', 'pl-cards-foot', el('span', 'pl-cards-prov', c.provenance));
   if (c.footer) {
-    const parts = footerParts(c.footer.text);
+    // At S (the 132 px overview) the room line says the number and "here" only; M and L say "answers n cases here".
+    const parts = footerParts(p.size === 'S' ? c.footer.text.replace(/^answers (\d+) cases? here/, 'answers $1 here') : c.footer.text);
     foot.append(el('span', `pl-cards-room${parts.length > 1 ? ' is-split' : ''}`, ...parts.map((t, i) => el('span', '', i > 0 ? `· ${t}` : t))));
     foot.classList.add('has-room');
   }

@@ -16,7 +16,7 @@ html, body { margin: 0; background: var(--paper); color: var(--ink); }
 body { font: 16px/1.55 var(--body); }
 /* The import pages sit in a centred column; the play loop's Table fills the viewport (no page container). */
 .page { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
-body.is-play { overflow: hidden; }
+body.is-play:not(.is-flow) { overflow: hidden; }
 h1, h2, h3 { font-family: var(--title); font-weight: 800; line-height: 1.2; margin: 0 0 8px; }
 h1 { font-size: 30px; }
 h2 { font-size: 22px; margin-top: 24px; }
@@ -94,3 +94,9 @@ button.on { border-color: var(--ink); font-weight: 700; }
 @media (prefers-reduced-motion: no-preference) { .pl-spot { animation: pl-spot 1.6s ease-in-out infinite; } }
 @keyframes pl-spot { 50% { outline-color: rgba(217, 178, 90, 0.35); } }
 .pl-layout-statusbar { position: relative; }
+
+/* While heads wait for stamps the books and piles stay dim (they still work): the slip comes first. */
+.pl-wood.is-waiting .pl-cards-books, .pl-wood.is-waiting .pl-cards-piles { opacity: 0.5; transition: opacity 200ms ease-out; }
+
+/* Phones below 500 px: the coach line sits in the status strip's flow, above the status text, never over a control. */
+.pl-layout-table.is-flow .pl-coach { position: static; inset: auto; transform: none; order: -1; flex: 1 0 100%; width: auto; max-width: none; padding: 4px 8px; border: 1px solid rgba(65, 41, 31, 0.4); border-radius: 6px; box-shadow: none; font-size: 12.5px; line-height: 1.3; }

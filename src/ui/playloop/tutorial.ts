@@ -1,7 +1,7 @@
 // The tutorial's coach lines on the synthetic sample (play-loop §11 as amended by §0a.16): one line per gesture,
-// written on the wood, gone when the gesture is done, never a modal and never a forced wait. The uv pair is the
-// spotlit first merge; the exception merge (the force-push pair) comes after it, then the red pair. Every line reads
-// the views only; nothing here changes the game. Real logs get no coach.
+// written on the wood, gone when the gesture is done, never a modal and never a forced wait. At the first fire the red
+// pair the player was warned about comes first (P3), then the uv merge, then the exception merge (the force-push pair).
+// Every line reads the views only; nothing here changes the game. Real logs get no coach.
 
 import * as A from './adapter';
 import type * as C from './contract';
@@ -17,25 +17,58 @@ export const SAMPLE_LINES = {
 
 const line = (text: string, focus: Tutorial['focus'] = null): Tutorial => ({ text, focus });
 
-function roomLine(v: C.RoomView, first: boolean, redThread: boolean): Tutorial | null {
-  if (v.kind === 'event') return line('A change of plan flies off and counts nowhere. A problem turns the heron into a room with one head.');
-  if (!first) return null;
+/** "two" for 2: the route distance to the next campfire in words. */
+const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
+
+/** Where the next campfire is from here, in words: "The campfire, two rooms on," (P3 gate fix D). */
+function fireAhead(s: A.PlayState): string {
+  const at = s.route.findIndex((n, i) => i > s.node && n.kind === 'campfire');
+  const d = at < 0 ? 0 : at - s.node;
+  return d <= 1 ? 'The campfire, next on the route,' : `The campfire, ${WORDS[d] ?? String(d)} rooms on,`;
+}
+
+function firstRoomLine(s: A.PlayState, v: C.RoomView, redThread: boolean): Tutorial | null {
   if (v.phase === 'judge') {
-    if (v.review.remaining === v.heads.length) return line(`Your agents read the two books below. ${COPY.tutorialFiles} You stopped the agent here: read the slip. A problem?`);
-    if (v.review.remaining > 0) return line(`Stamp each head from its own words: ${v.review.remaining} still to stamp.`);
+    // The coach names the first action (P3 gate fix E); the books and Deal stay dim until the stamps are done.
+    if (v.review.remaining === v.heads.length) return line(`Read the slip. Stamp it. You stopped the agent here, and your agents read the two books below: ${COPY.tutorialFiles}`);
+    if (v.review.remaining > 0) return line(`Stamp each head from its own words: ${v.review.remaining} still to stamp. The control under the stamps can stamp the rest like the last one.`);
     if (v.canDeal) return line('Every head is stamped. Deal the hand.');
     return null;
   }
   if (v.phase === 'dealt') {
     const card = v.hand[0];
     if (!card) return null;
-    // The sample's first room deals one card: say why there is only one (§0a.4), honestly.
-    const why = v.hand.length === 1 ? 'One response fits what the logs show. ' : '';
-    return line(`${why}Drag the card onto the beast: it ${COPY.addsTo} for every agent whose head glows.`, { kind: 'card', cardId: card.id });
+    // The sample's first room deals one card: say why there is only one (§0a.4), honestly; then the unit (gate fix 1).
+    const why = v.hand.length === 1 ? 'One response fits what the logs show. ' : `${v.handDiffers ?? ''} `;
+    return line(`${why}Drag the card onto the beast, or click it and then the beast: it ${COPY.addsTo} for every agent whose head glows. +${card.weight} tok is what the line adds to your file.`, { kind: 'card', cardId: card.id });
   }
   // After the play: the new line disagrees with one already in a file (the red thread). Continue leads to the fire.
-  if (v.phase === 'done' && v.result?.played && redThread) return line('A red thread: two lines in your files now disagree. The fire settles it. Continue when you are ready.');
+  if (v.phase === 'done' && v.result?.played && redThread) return line(`A red thread: two lines in your files now disagree. ${fireAhead(s)} settles it. Continue when you are ready.`);
   return null;
+}
+
+/** One honest line for each of the sample's later rooms (the event, the middle rooms and the workshop). */
+function laterRoomLine(v: C.RoomView): Tutorial | null {
+  if (v.kind === 'event') return line('A change of plan flies off and counts nowhere. A problem turns the heron into a room with one head.');
+  if (v.phase === 'dealt' && v.handDiffers) return line(v.handDiffers, v.hand[0] ? { kind: 'card', cardId: v.hand[0].id } : null);
+  if (v.phase === 'dealt' && v.hand.length === 1) return line('One response fits what the logs show. Play it, or drop it on the shelf to skip for free.', { kind: 'card', cardId: v.hand[0]!.id });
+  if (v.phase !== 'judge') return null;
+  switch (v.beast.skin) {
+    case 'retry-hydra':
+      return line('The same command failed again unchanged. The neck rings count the failed runs in this one session. Read the slip, stamp it, then deal.');
+    case 'boundary-stag':
+      return line('One stop, one head. Read the slip and stamp it; before you deal, you can change the line in your own words.');
+    case 'owl':
+      return line('A verified workflow: nothing to stamp. Deal, then drop the card on the owl\'s bench to write it as a Skill, or skip it.');
+    case 'patch-moth':
+      return line('The same file was edited again and again. Read the slip and stamp it, then deal.');
+    default:
+      return line('Read each slip and stamp it, then deal.');
+  }
+}
+
+function roomLine(s: A.PlayState, v: C.RoomView, first: boolean, redThread: boolean): Tutorial | null {
+  return first ? firstRoomLine(s, v, redThread) : laterRoomLine(v);
 }
 
 function campfireLine(v: C.CampfireView, pending: C.UiView['pending']): Tutorial | null {
@@ -44,15 +77,16 @@ function campfireLine(v: C.CampfireView, pending: C.UiView['pending']): Tutorial
   const red = v.threads.find((t) => t.color === 'red');
   if (pending?.kind === 'stack') {
     const t = v.threads.find((x) => x.id === pending.threadId);
-    if (t?.color === 'red') return line('Pick how to settle them. The exported lines show before you seal; Cancel leaves the thread.', { kind: 'thread', threadId: t.id });
-    return line('Read the preview, then hold the seal or press Enter. Escape pulls the cards apart.', t ? { kind: 'thread', threadId: t.id } : null);
+    if (t?.color === 'red') return line('Pick how to settle them. Keep one starts on your new line; the exported lines show before you seal. Cancel leaves the thread.', { kind: 'thread', threadId: t.id });
+    return line('Read the preview, then click the seal or press Enter. Escape pulls the cards apart.', t ? { kind: 'thread', threadId: t.id } : null);
   }
   if (pending) return null;
+  // The red thread the player was warned about comes first and is pre-selected (P3 gate fix D).
+  if (red) return line('The red thread from your first room: two lines disagree, and Apply waits until they are settled. Stack the two red cards: drag one onto the other, or click one and then the other.', { kind: 'thread', threadId: red.id });
   const uv = gold(SAMPLE_LINES.uv);
   if (uv) return line(`A gold thread: ${uv.reason}. Stack the uv cards to merge them.`, { kind: 'thread', threadId: uv.id });
   const fp = gold(SAMPLE_LINES.forcePush);
   if (fp) return line('Exceptions survive a merge: stack the force-push pair and the longer line keeps its exception.', { kind: 'thread', threadId: fp.id });
-  if (red) return line('A red thread: two lines disagree, and Apply waits until they are settled. Stack the two red cards.', { kind: 'thread', threadId: red.id });
   return line('The fire is quiet. Leaving is free.');
 }
 
@@ -84,7 +118,7 @@ export function tutorialFor(s: A.PlayState, screen: C.Screen, pending: C.UiView[
   switch (screen.kind) {
     case 'room':
     case 'event':
-      return roomLine(screen.view, s.node === firstRoom && s.sub === 0, A.selectCampfire(s).threads.some((t) => t.color === 'red'));
+      return roomLine(s, screen.view, s.node === firstRoom && s.sub === 0, A.selectCampfire(s).threads.some((t) => t.color === 'red'));
     case 'campfire':
       return s.node === firstFire ? campfireLine(screen.view, pending) : null;
     case 'boss':

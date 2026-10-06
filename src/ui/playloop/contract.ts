@@ -135,7 +135,7 @@ export interface CardInspectorView {
   scope: string;
   trigger: string | null;
   exceptions: string[];
-  /** "138 bytes ÷ 3 = 46" */
+  /** "tokens, estimated: 138 bytes ÷ 3 = 46" */
   weightMath: string;
   quote: string | null;
   evidence: { agent: Agent; date: string | null; sessionLabel: string }[];
@@ -147,8 +147,13 @@ export interface CardInspectorView {
   unavailable: string[];
 }
 
-/** Which painted plate fills a card's art window (decoration only; it encodes nothing). Null: no art (protected text). */
-export type CardArt = 'retry' | 'scope' | 'verify';
+/**
+ * Which painted plate fills a card's art window, by family (decoration only; it encodes nothing): wyrm = a repeated
+ * directive, retry = a repeated unsuccessful command, scope = a boundary intervention, moth = a confirmed rewrite,
+ * verify = a verified workflow or Skill, imported = a line read from your file (an inked book, no creature). Null: no
+ * art (sealed protected text keeps its wax lock).
+ */
+export type CardArt = 'wyrm' | 'retry' | 'scope' | 'moth' | 'verify' | 'imported';
 
 export interface CardView {
   id: string;
@@ -166,9 +171,9 @@ export interface CardView {
   /** "global" or the project chip. */
   scope: string;
   exceptions: string[];
-  /** Observed · Repeated · n · Verified. Never adds power. */
+  /** "seen once", "seen in 3 sessions", "seen passing in 2 sessions", "From your file" (provenanceText). Never adds power. */
   provenance: string;
-  /** Rooms only: "n eligible here · m newly addressed", counted against the card's displayed targets. */
+  /** Rooms only: "answers n cases here" (footerText), counted against the card's displayed targets. */
   footer: { eligible: number; newly: number; text: string } | null;
   /** The files that carry this card in the proposal now (empty for a draft). */
   inFiles: Agent[];
@@ -268,7 +273,17 @@ export interface RoomView {
    * player confirm one while judging (api.confirmProject); the drafts then carry that project's scope, so heads from
    * other projects fail check 4 and say so.
    */
-  scope: { chip: string; confirmed: { key: string; label: string } | null; projects: { key: string; label: string }[]; confirmable: boolean };
+  scope: {
+    chip: string;
+    confirmed: { key: string; label: string } | null;
+    projects: { key: string; label: string }[];
+    confirmable: boolean;
+    /**
+     * When the human's words give a local reason ("on this box", "here") and the line is still global: "Your words
+     * sound local ("on this box"); the line is global. Change the scope chip to keep it to one project." (P3 fix 15).
+     */
+    hint: string | null;
+  };
   /** Boundary and directive rooms: the line in the player's words, editable while judging (api.wording). */
   wording: { value: string; editable: boolean } | null;
   /** One complete receipt at a time, with a visible queue (§0a.13). position is 1-based, 0 when none is current. */
@@ -300,6 +315,16 @@ export interface RoomView {
   existingAsks: { cardId: string; caseId: string; reading: ReadingView }[];
   /** The room's result after its play or skip. */
   result: PlayResultView | null;
+  /**
+   * After the play or skip: "3 cases now have a proposed line. Nothing is prevented; lines land only when you Apply."
+   * (clearText over the room's answered and open heads); null before.
+   */
+  clear: string | null;
+  /**
+   * A dealt hand of two or more: one line naming how the drafts differ, from their response keys (what the agent does
+   * next); null otherwise (P3 gate fix H).
+   */
+  handDiffers: string | null;
 }
 
 // ------------------------------------------------------------------ drag (integrator: drag.ts; every worker renders targets)
@@ -377,6 +402,13 @@ export interface ThreadView {
   reason: string;
   /** Gold only: the automatic text when the structured claims match, else null (the player writes it). */
   autoText: string | null;
+  /**
+   * Gold only, when a member pair's content words overlap: the shared words and the share, for the preview (never on the
+   * thread itself, P3 gate fix 12). Null otherwise.
+   */
+  shared: { words: string[]; percent: number } | null;
+  /** Red only: the member played most recently (a card from this act over a line read from your file); Keep one starts on it. */
+  newer: string | null;
 }
 
 /**
@@ -400,6 +432,8 @@ export interface ChangePreviewView {
   needsAcceptance: string[];
   /** Every case id named above (opened, addressed, needsAcceptance), with its tag, so a preview can name each case. */
   refs: { caseId: string; agent: Agent; project: string | null; date: string | null }[];
+  /** The files whose bytes the seal would change (P3 gate fix 10): a preview names only these. */
+  changed: FileName[];
 }
 
 /** A settlement the player picks for a red thread (mirrors the engine's resolution; the adapter maps it). */
@@ -579,6 +613,11 @@ export interface Bands {
   rowWidth: number;
   /** The stage is too short for the clamps: lay out at the minimum heights and scroll; never shrink text. */
   scroll: boolean;
+  /**
+   * Below 500 px wide the Table is a page that scrolls (P3 gate fix F): the bands stack in the flow at their content's
+   * height, nothing is fixed, and the room's controls stick to the bottom of the screen.
+   */
+  flow: boolean;
   /** Touch targets: at least 44 px, at least 8 px apart. */
   touch: { min: number; gap: number };
 }
@@ -728,15 +767,21 @@ export interface ScreenProps<V> {
 
 // ------------------------------------------------------------------ pure selectors (copy only, no engine)
 
-/** "3/3 confirmed addressed · 2 unreviewed": the unreviewed count always prints; never a bare 0/0 (§0a.6). */
+/**
+ * "0 of 3 cases answered by a proposed line · 0 unreviewed": the word cases is mandatory, the unreviewed count always
+ * prints, never a bare 0/0 (§0a.6, P3 gate fix 3).
+ */
 export function pipsText(addressed: number, confirmed: number, unreviewed: number): string {
-  const main = confirmed === 0 ? 'No confirmed problems' : `${addressed}/${confirmed} confirmed addressed`;
+  const main = confirmed === 0 ? 'No cases confirmed as a problem' : `${addressed} of ${confirmed} ${confirmed === 1 ? 'case' : 'cases'} answered by a proposed line`;
   return `${main} · ${unreviewed} unreviewed`;
 }
 
-/** "n eligible here · m newly addressed" (§0a.3). */
-export function footerText(eligible: number, newly: number): string {
-  return `${eligible} eligible here · ${newly} newly addressed`;
+/**
+ * A dealt card's footer: "answers 3 cases here" (P3 gate fix 7); never "addressed" on an unplayed card. How many of
+ * those already have a line in the proposal (eligible − newly) is the inspector's line, not the face's.
+ */
+export function footerText(eligible: number, _newly: number): string {
+  return `answers ${eligible} ${eligible === 1 ? 'case' : 'cases'} here`;
 }
 
 /** "N more · a bound · u unreviewed" (§22). */
@@ -746,19 +791,54 @@ export function overflowText(more: number, bound: number, unreviewed: number): s
 
 const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${-n}` : '0');
 
-/** "+46 line · +22 block header", "+46", "−15"; the caller prints COPY.estimated beside it. */
+/** What the block header is, said once beside its figure (P3 gate fix 9). */
+export const BLOCK_HEADER_WHY = 'the one-time marker lines';
+
+/**
+ * "+46 line · +22 block header (the one-time marker lines)", "+46", "−15"; the caller prints "tok" and COPY.estimated
+ * beside it. The remainder is named: per-block rounding when it is a token or two, else the other text that changed
+ * (P3 gate fix 13).
+ */
 export function ghostText(g: Pick<GhostDelta, 'delta' | 'line' | 'blockHeader' | 'other'>): string {
   if (g.delta === 0 && g.line === 0 && g.blockHeader === 0 && g.other === 0) return 'no change';
   const parts: string[] = [];
   if (g.line !== 0) parts.push(`${signed(g.line)} line`);
-  if (g.blockHeader !== 0) parts.push(`${signed(g.blockHeader)} block header`);
-  if (g.other !== 0) parts.push(`${signed(g.other)} other`);
+  if (g.blockHeader !== 0) parts.push(`${signed(g.blockHeader)} block header (${BLOCK_HEADER_WHY})`);
+  if (g.other !== 0) parts.push(`${signed(g.other)} ${Math.abs(g.other) <= 2 ? 'rounding' : 'other text'}`);
   return parts.length > 1 ? parts.join(' · ') : signed(g.delta);
 }
 
-/** "Affected cases: 0 · deck total: 3 → 3" (§0a.9). */
+/** "cases answered by the whole deck: 3 → 3 (this change affects 0)" (§0a.9, P3 gate fix 11). */
 export function casesText(affected: number, before: number, after: number): string {
-  return `Affected cases: ${affected} · deck total: ${before} → ${after}`;
+  return `cases answered by the whole deck: ${before} → ${after} (this change affects ${affected})`;
+}
+
+/** The strap's two lines (P3 gate fix 2): "file weight 104 of 1,200 tok" and "room left 1,096" or "over the allowance by 30". */
+export function strapText(now: number, allowance: number): { weight: string; left: string } {
+  const f = (n: number) => n.toLocaleString('en-US');
+  return { weight: `file weight ${f(now)} of ${f(allowance)} tok`, left: now > allowance ? `over the allowance by ${f(now - allowance)}` : `room left ${f(allowance - now)}` };
+}
+
+/** The provenance seal in words (P3 gate fix 6): "seen once", "seen in 3 sessions", "seen passing in 2 sessions". */
+export function provenanceText(kind: 'imported' | 'workflow' | 'other', sessions: number): string {
+  if (kind === 'imported') return 'From your file';
+  if (kind === 'workflow' && sessions >= 2) return `seen passing in ${sessions} sessions`;
+  return sessions >= 2 ? `seen in ${sessions} sessions` : 'seen once';
+}
+
+/** The route's held-back count in full words (P3 gate fix 5). */
+export function sealedText(count: number): string {
+  return `${count} later ${count === 1 ? 'case' : 'cases'} held for the boss`;
+}
+
+/** One line on what withholding is (the sealed chip's explanation). */
+export const SEALED_WHY = 'The game held these later cases back from the start. At the boss you read and stamp each one blind, then answer it with your own deck.';
+
+/** The room's clear line (P3 gate fix 4): what a play did, and that nothing lands before Apply. */
+export function clearText(answered: number, open: number): string {
+  const a = `${answered} ${answered === 1 ? 'case now has' : 'cases now have'} a proposed line.`;
+  const o = open > 0 ? ` ${open} ${open === 1 ? 'case stays' : 'cases stay'} open.` : '';
+  return `${a}${o} Nothing is prevented; lines land only when you Apply.`;
 }
 
 /**

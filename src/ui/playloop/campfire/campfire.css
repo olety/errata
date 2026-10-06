@@ -129,6 +129,10 @@
   background: var(--pl-campfire-ink);
   color: var(--pl-campfire-paper);
 }
+.pl-campfire-btn[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--pl-campfire-ink);
+  opacity: 0.92;
+}
 .pl-campfire-btn[aria-pressed='true'] code {
   color: var(--pl-campfire-ink);
 }
@@ -927,3 +931,13 @@
   align-items: flex-start;
   padding-bottom: 0;
 }
+
+/* The side panel holds more than it shows: a paper tab above the seal says so (no fade, no gradient). */
+.pl-campfire-side.is-more .pl-campfire-sealbar::before {
+  content: 'Scroll for more';
+  position: absolute; right: 14px; top: -26px;
+  padding: 2px 8px; font: 500 12px/18px 'Zen Kaku Gothic New', system-ui, sans-serif;
+  color: var(--pl-campfire-ink); background: var(--pl-campfire-paper);
+  border: 1px solid var(--pl-campfire-ink); border-radius: 4px;
+}
+.pl-campfire-side { scrollbar-width: thin; scrollbar-color: var(--pl-campfire-ink) transparent; }

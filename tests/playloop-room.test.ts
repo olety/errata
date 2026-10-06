@@ -285,7 +285,7 @@ describe('animation cues come from results and effects, once per id (CONTRACT.md
     const st = strikeCues(v, 'strike');
     expect([...st.keys()]).toEqual(v.result!.standing);
     expect(clearOf(v)).toBe('sink');
-    expect(v.beast.pips.text).toBe('0/3 confirmed addressed · 0 unreviewed');
+    expect(v.beast.pips.text).toBe('0 of 3 cases answered by a proposed line · 0 unreviewed');
   });
 });
 

@@ -53,7 +53,7 @@ function sampleCards(): { drafts: CardView[]; all: CardView[] } {
   // Astra's worst case for the footer and the orb: two-digit figures on the widest sample faces (a fixture, not data).
   const widest = [...drafts.values()].filter((c) => c.footer).slice(0, 3);
   for (const c of widest) {
-    const stress: CardView = { ...c, id: `${c.id}-stress`, weight: 999, provenance: 'Repeated · 12', footer: { eligible: 12, newly: 12, text: footerText(12, 12) } };
+    const stress: CardView = { ...c, id: `${c.id}-stress`, weight: 999, provenance: 'seen in 12 sessions', footer: { eligible: 12, newly: 12, text: footerText(12, 12) } };
     drafts.set(`${stress.id}:${stress.footer!.text}`, stress);
     all.set(`${stress.id}:${stress.footer!.text}`, stress);
   }
@@ -84,7 +84,7 @@ describe('pure helpers', () => {
   });
 
   test('the room footer stacks at its separator and keeps every figure of the view', () => {
-    expect(footerParts('3 eligible here · 0 newly addressed')).toEqual(['3 eligible here', '0 newly addressed']);
+    expect(footerParts('answers 3 cases here')).toEqual(['answers 3 cases here']);
     expect(footerParts('plain')).toEqual(['plain']);
   });
 
@@ -95,14 +95,16 @@ describe('pure helpers', () => {
   });
 
   test('card art is decoration keyed on the card itself; protected text gets the wax seal', () => {
-    const base = { provenance: 'Observed', inspector: { trigger: null } };
+    const base = { provenance: 'seen once', inspector: { trigger: null } };
     expect(cardArt({ ...base, type: 'skill' })).toBe('verify');
     expect(cardArt({ ...base, type: 'protected' })).toBeNull();
     // The view's art key (CardView.art) decides when present.
     expect(cardArt({ ...base, type: 'rule', art: 'verify' })).toBe('verify');
     expect(cardArt({ ...base, type: 'rule', art: null })).toBeNull();
     expect(cardArt({ ...base, type: 'rule', inspector: { trigger: 'repeated command failure · pytest' } })).toBe('retry');
-    expect(cardArt({ ...base, type: 'rule', provenance: 'Verified' })).toBe('verify');
+    expect(cardArt({ ...base, type: 'rule', provenance: 'seen passing in 2 sessions' })).toBe('verify');
+    expect(cardArt({ ...base, type: 'rule', provenance: 'From your file' })).toBe('imported');
+    for (const k of ['wyrm', 'retry', 'scope', 'moth', 'verify', 'imported'] as const) expect(cardArt({ ...base, type: 'rule', art: k })).toBe(k);
     expect(cardArt({ ...base, type: 'rule' })).toBe('scope');
   });
 
@@ -543,8 +545,13 @@ describe('the Table by rendered pixels', () => {
       async () => {
         const shots = process.env.ERRATA_TABLE_SHOTS;
         const r = await renderTable(w, h, shots ? join(shots, `table-test-${w}x${h}.png`) : undefined);
-        const t = tableBoxes(layout({ w, h }));
-        expect(r.bands).toEqual({ header: { top: t.header.y, height: t.header.h }, stage: { top: t.stage.y, height: t.stage.h }, wood: { top: t.wood.y, height: t.wood.h }, status: { top: t.status.y, height: t.status.h } });
+        const L = layout({ w, h });
+        const t = tableBoxes(L);
+        // Below 500 px the Table is a page in the flow (P3 gate fix F): the bands stack in page order, none overlaps.
+        if (L.flow) {
+          const order = [r.bands.header, r.bands.stage, r.bands.wood, r.bands.status];
+          for (let i = 1; i < order.length; i++) expect(order[i]!.top).toBeGreaterThanOrEqual(order[i - 1]!.top + order[i - 1]!.height - 0.5);
+        } else expect(r.bands).toEqual({ header: { top: t.header.y, height: t.header.h }, stage: { top: t.stage.y, height: t.stage.h }, wood: { top: t.wood.y, height: t.wood.h }, status: { top: t.status.y, height: t.status.h } });
         expect(r.scrollW).toBeLessThanOrEqual(w);
         const ids = r.targets.map((x) => x.id).sort();
         expect(ids).toEqual(['book:claude:play', 'book:codex:play', 'shelf']);

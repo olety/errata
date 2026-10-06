@@ -405,3 +405,14 @@
 .pl-room-scope-chip { font: 600 13px var(--pl-room-body); color: var(--pl-room-ink); border: 1px solid var(--pl-room-ink); border-radius: 999px; padding: 1px 10px; }
 .pl-room-scope-row .pl-room-btn { padding: 6px 10px; font-size: 13px; }
 .pl-room-scope-btn.is-on { background: var(--pl-room-ink); color: var(--pl-room-paper); }
+
+/* P3: the clear line after a play (what the room now has; nothing lands before Apply), the local-words hint on the
+   scope chip, and the secondary "stamp the rest" control under the stamps. */
+.pl-room-line.pl-room-clear { color: var(--pl-room-ink); font-weight: 500; }
+.pl-room-line.pl-room-hint { color: var(--pl-room-ink); border-left: 2px solid #b86a74; padding-left: 8px; }
+.pl-room-btn.pl-room-rest { margin-top: 8px; width: 100%; font-size: 13px; padding: 6px 10px; text-align: left; background: transparent; border-style: dashed; }
+
+/* Phones below 500 px (P3 gate fix F): the page scrolls, so the slip shows whole (no inner scroller) and the room's
+   controls stick just above the status strip, always inside the screen. */
+.pl-room.is-flow .pl-room-scroll { overflow: visible; height: auto; }
+.pl-room.is-flow .pl-room-controls, .pl-room.is-phone.is-flow:not(.is-judging) .pl-room-controls { position: sticky; bottom: calc(var(--pl-status-h, 50px) + 6px); z-index: 5; box-shadow: 0 -4px 10px rgba(65, 41, 31, 0.12); }

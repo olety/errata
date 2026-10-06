@@ -5,7 +5,7 @@
 
 import type { Agent } from '../../model';
 import type { Analysis } from '../../pipeline';
-import type { Episode } from '../../episodes';
+import { contentTokens, type Episode } from '../../episodes';
 import { caseFor, ineligibility, type Room, type RouteNode } from '../../rooms';
 import type { Card, Case, Disposition as EngineDisposition, Scope, Targets } from '../../deck/types';
 import { draftCards } from '../../deck/templates';
@@ -232,10 +232,8 @@ const ZERO_GHOST = (s: PlayState) => ghosts(weightPreview(s.deck, s.deck));
 
 /** Honesty map: Provenance seal = distinct sessions in evidenceRefs; Verified = a workflow seen in ≥ 2 sessions (§13). */
 function provenance(c: Card): string {
-  if (c.family === 'imported') return 'From your file';
   const n = new Set(c.evidenceRefs.map((r) => r.sessionId)).size;
-  if (c.family === 'workflow' && n >= 2) return 'Verified';
-  return n >= 2 ? `Repeated · ${n}` : 'Observed';
+  return C.provenanceText(c.family === 'imported' ? 'imported' : c.family === 'workflow' ? 'workflow' : 'other', n);
 }
 
 function triggerText(c: Card): string | null {
@@ -302,7 +300,7 @@ function cardView(s: PlayState, c: Card, ctx?: { room: Room; heads: Case[]; unav
       scope: c.scope.kind === 'global' ? 'all projects' : c.scope.label,
       trigger: triggerText(c),
       exceptions: c.exceptions.map((e) => e.text),
-      weightMath: `${bytes} bytes ÷ 3 = ${weight}`,
+      weightMath: `tokens, ${C.COPY.estimated}: ${bytes} bytes ÷ 3 = ${weight}`,
       quote: room && c.family !== 'imported' ? room.anchor.receipt.quote : null,
       evidence: [...new Set(c.evidenceRefs.map((r) => r.sessionId))].map((id) => {
         const l = sessionLabel(s, id);
@@ -316,12 +314,21 @@ function cardView(s: PlayState, c: Card, ctx?: { room: Room; heads: Case[]; unav
   };
 }
 
-/** The art plate by family (decoration only, §13 "not data"). */
+/** The art plate by family (decoration only, §13 "not data"; P3: one plate per family, imported lines an inked book). */
 function artOf(c: Card): C.CardArt | null {
   if (c.sealed || c.type === 'trait') return null;
+  if (c.family === 'imported') return 'imported';
   if (c.type === 'skill' || c.family === 'workflow') return 'verify';
-  if (c.family === 'repeated-command') return 'retry';
-  return 'scope';
+  switch (c.family) {
+    case 'directive':
+      return 'wyrm';
+    case 'repeated-command':
+      return 'retry';
+    case 'rewrite':
+      return 'moth';
+    default:
+      return 'scope';
+  }
 }
 
 // ------------------------------------------------------------------ heads and beasts
@@ -524,7 +531,48 @@ function scopeView(s: PlayState, r: Room, phase: C.RoomPhase): C.RoomView['scope
   const confirmed = s.scopes[r.key] ?? null;
   const own = r.projectKey ? { key: r.projectKey, label: r.projectLabel ?? 'this project' } : null;
   const confirmable = phase === 'judge' && r.kind === 'encounter' && !own && projects.length > 1;
-  return { chip: confirmed?.label ?? own?.label ?? 'all projects', confirmed, projects: confirmable || confirmed ? projects : [], confirmable };
+  const chip = confirmed?.label ?? own?.label ?? 'all projects';
+  return { chip, confirmed, projects: confirmable || confirmed ? projects : [], confirmable, hint: confirmable && !confirmed ? localHint(r) : null };
+}
+
+/** Words in the human's own quotes that give a local reason for the line. */
+const LOCAL_WORDS = /\b(on this (?:box|machine|laptop|computer|repo|project)|in this (?:repo|project)|locally|(?:takes|is|runs)[^.]{0,40}\bhere|here)\b/i;
+
+/** The local words the player should see, quoted from the first head that says them, or null. */
+function localHint(r: Room): string | null {
+  for (const e of headEpisodes(r)) {
+    const q = e.receipt.quote;
+    const m = q ? LOCAL_WORDS.exec(q) : null;
+    if (m) return `Your words sound local (“${m[1]!.length > 32 ? m[1]!.slice(0, 31) + '…' : m[1]}”); the line is global. Change the scope chip to keep it to one project.`;
+  }
+  return null;
+}
+
+/** What each response has the agent do next, for the multi-card hand's coach line (P3 gate fix H). */
+const NEXT: Record<Card['responseKey'], string> = {
+  inspect_error_before_retry: 'read the error first',
+  state_hypothesis_before_retry: 'name what changed before a retry',
+  report_blocker_after_two: 'stop after two failures and report',
+  targeted_patch: 'make one targeted patch',
+  reproduce_first: 'reproduce the problem first',
+  summarise_hypotheses: 'summarise what failed',
+  preserve_boundary: 'keep the line',
+  confirm_scope_before_edit: 'restate the scope',
+  inspect_diff_against_boundary: 'check the diff',
+  standing_instruction: 'follow the standing instruction',
+  reread_on_resume: 'reread the instructions on resuming',
+  record_at_handoff: 'carry the instruction across handoffs',
+  verification_gate: 'run the focused test before reporting done',
+  result_summary: 'report the result with its pass count',
+  mint_skill: 'follow the workflow as a Skill',
+  unmapped: 'nothing yet (an unmapped line)',
+};
+
+/** "These three differ in what the agent does next: keep the line, restate the scope, check the diff." */
+function handDiffers(hand: Card[]): string | null {
+  if (hand.length < 2) return null;
+  const n = hand.length === 2 ? 'two' : hand.length === 3 ? 'three' : String(hand.length);
+  return `These ${n} differ in what the agent does next: ${hand.map((c) => NEXT[c.responseKey]).join(', ')}.`;
 }
 
 export function selectRoom(s: PlayState, roomKey?: string): C.RoomView | null {
@@ -545,10 +593,13 @@ export function selectRoom(s: PlayState, roomKey?: string): C.RoomView | null {
   const imported = presentCards(s.deck).filter((c) => c.family === 'imported');
   const keepExisting = remaining === 0 && issues.length > 0 && issues.every((h) => imported.some((k) => cover(k, h, ex).covers));
   const ctxHeads = cases;
+  const bv = beast(s, r, heads);
+  // Honesty map: the clear line = the room's pips after its play or skip (answered = addressed, open = the rest).
+  const clear = p.phase === 'done' && p.result && r.kind !== 'workshop' && bv.pips.confirmed > 0 ? C.clearText(bv.pips.addressed, bv.pips.confirmed - bv.pips.addressed) : null;
   return {
     kind: r.kind === 'event' && dispOf(s, r.anchor.id) !== 'issue' ? 'event' : r.kind === 'workshop' ? 'workshop' : r.kind === 'event' ? 'encounter' : r.kind,
     roomKey: r.key,
-    beast: beast(s, r, heads),
+    beast: bv,
     heads,
     scope: scopeView(s, r, p.phase),
     wording: (r.family === 'boundary' || r.family === 'directive') && r.kind === 'encounter' ? { value: s.wording[r.key] ?? r.proposedConstraint ?? '', editable: p.phase === 'judge' } : null,
@@ -568,6 +619,8 @@ export function selectRoom(s: PlayState, roomKey?: string): C.RoomView | null {
     offer: p.phase !== 'done' && allAside ? 'continue-all-set-aside' : p.phase !== 'done' && keepExisting ? 'keep-existing' : null,
     existingAsks: p.phase === 'done' ? [] : existingAsks(s, cases),
     result: p.result,
+    clear,
+    handDiffers: p.phase === 'dealt' ? handDiffers(hand) : null,
   };
 }
 
@@ -823,8 +876,8 @@ export function selectCampfire(s: PlayState): C.CampfireView {
   const { gold, red } = threadsOf(s);
   /** Honesty map: gold thread = fuseSuggestions kind and `why`; red thread = opposed() between two present cards (§13). */
   const threads: C.ThreadView[] = [
-    ...red.map((c) => ({ id: c.id, color: 'red' as const, members: [c.a, c.b], reason: c.text, autoText: null })),
-    ...gold.map((g) => ({ id: g.id, color: 'gold' as const, members: g.members, reason: g.why, autoText: g.autoText })),
+    ...red.map((c) => ({ id: c.id, color: 'red' as const, members: [c.a, c.b], reason: c.text, autoText: null, shared: null, newer: newerOf(s, [c.a, c.b]) })),
+    ...gold.map((g) => ({ id: g.id, color: 'gold' as const, members: g.members, reason: g.why, autoText: g.autoText, shared: sharedWords(s, g.members), newer: null })),
   ];
   const books = selectBooks(s);
   const over = books.some((b) => b.weight.over);
@@ -854,6 +907,29 @@ export function selectCampfire(s: PlayState): C.CampfireView {
   };
 }
 
+/**
+ * The member of a red pair played most recently: a card from this act (the later one when both are) over a line read
+ * from your file. Keep one starts on it, so a fast seal never undoes the play just made (P3 gate fix 14).
+ */
+function newerOf(s: PlayState, ids: string[]): string | null {
+  const order = (id: string) => s.deck.cards.findIndex((c) => c.id === id);
+  const played = ids.filter((id) => order(id) >= 0).sort((a, b) => order(b) - order(a));
+  return played[0] ?? ids[0] ?? null;
+}
+
+/**
+ * Honesty map: a gold thread's shared content words and their share of all its members' content words (the Jaccard
+ * overlap the engine's near-duplicate rule uses), for the preview only; null when the members share none.
+ */
+function sharedWords(s: PlayState, ids: string[]): C.ThreadView['shared'] {
+  const cards = ids.map((id) => presentCards(s.deck).find((c) => c.id === id)).filter((c): c is Card => !!c);
+  if (cards.length < 2) return null;
+  const sets = cards.map((c) => new Set(contentTokens(c.text)));
+  const all = new Set(sets.flatMap((x) => [...x]));
+  const words = [...sets[0]!].filter((w) => sets.every((x) => x.has(w)));
+  return words.length && all.size ? { words, percent: Math.round((words.length / all.size) * 100) } : null;
+}
+
 /** Honesty map: fuse / cut / sharpen preview = real per-file deltas; cases = coverage() before and after (§13, §0a.9). */
 function changeView(s: PlayState, after: DeckState, p: Preview, lines: C.ChangePreviewView['lines'] = [], resultId: string | null = null, refused: string | null = null): C.ChangePreviewView {
   const reviewed = reviewedCases(s);
@@ -874,7 +950,16 @@ function changeView(s: PlayState, after: DeckState, p: Preview, lines: C.ChangeP
     cases: { affected, deckBefore: p.cases.before, deckAfter: p.cases.after, opened: p.cases.opened, addressed: p.cases.addressed, text: C.casesText(affected, p.cases.before, p.cases.after) },
     needsAcceptance,
     refs: [...new Set([...p.cases.opened, ...p.cases.addressed, ...needsAcceptance])].map((caseId) => ({ caseId, ...tagOf(s, caseId) })),
+    changed: changedFiles(s.deck, after),
   };
+}
+
+/** Honesty map: the files whose rendered bytes differ between the two decks (renderLanes before and after). */
+function changedFiles(before: DeckState, after: DeckState): C.FileName[] {
+  const a = renderLanes(before, {});
+  const b = renderLanes(after, {});
+  const same = (x: Uint8Array, y: Uint8Array) => x.length === y.length && x.every((v, i) => v === y[i]);
+  return AGENTS.filter((l) => !same(a[l].next, b[l].next)).map((l) => C.FILE_OF[l]);
 }
 
 /** The preview of a gold or red thread (with the player's text or chosen settlement), or of a cut. */
@@ -985,7 +1070,11 @@ export function actFuse(s: PlayState, threadId: string, text: string): PlayState
 export function actSettle(s: PlayState, threadId: string, resolution: Resolution): PlayState {
   const c = threadsOf(s).red.find((x) => x.id === threadId);
   if (!c || resolution.kind === 'cancel') return s;
-  return upd(s, { deck: resolveConflict(s.deck, c, resolution), ops: counted(s, 'settle') });
+  const deck = resolveConflict(s.deck, c, resolution);
+  // One path for removals (P3 gate fix 16): a settlement that removes a line puts it in the ash like a burn, where it
+  // counts and can be restored until Apply.
+  const gone = presentCards(s.deck).filter((k) => (k.id === c.a || k.id === c.b) && !presentCards(deck).some((x) => x.id === k.id));
+  return upd(s, { deck, ash: gone.length ? Object.freeze([...s.ash, ...gone]) : s.ash, ops: counted(s, 'settle') });
 }
 
 /** Cut a card into the fire; it goes to the ash list, restorable until Apply. */

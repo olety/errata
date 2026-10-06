@@ -57,6 +57,7 @@ function scopeBox(p: ScreenProps<RoomView>): HTMLElement | null {
     'pl-room-scopebox',
     head,
     el('p', 'pl-room-line', `Seen in ${s.projects.map((x) => x.label).join(' and ')}. The line applies to all projects unless you confirm one.`),
+    s.hint ? el('p', 'pl-room-line pl-room-hint', s.hint) : null,
     el('div', 'pl-room-buttons pl-room-scope-row', pick(null, 'All projects'), ...s.projects.map((x) => pick(x.key, `Only ${x.label}`))),
   );
 }
@@ -90,7 +91,8 @@ function askBox(p: ScreenProps<RoomView>): HTMLElement | null {
 function controlsBox(p: ScreenProps<RoomView>): HTMLElement | null {
   const v = p.view;
   const cs = roomControls(v);
-  const lines = controlLines(v);
+  // After the play: what the room now has, and that nothing lands before Apply (P3 gate fix 4).
+  const lines = [...(v.clear ? [v.clear] : []), ...(v.handDiffers ? [v.handDiffers] : []), ...controlLines(v)];
   if (!cs.length && !lines.length) return null;
   const act: Record<string, () => void> = {
     deal: () => p.api.deal(),
@@ -111,7 +113,18 @@ function controlsBox(p: ScreenProps<RoomView>): HTMLElement | null {
     if (c.why) whys.add(c.why);
   });
   for (const w of whys) row.append(el('span', 'pl-room-why', w));
-  return el('div', 'pl-room-controls', row, ...lines.map((l) => el('p', 'pl-room-line', l)));
+  // Phones (the flow): the hand lies below the beast, so the selected card's tap target is also here, the same act as a
+  // tap on the beast (tap–tap, §0a.15), with its reading already on the books' page.
+  const sel = p.ui.selected ? v.hand.find((c) => c.id === p.ui.selected) : undefined;
+  if (p.ui.bands.flow && v.phase === 'dealt' && sel) {
+    row.prepend(
+      button('pl-room-btn is-primary', `Play “${sel.face.title}” on the beast`, () => {
+        flush();
+        p.api.tapTarget({ kind: 'beast' });
+      }),
+    );
+  }
+  return el('div', 'pl-room-controls', row, ...lines.map((l) => el('p', `pl-room-line${l === v.clear ? ' pl-room-clear' : ''}`, l)));
 }
 
 /** The beast's height: the creature band, or less when the arena is narrow (presentation maths). */
@@ -142,14 +155,15 @@ function compose(p: ScreenProps<RoomView>, event: boolean): HTMLElement {
   const phone = b.mode === 'phone';
   const judging = v.phase === 'judge' && v.review.remaining > 0;
   const cols = stageColumns(b.mode, b.viewport.w);
-  const root = el('section', `pl-room is-${b.mode}${p.ui.reducedMotion ? ' is-reduced' : ''}${event ? ' is-event' : ''}${judging ? ' is-judging' : ''} is-${v.kind}`);
-  root.style.height = `${stageH}px`;
+  const root = el('section', `pl-room is-${b.mode}${p.ui.reducedMotion ? ' is-reduced' : ''}${event ? ' is-event' : ''}${judging ? ' is-judging' : ''} is-${v.kind}${b.flow ? ' is-flow' : ''}`);
+  // In the flow (phones below 500 px) the room is as tall as its content and the page scrolls (P3 gate fix F).
+  if (!b.flow) root.style.height = `${stageH}px`;
   root.style.setProperty('--pl-room-pad', `${cols.pad}px`);
   root.style.setProperty('--pl-room-gap', `${cols.gap}px`);
   root.dataset.room = v.roomKey;
 
   // Phones: while heads wait for stamps the slip takes most of the stage; afterwards the beast does.
-  const arenaH = phone ? Math.round(stageH * (judging ? 0.32 : 0.6)) : stageH - 8;
+  const arenaH = b.flow ? Math.min(300, Math.max(220, Math.round(b.viewport.h * 0.32))) : phone ? Math.round(stageH * (judging ? 0.32 : 0.6)) : stageH - 8;
 
   const glow = new Map((p.ui.drag?.preview?.heads ?? []).map((h) => [h.caseId, h]));
   const cues: BeastCues = {
@@ -191,7 +205,7 @@ function compose(p: ScreenProps<RoomView>, event: boolean): HTMLElement {
     // One scroller under the beast: slip, prompt, wording, then the controls, which stick to its bottom edge once
     // judging is done (while heads wait for stamps the slip needs the room).
     const scroller = el('div', 'pl-room-scroll', side, askBox(p), scopeBox(p), wordingBox(p), controlsBox(p));
-    scroller.style.height = `${Math.max(0, stageH - arenaH - cols.gap)}px`;
+    if (!b.flow) scroller.style.height = `${Math.max(0, stageH - arenaH - cols.gap)}px`;
     root.append(arena, scroller);
   } else {
     const rail = el('div', 'pl-room-rail', askBox(p), scopeBox(p), wordingBox(p), controlsBox(p));

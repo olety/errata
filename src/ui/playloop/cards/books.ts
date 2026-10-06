@@ -3,7 +3,7 @@
 // typeset on the open page at reading size before release. Drop targets: play (rooms) or re-target (campfire).
 // Import from ../contract only. Never the adapter or the engine.
 import type { Agent, BookView, CardView, DragPreview, DropBinder, GhostDelta, PlayResultView } from '../contract';
-import { COPY } from '../contract';
+import { BLOCK_HEADER_WHY, COPY, strapText } from '../contract';
 import { el, fig, inline, svg } from './dom';
 import './cards.css';
 
@@ -185,7 +185,7 @@ function Strap(b: BookView, ghost: GhostDelta | null): HTMLElement {
     const from = strapGeom({ ...b.weight, now: prev }, null).fill;
     fill.animate([{ width: `${from}%` }, { width: `${g.fill}%` }], { duration: 420, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
   }
-  const clasp = svg('0 0 16 16', `pl-cards-clasp${b.weight.over ? ' is-open' : ''}`, b.weight.over ? [{ d: 'M3 4h7v8H3Z' }, { d: 'M10 8h4.5' }] : [{ d: 'M3 4h7v8H3Z' }, { d: 'M6.5 8H13' }], b.weight.over ? 'Clasp open: over the allowance' : 'Clasp shut: within the allowance');
+  const clasp = svg('0 0 16 16', `pl-cards-clasp${b.weight.over ? ' is-open' : ''}`, b.weight.over ? [{ d: 'M3 4h7v8H3Z' }, { d: 'M10 8h4.5' }] : [{ d: 'M3 4h7v8H3Z' }, { d: 'M6.5 8H13' }], b.weight.over ? `Clasp open: ${strapText(b.weight.now, b.weight.allowance).left}` : 'Clasp shut: within the allowance');
   return el('div', 'pl-cards-strapwrap', track, clasp);
 }
 
@@ -199,8 +199,12 @@ function Path(path: string): HTMLElement {
   return e;
 }
 
+/** The strap's two lines (P3 gate fix 2): "file weight 104 of 1,200 tok" / "room left 1,096". Never a bare fraction. */
 function Figures(b: BookView): HTMLElement {
-  return el('p', 'pl-cards-book-fig', el('span', 'pl-cards-mono', `${fig(b.weight.now)} / ${fig(b.weight.allowance)}`), ` ${COPY.estimated}`);
+  const t = strapText(b.weight.now, b.weight.allowance);
+  const f = el('p', 'pl-cards-book-fig', el('span', 'pl-cards-fig-line', t.weight), el('span', `pl-cards-fig-line${b.weight.over ? ' is-over' : ''}`, t.left));
+  f.title = `${t.weight}, ${t.left} (tokens, ${COPY.estimated}: bytes ÷ 3)`;
+  return f;
 }
 
 function Notes(b: BookView): (HTMLElement | null)[] {
@@ -219,13 +223,14 @@ function Book(b: BookView, ghost: GhostDelta | null, dest: boolean, p: BooksProp
     el('div', 'pl-cards-book-head', el('b', 'pl-cards-book-name', b.file), Path(b.path)),
     Strap(b, ghost),
     Figures(b),
-    ghost && p.preview ? el('p', 'pl-cards-book-ghost', el('span', 'pl-cards-mono', ghost.text), ` ${COPY.estimated}`) : null,
+    // The book says the whole-file change and its parts in short; the open page above says what the header is.
+    ghost && p.preview ? el('p', 'pl-cards-book-ghost', el('span', 'pl-cards-mono', ghost.delta === 0 ? 'no change' : `${signedDelta(ghost)} tok`), ghost.text.includes(' · ') ? el('span', 'pl-cards-ghost-parts', ghost.text.replace(` (${BLOCK_HEADER_WHY})`, '')) : null) : null,
     ...Notes(b),
   );
   const sync = BuckleToggle(book, b, p, onBuckle);
   if (sync) toggles.push(sync);
   book.dataset.lane = b.lane;
-  book.setAttribute('aria-label', `${b.file}: ${b.weight.now} of ${b.weight.allowance} ${COPY.estimated}${b.proposed ? `, ${COPY.proposed}` : ''}`);
+  book.setAttribute('aria-label', `${b.file}: ${strapText(b.weight.now, b.weight.allowance).weight}, ${strapText(b.weight.now, b.weight.allowance).left}, ${COPY.estimated}${b.proposed ? `, ${COPY.proposed}` : ''}`);
   if (b.proposed) {
     const w = el('span', 'pl-cards-proposed', COPY.proposed);
     w.setAttribute('aria-hidden', 'true');
@@ -260,11 +265,11 @@ function Tab(b: BookView, ghost: GhostDelta | null, dest: boolean): HTMLElement 
     'div',
     `pl-cards-booktab${dest ? ' is-dest' : ''}${b.weight.over ? ' is-over' : ''}`,
     el('div', 'pl-cards-booktab-row', el('b', 'pl-cards-book-name', b.file), Strap(b, ghost)),
-    ghost ? el('p', 'pl-cards-book-fig', el('span', 'pl-cards-mono', signedDelta(ghost)), ghost.delta !== 0 ? ` ${COPY.estimated}` : '') : Figures(b),
+    ghost ? el('p', 'pl-cards-book-fig', el('span', 'pl-cards-mono', signedDelta(ghost)), ghost.delta !== 0 ? ` tok, ${COPY.estimated}` : '') : Figures(b),
     b.proposed ? el('span', 'pl-cards-proposed-tag', COPY.proposed) : null,
   );
   tab.dataset.lane = b.lane;
-  tab.setAttribute('aria-label', `${b.file}: ${b.weight.now} of ${b.weight.allowance} ${COPY.estimated}`);
+  tab.setAttribute('aria-label', `${b.file}: ${strapText(b.weight.now, b.weight.allowance).weight}, ${strapText(b.weight.now, b.weight.allowance).left}, ${COPY.estimated}`);
   if (b.blocked) tab.title = b.blocked;
   return tab;
 }
@@ -278,7 +283,7 @@ function Page(pv: DragPreview, p: BooksProps): HTMLElement {
     l ? el('p', 'pl-cards-page-line', ...inline(l.text)) : null,
     l ? el('p', 'pl-cards-page-meta', `Scope: ${l.scope}`, l.exceptions[0] !== undefined ? ` · Except: ${l.exceptions.join('; ')}` : ' · No exceptions') : null,
     pv.accepts[0] !== undefined ? el('p', 'pl-cards-page-meta', 'Releasing here accepts this reading for the heads that glow.') : null,
-    p.layout === 'tabs' ? el('p', 'pl-cards-page-meta', ...p.books.flatMap((b, i) => [i ? ' · ' : '', el('b', '', b.file), ` ${pv.ghost[b.lane].text} ${COPY.estimated}`])) : null,
+    el('p', 'pl-cards-page-meta', ...p.books.flatMap((b, i) => [i ? ' · ' : '', el('b', '', b.file), ` ${pv.ghost[b.lane].text}`]), ` · tokens, ${COPY.estimated}`),
     pv.refused ? el('p', 'pl-cards-refused', pv.refused) : null,
   );
   page.setAttribute('role', 'status');

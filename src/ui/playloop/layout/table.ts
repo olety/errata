@@ -31,7 +31,7 @@ export function tableBoxes(b: Bands): { header: { y: number; h: number }; stage:
 export function Table(p: TableProps): HTMLElement {
   const b = p.bands;
   const box = tableBoxes(b);
-  const root = el('div', `pl-layout-table pl-layout-${b.mode}${b.scroll ? ' is-scroll' : ''}`);
+  const root = el('div', `pl-layout-table pl-layout-${b.mode}${b.scroll ? ' is-scroll' : ''}${b.flow ? ' is-flow' : ''}`);
   root.dataset.mode = b.mode;
   root.style.setProperty('--pl-layout-group-gap', `${b.groupGap / 2}px`);
   root.style.setProperty('--pl-layout-margin', `${b.margin / 2}px`);
@@ -43,16 +43,30 @@ export function Table(p: TableProps): HTMLElement {
   root.style.setProperty('--pl-layout-touch', `${b.touch.min}px`);
 
   const canvas = el('div', 'pl-layout-canvas');
-  canvas.style.height = `${box.height}px`;
-  canvas.append(World(b, box.height));
+  if (b.flow) {
+    // A scrolling page (phones): the portrait plate behind the top, its wood repeated below; bands in the flow.
+    canvas.style.setProperty('--pl-layout-plate', `url("${asset(PLATES.portrait.src)}")`);
+    canvas.style.setProperty('--pl-layout-woodtile', `url("${asset('layout/world-portrait-wood.webp')}")`);
+    canvas.style.setProperty('--pl-layout-shore', `${b.shoreY}px`);
+  } else {
+    canvas.style.height = `${box.height}px`;
+    canvas.append(World(b, box.height));
+  }
 
   const band = (cls: string, y: number, h: number, child: HTMLElement) => {
     const e = el('div', `pl-layout-band ${cls}`, child);
-    e.style.top = `${y}px`;
-    e.style.height = `${h}px`;
+    if (!b.flow) {
+      e.style.top = `${y}px`;
+      e.style.height = `${h}px`;
+    }
     return e;
   };
-  canvas.append(band('pl-layout-stage', box.stage.y, box.stage.h, p.stage), band('pl-layout-wood', box.wood.y, box.wood.h, p.wood), band('pl-layout-header', box.header.y, box.header.h, p.header), band('pl-layout-status', box.status.y, box.status.h, p.status));
+  const header = band('pl-layout-header', box.header.y, box.header.h, p.header);
+  const stage = band('pl-layout-stage', box.stage.y, box.stage.h, p.stage);
+  const wood = band('pl-layout-wood', box.wood.y, box.wood.h, p.wood);
+  const status = band('pl-layout-status', box.status.y, box.status.h, p.status);
+  // In the flow the reading order is the page order; on the fixed table the bands paint in their z order.
+  canvas.append(...(b.flow ? [header, stage, wood, status] : [stage, wood, header, status]));
   root.append(canvas);
   return root;
 }

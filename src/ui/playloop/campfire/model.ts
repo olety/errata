@@ -92,9 +92,12 @@ export function oneLine(text: string): boolean {
   return text.trim().length > 0 && !/[\r\n]/.test(text.trim());
 }
 
+/** Keep one starts on the newer line (the one played this act), so a fast seal never undoes that play (P3 fix 14). */
 export function defaultSettle(thread: ThreadView, projects: CampfireView['projects']): SettleDraft {
   const first = thread.members[0] ?? '';
-  return { slot: null, keep: first, bind: first, projectKey: projects[0]?.key ?? null, on: first, text: '', when: 'always', whenValue: '' };
+  const newer = thread.newer && thread.members.includes(thread.newer) ? thread.newer : first;
+  const older = thread.members.find((m) => m !== newer) ?? first;
+  return { slot: null, keep: newer, bind: newer, projectKey: projects[0]?.key ?? null, on: older, text: '', when: 'always', whenValue: '' };
 }
 
 /** The engine's settlement for the draft, or null while the chosen slot is incomplete. Cancel is not a choice here: it calls cancel(). */

@@ -66,7 +66,7 @@ export function Hand(p: HandProps): HTMLElement {
   lastHand = handKey;
   const slots = fanSlots(p.cards.length, b.fan);
   p.cards.forEach((c, i) => {
-    const node = Card({ card: c, size: b.card.size, selected: p.ui.selected === c.id, drag: p.drag, onInspect: (id) => p.api.inspect({ cardId: id }) });
+    const node = Card({ card: c, size: b.card.size, selected: p.ui.selected === c.id, drag: p.drag, onInspect: (id) => p.api.inspect({ cardId: id }), onActivate: (id) => p.api.select(id) });
     const s = slots[i]!;
     if (s.rotate || s.dy) {
       node.style.rotate = `${s.rotate}deg`;

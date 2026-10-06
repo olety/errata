@@ -260,7 +260,12 @@ export class Controller {
   /** True when the reading for this card on this target is on screen now (a hover, a selection, or a staged confirm). */
   private shown(cardId: string, target: C.DragTarget): boolean {
     const d = this.ui.drag;
-    return !!d && d.cardId === cardId && !!d.preview && JSON.stringify(d.target) === JSON.stringify(target);
+    if (!d || d.cardId !== cardId || !d.preview || !d.target) return false;
+    // A hand card over any head is a play on the beast (§3): the beast's reading and a head's are the same reading.
+    const screen = this.screen();
+    const inHand = (screen.kind === 'room' || screen.kind === 'event') && screen.view.hand.some((c) => c.id === cardId);
+    const norm = (t: C.DragTarget): C.DragTarget => (inHand && t.kind === 'head' ? { kind: 'beast' } : t);
+    return JSON.stringify(norm(d.target)) === JSON.stringify(norm(target));
   }
 
   /** What a drop on a target does, by screen. Campfire drops only propose; the seal performs. */

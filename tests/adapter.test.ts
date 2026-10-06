@@ -44,7 +44,7 @@ describe('room 1 on the sample', () => {
       ['CLAUDE.md', 104, 1200, true],
       ['AGENTS.md', 33, 1200, true],
     ]);
-    expect(v.beast.pips.text).toBe('No confirmed problems · 3 unreviewed');
+    expect(v.beast.pips.text).toBe('No cases confirmed as a problem · 3 unreviewed');
     expect(v.beast.skin).toBe('suite-wyrm');
     expect(v.wording).toEqual({ value: "Don't run the whole suite, it takes ten minutes here. Run only the one test file I named, I'll run the rest myself.", editable: true });
   });
@@ -60,7 +60,7 @@ describe('room 1 on the sample', () => {
     expect(v.phase).toBe('dealt');
     expect(v.finalizes).toBe('Playing a card or skipping finalizes your stamps for this room.');
     expect(v.hand.map((c) => c.face.title)).toEqual(['Standing instruction']);
-    expect(v.hand[0]!.footer!.text).toBe('3 eligible here · 3 newly addressed');
+    expect(v.hand[0]!.footer!.text).toBe('answers 3 cases here');
     expect(v.unavailable.map((c) => [c.face.title, c.inspector.unavailable])).toEqual([
       ['Reread on resuming', ['no context summary or handoff earlier in this session']],
       ['Carry it over', ['no context summary or handoff earlier in this session']],
@@ -77,8 +77,8 @@ describe('room 1 on the sample', () => {
     const beast = A.selectDrag(s, id, { kind: 'beast' });
     expect(beast.verb).toBe('play');
     expect(beast.heads.every((h) => h.glow)).toBe(true);
-    expect(beast.ghost.claude.text).toBe('+46 line · +22 block header');
-    expect(beast.ghost.codex.text).toBe('+46 line · +23 block header');
+    expect(beast.ghost.claude.text).toBe('+46 line · +22 block header (the one-time marker lines)');
+    expect(beast.ghost.codex.text).toBe('+46 line · +23 block header (the one-time marker lines)');
     expect([beast.ghost.claude.before, beast.ghost.claude.after, beast.ghost.codex.before, beast.ghost.codex.after]).toEqual([104, 172, 33, 102]);
     expect(beast.line!.files).toEqual(['CLAUDE.md', 'AGENTS.md']);
     expect(beast.accepts.length).toBe(3);
@@ -97,7 +97,7 @@ describe('room 1 on the sample', () => {
     expect(result.ink.map((x) => x.file)).toEqual(['CLAUDE.md', 'AGENTS.md']);
     const v = A.selectRoom(state)!;
     expect(v.phase).toBe('done');
-    expect(v.beast.pips).toMatchObject({ text: '3/3 confirmed addressed · 0 unreviewed', fully: true });
+    expect(v.beast.pips).toMatchObject({ text: '3 of 3 cases answered by a proposed line · 0 unreviewed', fully: true });
     expect(v.piles.open).toEqual([]);
     expect(v.books.map((b) => b.weight.now)).toEqual([172, 102]);
     expect(v.books[0]!.cardIds.every((id) => v.deck.some((c) => c.id === id))).toBe(true);
@@ -137,7 +137,7 @@ describe('room 1 on the sample', () => {
     let s = fresh();
     for (const h of A.selectRoom(s)!.heads) s = A.actStamp(s, h.caseId, 'not-a-problem');
     expect(A.selectRoom(s)!.offer).toBe('continue-all-set-aside');
-    expect(A.selectRoom(s)!.beast.pips.text).toBe('No confirmed problems · 0 unreviewed');
+    expect(A.selectRoom(s)!.beast.pips.text).toBe('No cases confirmed as a problem · 0 unreviewed');
     const next = A.actAdvance(s);
     expect(next.node).toBe(1);
   });
@@ -194,7 +194,7 @@ describe('the tutorial route to Apply and Undo', () => {
     const full = fire.view.lanes.codex.find((c) => c.inspector.exact === TUTORIAL.redLink.onLine)!;
     const preview = A.selectChangePreview(s, { threadId: red.id, resolution: { kind: 'exception', on: full.id, text: TUTORIAL.redLink.text, when: {} } })!;
     expect(preview.lines.find((l) => l.id === full.id)!.text).toBe('Run the full test suite before reporting done, unless the user names a test file.');
-    expect(preview.cases.text).toBe('Affected cases: 0 · deck total: 3 → 3');
+    expect(preview.cases.text).toBe('cases answered by the whole deck: 3 → 3 (this change affects 0)');
     s = A.actSettle(s, red.id, { kind: 'exception', on: full.id, text: TUTORIAL.redLink.text, when: {} });
     const uv = A.selectCampfire(s).threads.find((t) => t.color === 'gold' && t.members.length === 3)!;
     const fusePv = A.selectChangePreview(s, { threadId: uv.id })!;

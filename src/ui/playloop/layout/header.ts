@@ -1,6 +1,7 @@
 // Owner: cards/layout. The header band (route, pattern name, factual subtitle) and the status bar (§1, §5.5).
 // Import from ../contract only. Never the adapter or the engine.
 import type { ControllerApi, RouteKnotView, RouteView, StatusView } from '../contract';
+import { SEALED_WHY, sealedText } from '../contract';
 import { el, Sigil, svg } from '../cards/dom';
 import './layout.css';
 
@@ -29,6 +30,9 @@ export interface RouteHeaderProps {
   api?: Pick<ControllerApi, 'inspect'> | null;
 }
 
+/** Whether the sealed chip's one-line explanation is open (presentation memory across repaints). */
+let sealedOpen = false;
+
 /** The route (8 knots) centred in the header, with the sealed boss heads as a count and sigils only (§1, §5.5). */
 export function RouteHeader(p: RouteHeaderProps): HTMLElement {
   const r = p.route;
@@ -51,11 +55,24 @@ export function RouteHeader(p: RouteHeaderProps): HTMLElement {
     else knot.disabled = true;
     list.append(el('li', `pl-layout-knot-li is-${k.state}`, knot));
   }
-  const sealed =
-    r.sealed.count > 0
-      ? el('span', 'pl-layout-sealed', el('b', 'pl-layout-num', String(r.sealed.count)), ' sealed', ...r.sealed.sigils.map((a) => Sigil(a, true)))
-      : null;
-  if (sealed) sealed.title = `${r.sealed.count} later cases held back for the end: agents only, no words`;
+  // The held-back cases in full words (P3 gate fix 5); a click opens one line on what withholding is.
+  let why: HTMLElement | null = null;
+  let sealed: HTMLElement | null = null;
+  if (r.sealed.count > 0) {
+    const b = el('button', 'pl-layout-sealed', el('span', '', sealedText(r.sealed.count)), ...r.sealed.sigils.map((a) => Sigil(a, true)));
+    b.type = 'button';
+    b.title = SEALED_WHY;
+    b.setAttribute('aria-expanded', String(sealedOpen));
+    why = el('p', 'pl-layout-sealed-why', SEALED_WHY);
+    why.hidden = !sealedOpen;
+    const w = why;
+    b.addEventListener('click', () => {
+      sealedOpen = !sealedOpen;
+      w.hidden = !sealedOpen;
+      b.setAttribute('aria-expanded', String(sealedOpen));
+    });
+    sealed = b;
+  }
   const bar = el('nav', 'pl-layout-routebar', list, sealed);
   bar.setAttribute('aria-label', 'Route');
   // On a narrow screen the route scrolls sideways: keep the current knot in view.
@@ -64,7 +81,7 @@ export function RouteHeader(p: RouteHeaderProps): HTMLElement {
       const cur = bar.querySelector<HTMLElement>('.pl-layout-knot-li.is-current');
       if (cur && bar.scrollWidth > bar.clientWidth) bar.scrollLeft = Math.max(0, cur.offsetLeft - (bar.clientWidth - cur.offsetWidth) / 2);
     });
-  return el('header', 'pl-layout-head', bar, el('h1', 'pl-layout-title', p.title), p.subtitle ? el('p', 'pl-layout-sub', p.subtitle) : null);
+  return el('header', 'pl-layout-head', bar, why, el('h1', 'pl-layout-title', p.title), p.subtitle ? el('p', 'pl-layout-sub', p.subtitle) : null);
 }
 
 /** The status bar: "synthetic sample · 12 sessions", the notice line. Nothing here is a drop target. */

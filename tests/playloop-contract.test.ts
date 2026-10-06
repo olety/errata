@@ -3,7 +3,7 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { newDeck } from '../src/deck/deck';
 import * as A from '../src/ui/playloop/adapter';
-import { bossReason, ghostText, pipsText } from '../src/ui/playloop/contract';
+import { bossReason, casesText, clearText, footerText, ghostText, pipsText, provenanceText, sealedText, strapText } from '../src/ui/playloop/contract';
 import { sampleAgentsMd, sampleAnalysis, sampleClaudeMd } from './helpers';
 
 let fresh: () => A.PlayState;
@@ -109,11 +109,23 @@ describe('the inspector', () => {
 
 describe('copy selectors', () => {
   test('the unreviewed count always prints; offsetting ghost parts are not "no change"; an unknown scope is not a mismatch', () => {
-    expect(pipsText(3, 3, 0)).toBe('3/3 confirmed addressed · 0 unreviewed');
-    expect(pipsText(0, 0, 2)).toBe('No confirmed problems · 2 unreviewed');
-    expect(ghostText({ delta: 0, line: 0, blockHeader: 22, other: -22 })).toBe('+22 block header · −22 other');
+    expect(pipsText(3, 3, 0)).toBe('3 of 3 cases answered by a proposed line · 0 unreviewed');
+    expect(pipsText(0, 1, 0)).toBe('0 of 1 case answered by a proposed line · 0 unreviewed');
+    expect(pipsText(0, 0, 2)).toBe('No cases confirmed as a problem · 2 unreviewed');
+    expect(ghostText({ delta: 0, line: 0, blockHeader: 22, other: -22 })).toBe('+22 block header (the one-time marker lines) · −22 other text');
+    expect(ghostText({ delta: 59, line: 60, blockHeader: 0, other: -1 })).toBe('+60 line · −1 rounding');
+    expect(footerText(3, 3)).toBe('answers 3 cases here');
+    expect(footerText(1, 0)).toBe('answers 1 case here');
+    expect(casesText(0, 3, 3)).toBe('cases answered by the whole deck: 3 → 3 (this change affects 0)');
+    expect(strapText(104, 1200)).toEqual({ weight: 'file weight 104 of 1,200 tok', left: 'room left 1,096' });
+    expect(strapText(1230, 1200)).toEqual({ weight: 'file weight 1,230 of 1,200 tok', left: 'over the allowance by 30' });
+    expect(provenanceText('other', 3)).toBe('seen in 3 sessions');
+    expect(provenanceText('other', 1)).toBe('seen once');
+    expect(provenanceText('workflow', 2)).toBe('seen passing in 2 sessions');
+    expect(sealedText(2)).toBe('2 later cases held for the boss');
+    expect(clearText(3, 0)).toBe('3 cases now have a proposed line. Nothing is prevented; lines land only when you Apply.');
     expect(ghostText({ delta: 0, line: 0, blockHeader: 0, other: 0 })).toBe('no change');
-    expect(ghostText({ delta: 68, line: 46, blockHeader: 22, other: 0 })).toBe('+46 line · +22 block header');
+    expect(ghostText({ delta: 68, line: 46, blockHeader: 22, other: 0 })).toBe('+46 line · +22 block header (the one-time marker lines)');
     expect(bossReason('scope_matches', 'unknown', { agent: 'codex', project: null })).toBe('project unknown · applicability not established');
     expect(bossReason('scope_matches', 'false', { agent: 'codex', project: 'datalad' })).toBe('datalad · scoped elsewhere');
   });

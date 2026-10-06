@@ -67,7 +67,7 @@ export function fig(n: number): string {
 
 // ------------------------------------------------------------------ pure: card art
 
-export type ArtKey = 'retry' | 'scope' | 'verify';
+export type ArtKey = NonNullable<CardView['art']>;
 
 /**
  * Which painted plate fills the art window. Decoration only: it encodes nothing and never changes a number. The view's
@@ -76,14 +76,27 @@ export type ArtKey = 'retry' | 'scope' | 'verify';
 export function cardArt(card: Pick<CardView, 'type' | 'provenance'> & { inspector: { trigger: string | null }; art?: CardView['art'] }): ArtKey | null {
   if (card.art !== undefined) return card.art;
   if (card.type === 'protected' || card.type === 'trait') return null;
-  if (card.type === 'skill' || card.provenance.startsWith('Verified')) return 'verify';
+  if (card.type === 'skill' || card.provenance.startsWith('seen passing')) return 'verify';
+  if (card.provenance === 'From your file') return 'imported';
   const t = (card.inspector.trigger ?? '').toLowerCase();
   if (/(fail|retry|rerun|repeated command|error)/.test(t)) return 'retry';
   return 'scope';
 }
 
-/** Where each plate's subject sits in its 2:3 frame, for the 4:3 crop. */
-export const ART_FOCUS: Record<ArtKey, string> = { retry: '50% 58%', scope: '50% 3%', verify: '50% 36%' };
+/**
+ * Where each plate's subject sits in its frame, for the 4:3 crop. The retry, scope and verify plates are 2:3 figures;
+ * the wyrm and moth plates are 4:3 heads already. The imported emblem is inline SVG (no plate).
+ */
+export const ART_FOCUS: Record<Exclude<ArtKey, 'imported'>, string> = { wyrm: '50% 50%', retry: '50% 58%', scope: '50% 3%', moth: '50% 50%', verify: '50% 36%' };
+
+/** The emblem for a line read from your own file: a closed book with a quill, in the ink colour. No creature. */
+export function ImportedEmblem(): SVGSVGElement {
+  return svg('0 0 64 48', 'pl-cards-emblem', [
+    { d: 'M17 12.5h22.5c2 0 3.5 1.4 3.5 3.3v20.7H20.5c-2 0-3.5 1.5-3.5 3.3Z' },
+    { d: 'M17 12.5v27.3M20.5 36.5h22.5v3.5H20.5M23.5 19.5h13M23.5 23.5h10' },
+    { d: 'M52.5 6.5C45 9 40.5 15.5 38.5 24.5l-.8 3.4M52.5 6.5c-.3 6-4.5 11.2-11.6 13.6M43.2 13.6l3.3 3' },
+  ]);
+}
 
 /** Public asset URL under Vite's base (the dev server and the Pages build both serve /errata/). */
 export function asset(path: string): string {

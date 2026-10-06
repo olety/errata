@@ -68,11 +68,12 @@ function CardBody(c: CardView, v: Extract<InspectorView, { kind: 'card' }> | nul
         ['Exceptions', ...(reading.exceptions[0] !== undefined ? reading.exceptions.map((x) => chip(x)) : [chip('none', true)])],
         ['Files', ...(reading.files[0] !== undefined ? reading.files.map((f) => chip(f, false, true)) : [chip('not in a file yet', true)])],
       ]),
-      el('p', 'pl-cards-weightmath', el('span', 'pl-cards-mono', i.weightMath), ` ${COPY.estimated}`),
+      el('p', 'pl-cards-weightmath', el('span', 'pl-cards-mono', i.weightMath)),
+      ...WeightSums(c),
     ),
   );
 
-  if (c.footer) body.append(el('p', 'pl-cards-insp-room', el('b', '', c.footer.text), ` · ${COPY.ifAccepted}`));
+  if (c.footer) body.append(el('p', 'pl-cards-insp-room', el('b', '', c.footer.text), ` · ${COPY.ifAccepted}`, c.footer.eligible > c.footer.newly ? ` · ${c.footer.newly} of them have no line in the proposal yet` : ''));
   if (c.type === 'protected') body.append(el('p', 'pl-cards-insp-note', 'Kept byte-for-byte.'));
 
   // A Skill: the first lines of its SKILL.md body and its own estimate, outside the allowance.
@@ -106,6 +107,20 @@ function CardBody(c: CardView, v: Extract<InspectorView, { kind: 'card' }> | nul
   // Edits, for a card already in the proposal: the target chips (narrow or widen) and the line itself (sharpen).
   if (c.inFiles[0] !== undefined && c.type !== 'protected') body.append(Edits(c, api));
   return body;
+}
+
+/**
+ * A draft's whole-file change per destination (P3 gate fix 9): the line, the one-time block header and the rest, with
+ * their sum, all from the view's ghost (the components never add numbers: the sum is the ghost's own delta).
+ */
+function WeightSums(c: CardView): HTMLElement[] {
+  const g = c.playPreview?.ghost;
+  if (!g) return [];
+  return LANES.filter((a) => g[a].delta !== 0).map((a) => {
+    const x = g[a];
+    const parts = [`${fig(x.line)} line`, x.blockHeader ? `${fig(x.blockHeader)} block header (the one-time marker lines)` : null, x.other ? `${fig(x.other)} ${Math.abs(x.other) <= 2 ? 'rounding' : 'other text'}` : null].filter((t): t is string => !!t);
+    return el('p', 'pl-cards-weightmath', el('b', '', FILE_OF[a]), ' ', el('span', 'pl-cards-mono', `${parts.join(' + ')} = ${x.delta > 0 ? '+' : ''}${fig(x.delta)} tok`), ` (${fig(x.before)} → ${fig(x.after)}, ${COPY.estimated})`);
+  });
 }
 
 function MappingRow(m: MappingReviewView, api: ControllerApi, inProposal: boolean): HTMLElement {

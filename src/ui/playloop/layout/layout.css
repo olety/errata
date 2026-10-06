@@ -19,6 +19,23 @@
   overscroll-behavior: none;
 }
 .pl-layout-table:not(.is-scroll) { overflow: hidden; }
+
+/* Phones below 500 px (P3 gate fix F): the Table is a page that scrolls. Nothing is fixed; the bands stack at their
+   content's height over the portrait plate and its wood; the status strip sticks to the bottom of the screen. */
+.pl-layout-table.is-flow { position: relative; inset: auto; overflow: visible; min-height: 100vh; }
+.pl-layout-table.is-flow .pl-layout-canvas {
+  overflow: visible; overflow-x: clip; min-height: 100vh; display: flex; flex-direction: column;
+  background:
+    var(--pl-layout-plate) center 0 / 100vw auto no-repeat,
+    var(--pl-layout-woodtile) center calc(100vw * 0.8828) / 100vw auto repeat-y,
+    #4a2b1d;
+}
+.pl-layout-table.is-flow .pl-layout-band { position: relative; top: auto; height: auto; }
+.pl-layout-table.is-flow .pl-layout-band > :where(*) { height: auto; }
+.pl-layout-table.is-flow .pl-layout-header { padding-bottom: 6px; }
+.pl-layout-table.is-flow .pl-layout-wood { padding: 12px 0 16px; }
+.pl-layout-table.is-flow .pl-layout-status { position: sticky; bottom: 0; margin-top: auto; min-height: 50px; z-index: 6; }
+.pl-layout-table.is-flow .pl-layout-statusbar { flex-wrap: wrap; row-gap: 4px; padding-block: 6px; min-height: 50px; }
 .pl-layout-canvas { position: relative; width: 100%; overflow: hidden; }
 
 /* the painted world */
@@ -92,6 +109,9 @@
   font-size: 12px; color: var(--pl-cards-ink, #41291f);
   background: var(--pl-cards-paper, #fff9ee); border: 1px solid var(--pl-cards-line-2, #cfb89a); border-radius: 13px;
 }
+.pl-layout-table button.pl-layout-sealed, .pl-layout-table button.pl-layout-sealed:hover { font: 500 12px var(--pl-cards-f-body, sans-serif); color: var(--pl-cards-ink, #41291f); background: var(--pl-cards-paper, #fff9ee); border: 1px solid var(--pl-cards-line-2, #cfb89a); border-radius: 13px; padding: 0 9px; height: 26px; min-height: 0; cursor: pointer; }
+.pl-layout-table button.pl-layout-sealed[aria-expanded="true"] { border-color: var(--pl-cards-ink, #41291f); }
+.pl-layout-sealed-why { position: absolute; z-index: 8; left: 50%; top: 46px; translate: -50% 0; width: min(560px, calc(100vw - 32px)); margin: 0; padding: 8px 12px; font-size: 13px; line-height: 17px; color: var(--pl-cards-ink, #41291f); background: var(--pl-cards-paper, #fff9ee); border: 1px solid var(--pl-cards-line-2, #cfb89a); border-radius: 6px; box-shadow: 0 6px 18px rgba(58, 33, 22, 0.25); }
 .pl-layout-num { font-family: var(--pl-cards-f-mono, ui-monospace, monospace); font-weight: 600; font-variant-ligatures: none; font-variant-numeric: tabular-nums; }
 .pl-layout-title {
   margin: 0; font-family: var(--pl-cards-f-title, serif); font-weight: 800; font-size: 26px; line-height: 28px;

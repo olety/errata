@@ -382,7 +382,9 @@ function summaryOf(L: Live, id: string): DocumentFragment | string {
 /** One rendering of a card at the fire. Target ids are unique per rendered instance (card:<id>:<where>). */
 function cardSlot(L: Live, card: CardView, where: string, opts: { size: 'S' | 'M' | 'L'; source: boolean; target: boolean; cls?: string }): HTMLElement {
   const { ui, api, drag, view: v } = L.p;
-  const node = Card({ card, size: opts.size, selected: ui.selected === card.id, drag: opts.source ? drag : null, onInspect: (id) => api.inspect({ cardId: id }) });
+  // Enter or Space on a card: select it, or, with another card selected, stack that card on this one (a target).
+  const onActivate = (id: string) => (opts.target && ui.selected && ui.selected !== id ? api.tapTarget({ kind: 'card', cardId: id }) : api.select(ui.selected === id ? null : id));
+  const node = Card({ card, size: opts.size, selected: ui.selected === card.id, drag: opts.source ? drag : null, onInspect: (id) => api.inspect({ cardId: id }), onActivate });
   const eligible = v.pinned ? v.pinnedCandidates.some((c) => c.cardId === card.id && c.glow) : false;
   const slot = el('div', `pl-campfire-slot pl-campfire-slot-${opts.size}${eligible ? ' is-eligible' : ''}${spot(L, { card: card.id }) ? ' is-spotlit' : ''}${L.anim && L.anim.cardId === card.id ? ` is-${L.anim.kind}` : ''}${opts.cls ? ` ${opts.cls}` : ''}`, node);
   slot.dataset.cfCard = card.id;
@@ -535,6 +537,10 @@ function side(L: Live): HTMLElement {
   }
   const s = el('section', 'pl-campfire-panel pl-campfire-side', body);
   s.dataset.sk = 'y:side';
+  // When the panel holds more than it shows, say so above the seal (P2 leftover: the settle panel at 1440).
+  const more = () => s.classList.toggle('is-more', s.scrollHeight > s.clientHeight + 2 && s.scrollTop + s.clientHeight < s.scrollHeight - 2);
+  s.addEventListener('scroll', more, { passive: true });
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(more);
   return s;
 }
 
@@ -572,10 +578,17 @@ function proposalPanel(L: Live, p: M.Proposal): HTMLElement {
   return el('div', 'pl-campfire-proposal', ...kids);
 }
 
+/** The shared content words of a gold thread, with their share (the thread itself shows the kind only). */
+function sharedLine(t: ThreadView): HTMLElement | null {
+  if (!t.shared) return null;
+  return el('p', 'pl-campfire-shared', el('span', 'pl-campfire-label', 'Shared content words'), ' ', ...t.shared.words.flatMap((w, i) => [i ? ' · ' : '', el('mark', 'pl-campfire-word', w)]), ` (${t.shared.percent}% of all their content words)`);
+}
+
 function fuseControls(L: Live, p: Extract<M.Proposal, { kind: 'fuse' }>): Kid[] {
   const t = p.thread;
   if (!p.editing) {
     return [
+      sharedLine(t),
       el('p', 'pl-campfire-muted', 'The engine picked the shortest line that keeps every protected word.'),
       button('Edit the wording', '', () => {
         drafts.fuse[t.id] = { editing: true, text: t.autoText ?? '' };
@@ -584,6 +597,7 @@ function fuseControls(L: Live, p: Extract<M.Proposal, { kind: 'fuse' }>): Kid[] 
     ];
   }
   return [
+    sharedLine(t),
     el('p', 'pl-campfire-muted', t.autoText ? 'Your wording replaces the automatic text.' : 'No automatic text: the lines differ. The editor holds every line; write them as one.'),
     editor(L, p.text, 'Write one line that keeps what each says.', (text) => {
       drafts.fuse[t.id] = { editing: true, text };
@@ -692,6 +706,7 @@ function previewPart(L: Live, part: 'result' | 'detail'): HTMLElement {
   const v = L.p.view;
   const ctx: PreviewCtx = {
     title: (id) => (L.cards.has(id) ? cardTitle(L, id) : null),
+    compact: L.geo.mode === 'desktop',
     caseLabel: (id) => M.caseTag(id, v, L.preview?.refs ?? []),
     onCase: (id) => L.p.api.inspect({ caseId: id }),
     empty:
@@ -701,6 +716,8 @@ function previewPart(L: Live, part: 'result' | 'detail'): HTMLElement {
 }
 
 interface PreviewCtx {
+  /** Desktop: the stage shows the stacked cards, so the panel leaves out the "Now" lines. */
+  compact?: boolean;
   title(cardId: string): string | null;
   caseLabel(caseId: string): string | null;
   onCase: ((caseId: string) => void) | null;
@@ -736,7 +753,8 @@ function resultPart(pv: ChangePreviewView | null, ctx: PreviewCtx): HTMLElement 
         el(
           'div',
           'pl-campfire-chips',
-          el('span', 'pl-campfire-chip', M.filesOf(a.targets)),
+          // Only the files whose bytes change (P3 gate fix 10), never the card's targets as such.
+          el('span', 'pl-campfire-chip', pv.changed.length ? `changes ${pv.changed.join(' and ')}` : 'no file changes'),
           el('span', 'pl-campfire-chip', a.scope),
           a.trigger ? el('span', 'pl-campfire-chip', `when ${a.trigger}`) : null,
           ...a.exceptions.map((x) => el('span', 'pl-campfire-chip is-kept', `kept: ${x}`)),
@@ -748,7 +766,7 @@ function resultPart(pv: ChangePreviewView | null, ctx: PreviewCtx): HTMLElement 
   root.append(
     sect(
       'Weight',
-      el('table', 'pl-campfire-weights', el('tbody', '', ...M.weightRows(pv.ghost).map((r) => el('tr', '', el('th', '', r.file), el('td', 'pl-campfire-mono', r.span), el('td', 'pl-campfire-delta', el('span', 'pl-campfire-mono', r.delta), ' ', el('span', 'pl-campfire-est', r.estimated)))))),
+      el('table', 'pl-campfire-weights', el('tbody', '', ...M.weightRows(pv.ghost).filter((r) => pv.changed.length === 0 || pv.changed.includes(r.file as never)).map((r) => el('tr', '', el('th', '', r.file), el('td', 'pl-campfire-mono', r.span), el('td', 'pl-campfire-delta', el('span', 'pl-campfire-mono', r.delta), ' ', el('span', 'pl-campfire-est', r.estimated)))))),
     ),
     sect(
       'Cases',
@@ -770,7 +788,8 @@ function detailPart(pv: ChangePreviewView | null, ctx: PreviewCtx): HTMLElement 
   if (!pv) return root;
   const caseChip = (id: string) => caseRow(id, ctx);
   const cut = pv.after === null && pv.lines.length === 0;
-  if (!cut) root.append(sect('Now', el('ul', 'pl-campfire-lines', ...pv.before.map((b) => lineRow(b.text, ctx.title(b.id), false)))));
+  // On desktop the stack on the stage shows the lines as they stand; the panel keeps to the choice and the seal.
+  if (!cut && !ctx.compact) root.append(sect('Now', el('ul', 'pl-campfire-lines', ...pv.before.map((b) => lineRow(b.text, ctx.title(b.id), false)))));
   if (pv.needsAcceptance.length) {
     root.append(sect('Accept the new text', el('p', 'pl-campfire-muted', 'A new text binds nothing until you accept it for each case. After the seal, accept it here:'), el('ul', 'pl-campfire-caselist', ...pv.needsAcceptance.map(caseChip))));
   }
@@ -782,14 +801,24 @@ function sealBarKids(L: Live): Kid[] {
   if (!p) return [];
   const { seal } = M.proposalTitle(p);
   const ok = !!L.seal.call;
-  const b = el('button', `pl-campfire-sealbtn${L.p.ui.reducedMotion ? ' is-static' : ''}`, el('span', 'pl-campfire-wax', ''), el('span', 'pl-campfire-seal-label', seal), el('small', 'pl-campfire-seal-sub', 'hold, or press Enter'), el('small', 'pl-campfire-seal-hold', 'keep holding'));
+  const b = el('button', `pl-campfire-sealbtn${L.p.ui.reducedMotion ? ' is-static' : ''}`, el('span', 'pl-campfire-wax', ''), el('span', 'pl-campfire-seal-label', seal), el('small', 'pl-campfire-seal-sub', 'click, or press Enter · on touch, hold'), el('small', 'pl-campfire-seal-hold', 'keep holding'));
   b.type = 'button';
   b.dataset.role = 'seal';
   b.dataset.fk = 'seal';
   b.disabled = !ok;
   b.addEventListener('contextmenu', (e) => e.preventDefault());
+  // P3 gate fix B: a plain click seals (mouse, pen, keyboard). A touch keeps the 0.6 s hold, with its visible bar.
+  let touched = false;
+  b.addEventListener('click', () => {
+    if (touched) {
+      touched = false;
+      return;
+    }
+    doSeal();
+  });
   b.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0) return;
+    touched = e.pointerType === 'touch';
+    if (e.button !== 0 || !touched) return;
     const [h] = M.holdStep(local.hold, { type: 'down', t: e.timeStamp, sealable: !!live?.seal.call });
     local.hold = h;
     if (h.kind !== 'holding') return;
@@ -812,7 +841,6 @@ function sealBarKids(L: Live): Kid[] {
   b.addEventListener('pointerup', (e) => letGo(e.timeStamp));
   b.addEventListener('pointerleave', () => letGo(null));
   b.addEventListener('pointercancel', () => letGo(null));
-  // A click alone never seals: the seal is a 0.6 s hold, or Enter (handled by the campfire's key listener).
   return [p.kind === 'settle' ? null : button('Cancel', 'pl-campfire-cancel', cancelProposal, { fk: 'bar-cancel' }), b, L.seal.why ? el('p', 'pl-campfire-why', L.seal.why) : null];
 }
 
