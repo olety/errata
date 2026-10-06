@@ -9,7 +9,7 @@ export type ParseRequest = { type: 'parse'; files: { rel: string; blob: Blob; ag
 
 export type ParseReply =
   | { type: 'progress'; file: string; fileIndex: number; files: number; fileBytes: number; fileSize: number; bytesDone: number; bytesTotal: number; sessionsDone: number }
-  | { type: 'done'; sessions: Session[]; episodes: Episode[]; failed: number; cancelled: boolean; ms: number; bytes: number };
+  | { type: 'done'; sessions: Session[]; episodes: Episode[]; failed: number; failures: { file: string; error: string }[]; cancelled: boolean; ms: number; bytes: number };
 
 let ac: AbortController | null = null;
 const post = (m: ParseReply) => (self as unknown as Worker).postMessage(m);
@@ -27,6 +27,7 @@ self.onmessage = async (ev: MessageEvent<ParseRequest>) => {
   const sessions: Session[] = [];
   const episodes: Episode[] = [];
   let failed = 0;
+  const failures: { file: string; error: string }[] = [];
   let bytesBefore = 0;
   let last = 0;
   for (let i = 0; i < files.length && !signal.aborted; i++) {
@@ -44,12 +45,14 @@ self.onmessage = async (ev: MessageEvent<ParseRequest>) => {
       episodes.push(...detectEpisodes(s));
       sessions.push(compactSession(s));
     } catch (e) {
-      if ((e as Error).name === 'AbortError') break;
+      // Only the player's cancel stops the run; any other error (even one named AbortError) fails this file only.
+      if (signal.aborted) break;
       failed++;
+      failures.push({ file: name, error: `${(e as Error).name}: ${String((e as Error).message ?? e).slice(0, 160)}` });
     }
     bytesBefore += f.blob.size;
     report(f.blob.size, true);
   }
-  post({ type: 'done', sessions, episodes, failed, cancelled: signal.aborted, ms: Math.round(performance.now() - t0), bytes: bytesBefore });
+  post({ type: 'done', sessions, episodes, failed, failures, cancelled: signal.aborted, ms: Math.round(performance.now() - t0), bytes: bytesBefore });
   ac = null;
 };

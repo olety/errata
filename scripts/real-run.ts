@@ -55,7 +55,7 @@ const ccFiles = await newest(CLAUDE_PROJECTS, '*/*.jsonl', (rel) => rel.split('/
 // Codex: rollouts only.
 const cxFiles = await newest(CODEX_SESSIONS, '**/rollout-*.jsonl', (rel) => /(^|\/)rollout-[^/]*\.jsonl$/.test(rel));
 
-const timing = { bytes: 0, ms: 0, files: 0, slowest: [] as { ms: number; mib: number; agent: string }[] };
+const timing = { bytes: 0, ms: 0, files: 0, slowest: [] as { ms: number; mib: number; agent: string }[], perFile: new Map<string, { ms: number; bytes: number }>() };
 
 async function timedParse(f: { abs: string; rel: string; size: number }): Promise<Session> {
   const t0 = performance.now();
@@ -64,6 +64,7 @@ async function timedParse(f: { abs: string; rel: string; size: number }): Promis
   timing.ms += ms;
   timing.bytes += f.size;
   timing.files++;
+  timing.perFile.set(s.file, { ms, bytes: f.size });
   timing.slowest.push({ ms: Math.round(ms), mib: +(f.size / 1048576).toFixed(1), agent: s.agent });
   timing.slowest.sort((a, b) => b.ms - a.ms).splice(5);
   return s;
@@ -271,7 +272,11 @@ md.push('| Measure | Value |');
 md.push('|---|---|');
 md.push(`| Files parsed while picking the run | ${timing.files} (${mib(timing.bytes)} MiB) |`);
 md.push(`| Parse time, summed per file | ${(timing.ms / 1000).toFixed(1)} s (${(timing.bytes / 1048576 / (timing.ms / 1000)).toFixed(0)} MiB/s) |`);
-md.push(`| Wall-clock for the run's import | ${(wallMs / 1000).toFixed(1)} s |`);
+md.push(`| Wall-clock for the run's import (picking included) | ${(wallMs / 1000).toFixed(1)} s |`);
+const chosen = [...cc.sessions, ...cx.sessions].map((x) => timing.perFile.get(x.file)!).filter(Boolean);
+const chosenMs = chosen.reduce((a, x) => a + x.ms, 0);
+const chosenBytes = chosen.reduce((a, x) => a + x.bytes, 0);
+md.push(`| The ${chosen.length} chosen sessions alone | ${mib(chosenBytes)} MiB parsed in ${(chosenMs / 1000).toFixed(1)} s |`);
 md.push(`| Slowest files | ${timing.slowest.map((x) => `${x.agent} ${x.mib} MiB in ${x.ms} ms`).join('; ')} |`);
 if (wide) md.push(`| Wider search, remaining files | ${wide.considered} files, ${mib(wide.bytes)} MiB in ${(wide.ms / 1000).toFixed(1)} s |`);
 md.push('');
@@ -332,4 +337,5 @@ await mkdir(OUT, { recursive: true });
 await writeFile(join(OUT, 'real-run.md'), md.join('\n') + '\n');
 await writeFile(join(OUT, 'real-files.txt'), [...cc.sessions, ...cx.sessions].map((x) => absOf.get(x.file)!).join('\n') + '\n');
 console.log(checks.join('\n'));
-console.log(JSON.stringify({ import: { files: timing.files, mib: +mib(timing.bytes), parseSec: +(timing.ms / 1000).toFixed(2), wallSec: +(wallMs / 1000).toFixed(2) }, wide: wide ? { files: wide.considered, mib: +mib(wide.bytes), sec: +(wide.ms / 1000).toFixed(2), sessions: wide.analysis.mirror.sessions.total } : null, sessions: m.sessions, interventions: m.interventions, repeated: m.repeatedCommand.episodes, negatives: m.negatives, edits: m.editSequences, directives: m.directives, workflows: m.workflows, rooms: rooms.length, route: A.route.nodes.map((n) => n.kind), character: m.character?.name ?? null }));
+const chosenT = [...cc.sessions, ...cx.sessions].map((x) => timing.perFile.get(x.file)!).filter(Boolean);
+console.log(JSON.stringify({ import: { files: timing.files, mib: +mib(timing.bytes), parseSec: +(timing.ms / 1000).toFixed(2), wallSec: +(wallMs / 1000).toFixed(2), chosen: { files: chosenT.length, mib: +mib(chosenT.reduce((a, x) => a + x.bytes, 0)), sec: +(chosenT.reduce((a, x) => a + x.ms, 0) / 1000).toFixed(2) } }, wide: wide ? { files: wide.considered, mib: +mib(wide.bytes), sec: +(wide.ms / 1000).toFixed(2), sessions: wide.analysis.mirror.sessions.total } : null, sessions: m.sessions, interventions: m.interventions, repeated: m.repeatedCommand.episodes, negatives: m.negatives, edits: m.editSequences, directives: m.directives, workflows: m.workflows, rooms: rooms.length, route: A.route.nodes.map((n) => n.kind), character: m.character?.name ?? null }));
