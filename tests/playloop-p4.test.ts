@@ -309,3 +309,23 @@ describe('item 5: no request to any other site', () => {
     expect(readme).toContain('no network request to any other site, before or after it loads');
   });
 });
+
+describe('item 6: the README', () => {
+  test('the sections, the two datasets with licences and attribution, the checklist link, the built-for line; no em-dash', () => {
+    const md = readFileSync(join(ROOT, 'README.md'), 'utf8');
+    const heads = [...md.matchAll(/^## (.+)$/gm)].map((m) => m[1]);
+    expect(heads).toEqual(['Privacy', 'Run it yourself', 'How it works', 'Synthetic sample', 'Known limits', 'Licence']);
+    for (const b of ['**The atom.**', '**The cover rule.**', '**What is written where.**', '**The backups folder.**', '**Undo.**']) expect(md).toContain(b);
+    expect(md).toContain('public/sample/manifest.json');
+    expect(md).toContain('`nvidia/SWE-Hero-openhands-trajectories`');
+    expect(md).toContain('`SWE-bench/SWE-smith-trajectories`');
+    expect(md).toMatch(/CC-BY-4\.0 \| 2 rows, from the MIT-licensed repositories Pylons\/pyramid and datalad\/datalad/);
+    expect(md).toContain('Attribution: the sample\'s sourced tool content is adapted from "NVIDIA SWE-Hero OpenHands trajectories" by NVIDIA');
+    expect(md).toContain('[docs/REAL-RUN-CHECKLIST.md](docs/REAL-RUN-CHECKLIST.md)');
+    expect(existsSync(join(ROOT, 'docs/REAL-RUN-CHECKLIST.md'))).toBe(true);
+    expect(md).toContain('Built for Hackyard Yard #4, 2026-10-05 → 10-09. MIT licence, see `LICENSE`.');
+    for (const k of ['Chromium', 'Firefox and Safari', 'ChatGPT app', 'Token figures are estimates', 'does not test whether an agent follows']) expect(md).toContain(k);
+    for (const cmd of ['bun install', 'bun run dev', 'bun test', 'bun run build']) expect(md).toContain(cmd);
+    expect(md).not.toContain('\u2014');
+  });
+});
