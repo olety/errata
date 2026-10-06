@@ -4,3 +4,4 @@ dist/
 *.local.jsonl
 scratch/
 .DS_Store
+.claude/
