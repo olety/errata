@@ -240,6 +240,16 @@ function wood(v: BossView, plan: BossPlan, p: ScreenProps<BossView>): HTMLElemen
   // The books show their straps; at the boss nothing may drop on a book, so they bind nothing.
   w.append(el('div', 'pl-end-bookprops', Books({ books: v.books, preview: p.ui.drag?.preview ?? null, mode: 'play', layout: b.books.mode, drag: INERT })));
   const deck = el('div', 'pl-end-deck');
+  // The strip scrolls sideways under a vertical wheel too (its scrollbar is hidden to keep the Inspect tabs in the wood).
+  deck.addEventListener(
+    'wheel',
+    (e) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      deck.scrollLeft += e.deltaY;
+      e.preventDefault();
+    },
+    { passive: false },
+  );
   const reason = new Map(v.candidates.map((c) => [c.cardId, c.reason]));
   for (const row of bookRows(v.books, v.cards, plan.glow)) {
     const strip = el('div', 'pl-end-strip');

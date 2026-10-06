@@ -334,11 +334,11 @@
   display: flex;
   gap: 20px;
   align-items: stretch;
-  padding: 14px 24px 6px;
+  padding: 0 24px;
   background-color: #4a2c1e;
   overflow: hidden;
 }
-.pl-end-bookprops { flex: 0 0 auto; align-self: flex-start; }
+.pl-end-bookprops { flex: 0 0 auto; align-self: flex-start; margin-top: 34px; }
 .pl-end-deck {
   flex: 1 1 auto;
   min-width: 0;
@@ -346,9 +346,11 @@
   gap: 24px;
   overflow-x: auto;
   overflow-y: hidden;
-  scrollbar-width: thin;
-  padding: 10px 6px 4px;
+  scrollbar-width: none;
+  /* the cards' external Inspect control sits 34 px above each card */
+  padding: 34px 6px 0;
 }
+.pl-end-deck::-webkit-scrollbar { display: none; }
 .pl-end-shelfrow { flex: 0 0 auto; display: flex; gap: 10px; align-items: flex-start; }
 .pl-end-file {
   writing-mode: vertical-rl;
@@ -363,7 +365,7 @@
 }
 .pl-end-strip { display: flex; gap: 12px; }
 .pl-end-slot { flex: 0 0 auto; border-radius: 10px; transition: transform 0.16s ease-out, opacity 0.16s ease-out; }
-.pl-end-glow { outline: 3px solid var(--pl-end-gold); outline-offset: 3px; transform: translateY(-6px); }
+.pl-end-glow { outline: 3px solid var(--pl-end-gold); outline-offset: 3px; }
 .pl-end-dim { opacity: 0.5; }
 .pl-end-selected { box-shadow: 0 0 0 9px var(--pl-end-paper); }
 
@@ -437,6 +439,7 @@
 
 /* Apply's wood: the seal and its stamps, the blockers */
 .pl-end-applywood { display: grid; grid-template-columns: auto auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 18px; padding: 12px 24px; }
+.pl-end-applywood .pl-end-bookprops { margin-top: 0; }
 .pl-end-sealbox,
 .pl-end-blockers { min-height: 0; overflow: auto; background: var(--pl-end-paper); border-radius: 8px; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
 .pl-end-sealrow { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
@@ -508,7 +511,7 @@
 .pl-end-phone .pl-end-scorecard { transform: none; width: auto; }
 .pl-end-phone.pl-end-settled .pl-end-facedart { width: 56px; height: 60px; }
 .pl-end-wood.pl-end-phone { flex-direction: column; gap: 8px; padding: 8px 12px; }
-.pl-end-wood.pl-end-phone .pl-end-bookprops { align-self: stretch; }
+.pl-end-wood.pl-end-phone .pl-end-bookprops { align-self: stretch; margin-top: 8px; }
 .pl-end-apply.pl-end-phone { padding: 8px; }
 .pl-end-applywood.pl-end-phone { display: flex; flex-direction: column; overflow-y: auto; }
 .pl-end-applywood.pl-end-phone > * { flex: 0 0 auto; overflow: visible; }
