@@ -1,0 +1,3490 @@
+{
+  "schema_version": 1,
+  "status": "DONE",
+  "label": "synthetic sample",
+  "complete_script_fixture": true,
+  "seed": 20261006,
+  "datasets": [
+    {
+      "name": "nvidia/SWE-Hero-openhands-trajectories",
+      "revision": "150bc119e52c647216fce285fd801f16b6fd745b",
+      "config": "default",
+      "split": "train",
+      "licence": "CC-BY-4.0",
+      "rows_inspected": 50,
+      "rows": [
+        {
+          "row_idx": 18,
+          "instance_id": "Pylons__pyramid-88fcdc4e6a48f2646488565fbafd050f8e298ffa",
+          "trajectory_id": "25449ddc-dbd1-419c-8d60-fa10bfb6880b",
+          "repo": "Pylons/pyramid",
+          "license": "MIT",
+          "path": "rows/hero-00018.json",
+          "sha256": "3f7034cbfd789414f6ba0b27db62ce6e6e57705fd7bbabf7316ab15d84e016a5"
+        },
+        {
+          "row_idx": 43,
+          "instance_id": "datalad__datalad-b3c3916449e13b8e3de4ecf4e0aee59b7fbc28f8",
+          "trajectory_id": "e4486ee6-8189-40e5-8acc-571c11017336",
+          "repo": "datalad/datalad",
+          "license": "MIT",
+          "path": "rows/hero-00043.json",
+          "sha256": "deb4b492a1841a15f651c4a06378586c613f64958fd10a9638d2c3b2eca34811"
+        }
+      ]
+    },
+    {
+      "name": "SWE-bench/SWE-smith-trajectories",
+      "revision": "08e109b4a59eaeebf80e4675cd125d42e7ac99a4",
+      "config": "default",
+      "split": "tool",
+      "licence": "MIT",
+      "rows_inspected": 50,
+      "rows": [],
+      "unused_reason": "No inspected fallback row belongs to either selected repo."
+    }
+  ],
+  "rows_used": [
+    {
+      "row_idx": 18,
+      "instance_id": "Pylons__pyramid-88fcdc4e6a48f2646488565fbafd050f8e298ffa",
+      "trajectory_id": "25449ddc-dbd1-419c-8d60-fa10bfb6880b",
+      "repo": "Pylons/pyramid",
+      "license": "MIT",
+      "path": "rows/hero-00018.json",
+      "sha256": "3f7034cbfd789414f6ba0b27db62ce6e6e57705fd7bbabf7316ab15d84e016a5"
+    },
+    {
+      "row_idx": 43,
+      "instance_id": "datalad__datalad-b3c3916449e13b8e3de4ecf4e0aee59b7fbc28f8",
+      "trajectory_id": "e4486ee6-8189-40e5-8acc-571c11017336",
+      "repo": "datalad/datalad",
+      "license": "MIT",
+      "path": "rows/hero-00043.json",
+      "sha256": "deb4b492a1841a15f651c4a06378586c613f64958fd10a9638d2c3b2eca34811"
+    }
+  ],
+  "projects": {
+    "P1": {
+      "repo": "Pylons/pyramid",
+      "name": "pyramid",
+      "branch": "main",
+      "row_idx": 18,
+      "test_file": "pyramid/tests/test_httpexceptions.py"
+    },
+    "P2": {
+      "repo": "datalad/datalad",
+      "name": "datalad",
+      "branch": "fix/config",
+      "row_idx": 43,
+      "test_file": "test_json_overrides.py"
+    }
+  },
+  "sessions": [
+    {
+      "session": "S01",
+      "session_id": "a7ab64a7-e9f0-4bd8-abc6-1827f096b728",
+      "agent": "claude",
+      "project": "P1",
+      "repo": "Pylons/pyramid",
+      "cwd": "/home/sample/pyramid",
+      "git_branch": "main",
+      "file": "home/.claude/projects/-home-sample-pyramid/a7ab64a7-e9f0-4bd8-abc6-1827f096b728.jsonl",
+      "date": "2026-09-23",
+      "record_count": 11,
+      "logical_event_count": 8,
+      "script_contract_satisfied": true,
+      "missing_requirements": [],
+      "sourced_event_count": 2,
+      "authored_event_count": 6,
+      "sourced_tool_count": 2,
+      "authored_tool_count": 2
+    },
+    {
+      "session": "S02",
+      "session_id": "21147901-ba57-45d1-9a71-9b68345c9a58",
+      "agent": "claude",
+      "project": "P1",
+      "repo": "Pylons/pyramid",
+      "cwd": "/home/sample/pyramid",
+      "git_branch": "main",
+      "file": "home/.claude/projects/-home-sample-pyramid/21147901-ba57-45d1-9a71-9b68345c9a58.jsonl",
+      "date": "2026-09-24",
+      "record_count": 10,
+      "logical_event_count": 7,
+      "script_contract_satisfied": true,
+      "missing_requirements": [],
+      "sourced_event_count": 0,
+      "authored_event_count": 7,
+      "sourced_tool_count": 0,
+      "authored_tool_count": 4
+    },
+    {
+      "session": "S03",
+      "session_id": "e9223f34-1614-41a6-8ff6-17ebda4aeca4",
+      "agent": "codex",
+      "project": "P2",
+      "repo": "datalad/datalad",
+      "cwd": "/home/sample/datalad",
+      "git_branch": "fix/config",
+      "file": "home/.codex/sessions/2026/09/25/rollout-2026-09-25T10-12-00-e9223f34-1614-41a6-8ff6-17ebda4aeca4.jsonl",
+      "date": "2026-09-25",
+      "record_count": 16,
+      "logical_event_count": 7,
+      "script_contract_satisfied": true,
+      "missing_requirements": [],
+      "sourced_event_count": 1,
+      "authored_event_count": 6,
+      "sourced_tool_count": 1,
+      "authored_tool_count": 2
+    },
+    {
+      "session": "S04",
+      "session_id": "c727a574-4c88-4541-956b-ed42d381818f",
+      "agent": "claude",
+      "project": "P2",
+      "repo": "datalad/datalad",
+      "cwd": "/home/sample/datalad",
+      "git_branch": "fix/config",
+      "file": "home/.claude/projects/-home-sample-datalad/c727a574-4c88-4541-956b-ed42d381818f.jsonl",
+      "date": "2026-09-26",
+      "record_count": 9,
+      "logical_event_count": 6,
+      "script_contract_satisfied": true,
+      "missing_requirements": [],
+      "sourced_event_count": 2,
+      "authored_event_count": 4,
+      "sourced_tool_count": 2,
+      "authored_tool_count": 1
+    },
+    {
+      "session": "S05",
+      "session_id": "27754ec4-bcad-4da1-aac2-180b1b3f7168",
+      "agent": "claude",
+      "project": "P1",
+      "repo": "Pylons/pyramid",
+      "cwd": "/home/sample/pyramid",
+      "git_branch": "main",
+      "file": "home/.claude/projects/-home-sample-pyramid/27754ec4-bcad-4da1-aac2-180b1b3f7168.jsonl",
+      "date": "2026-09-27",
+      "record_count": 12,
+      "logical_event_count": 7,
+      "script_contract_satisfied": true,
+      "missing_requirements": [],
+      "sourced_event_count": 0,
+      "authored_event_count": 7,
+      "sourced_tool_count": 0,
+      "authored_tool_count": 5
+    },
+    {
+      "session": "S06",
+      "session_id": "5d359509-eeda-4c0a-872f-80bb552d1cd7",
+      "agent": "codex",
+      "project": "P1",
+      "repo": "Pylons/pyramid",
+      "cwd": "/home/sample/pyramid",
+      "git_branch": "main",
+      "file": "home/.codex/sessions/2026/09/29/rollout-2026-09-29T10-12-00-5d359509-eeda-4c0a-872f-80bb552d1cd7.jsonl",
+      "date": "2026-09-29",
+      "record_count": 15,
+      "logical_event_count": 6,
+      "script_contract_satisfied": true,
+      "missing_requirements": [],
+      "sourced_event_count": 1,
+      "authored_event_count": 5,
+      "sourced_tool_count": 1,
+      "authored_tool_count": 2
+    },
+    {
+      "session": "S07",
+      "session_id": "78092a70-28b0-4bf7-8f0b-e74918573bcd",
+      "agent": "claude",
+      "project": "P2",
+      "repo": "datalad/datalad",
+      "cwd": "/home/sample/datalad",
+      "git_branch": "fix/config",
+      "file": "home/.claude/projects/-home-sample-datalad/78092a70-28b0-4bf7-8f0b-e74918573bcd.jsonl",
+      "date": "2026-09-30",
+      "record_count": 16,
+      "logical_event_count": 9,
+      "script_contract_satisfied": true,
+      "missing_requirements": [],
+      "sourced_event_count": 0,
+      "authored_event_count": 9,
+      "sourced_tool_count": 0,
+      "authored_tool_count": 7
+    },
+    {
+      "session": "S08",
+      "session_id": "b7d30b6c-9d2d-4ef0-ba71-85557ea44110",
+      "agent": "claude",
+      "project": "P1",
+      "repo": "Pylons/pyramid",
+      "cwd": "/home/sample/pyramid",
+      "git_branch": "main",
+      "file": "home/.claude/projects/-home-sample-pyramid/b7d30b6c-9d2d-4ef0-ba71-85557ea44110.jsonl",
+      "date": "2026-10-01",
+      "record_count": 10,
+      "logical_event_count": 6,
+      "script_contract_satisfied": true,
+      "missing_requirements": [],
+      "sourced_event_count": 3,
+      "authored_event_count": 3,
+      "sourced_tool_count": 3,
+      "authored_tool_count": 1
+    },
+    {
+      "session": "S09",
+      "session_id": "d96916e0-d906-4ab4-950c-3e5108db9ade",
+      "agent": "codex",
+      "project": "P2",
+      "repo": "datalad/datalad",
+      "cwd": "/home/sample/datalad",
+      "git_branch": "fix/config",
+      "file": "home/.codex/sessions/2026/10/02/rollout-2026-10-02T10-12-00-d96916e0-d906-4ab4-950c-3e5108db9ade.jsonl",
+      "date": "2026-10-02",
+      "record_count": 15,
+      "logical_event_count": 6,
+      "script_contract_satisfied": true,
+      "missing_requirements": [],
+      "sourced_event_count": 1,
+      "authored_event_count": 5,
+      "sourced_tool_count": 1,
+      "authored_tool_count": 3
+    },
+    {
+      "session": "S10",
+      "session_id": "0c3b8fd8-931f-4b2a-bed9-c1dd540b14f1",
+      "agent": "claude",
+      "project": "P1",
+      "repo": "Pylons/pyramid",
+      "cwd": "/home/sample/pyramid",
+      "git_branch": "main",
+      "file": "home/.claude/projects/-home-sample-pyramid/0c3b8fd8-931f-4b2a-bed9-c1dd540b14f1.jsonl",
+      "date": "2026-10-03",
+      "record_count": 10,
+      "logical_event_count": 7,
+      "script_contract_satisfied": true,
+      "missing_requirements": [],
+      "sourced_event_count": 2,
+      "authored_event_count": 5,
+      "sourced_tool_count": 2,
+      "authored_tool_count": 2
+    },
+    {
+      "session": "S11",
+      "session_id": "b629b2a2-d5dc-4db5-bac7-df84097553ba",
+      "agent": "claude",
+      "project": "P1",
+      "repo": "Pylons/pyramid",
+      "cwd": "/home/sample/pyramid",
+      "git_branch": "main",
+      "file": "home/.claude/projects/-home-sample-pyramid/b629b2a2-d5dc-4db5-bac7-df84097553ba.jsonl",
+      "date": "2026-10-05",
+      "record_count": 8,
+      "logical_event_count": 6,
+      "script_contract_satisfied": true,
+      "missing_requirements": [],
+      "sourced_event_count": 1,
+      "authored_event_count": 5,
+      "sourced_tool_count": 1,
+      "authored_tool_count": 2
+    }
+  ],
+  "attribution": [
+    {
+      "name": "NVIDIA SWE-Hero OpenHands trajectories",
+      "creator": "NVIDIA",
+      "licence": "CC-BY-4.0",
+      "url": "https://huggingface.co/datasets/nvidia/SWE-Hero-openhands-trajectories",
+      "changes_made": true,
+      "per_row_licence": "MIT",
+      "scope": "sourced tool content only; authored tools, humans and metadata are not dataset material"
+    }
+  ],
+  "transformations": [
+    "Licensed public tool calls/results are selected and reordered into synthetic sessions; they are not a chronological replay of the source trajectory.",
+    "All human lines, completion reports, interruption markers, lifecycle metadata and missing tool beats are authored. Each authored event is marked origin=authored and has no row reference.",
+    "S05 repeats one authored ModuleNotFoundError transaction three times; this recurrence is synthetic, not observed source recurrence.",
+    "Read/Edit/Write/Bash adapt OpenHands view/str_replace/create/execute_bash without counting views as edits.",
+    "Codex function_call exec arguments are JSON strings. Real old/new strings are mechanically formatted as apply_patch heredocs.",
+    "Sourced tools replace only the selected public workspace root with /home/sample/<repo>; real source paths and hunk text are unchanged. Authored path bindings are documented separately.",
+    "Outputs use contiguous source spans of at most 512 chars, or 2000 for failure/edit context. Write input content over 2000 chars is prefix-trimmed and disclosed per tool.",
+    "Human text is exactly script text after placeholder binding; the whole tests/<file>.py template is bound to the actual source test file, even when it is outside tests/.",
+    "P1 remains the literal authored label in the S10 human receipt; manifest P1 maps to Pylons/pyramid.",
+    "Required full-suite calls, install recovery, changelog, parsing-helper loop, diff review and normalized pytest runs absent from the locked rows are authored under the updated permission.",
+    "Authored pytest outputs are short illustrative summaries; missing-dependency traceback is generic. They were not run in source repos. No token usage is invented.",
+    "Interrupted tools emit a call only, immediately followed by the agent-specific marker, then the scripted human directive. No success result is emitted for an interrupted call.",
+    "The <=12-events bound is on logical script beats, not transport JSONL lines; tool call/result and Codex metadata require separate records."
+  ],
+  "synthetic_time": {
+    "synthetic": true,
+    "timezone": "UTC",
+    "window_start": "2026-09-22T00:00:00Z",
+    "window_end": "2026-10-05T23:59:59Z",
+    "event_gap_seconds": {
+      "min": 20,
+      "max": 90
+    },
+    "first_record_time": "10:12:00Z",
+    "source_times_copied": false,
+    "token_counts": "Claude usage omitted; Codex token_count fields all zero; no real token counts copied",
+    "uuid_generation": "seeded random 128 bits with UUIDv4 version/variant forced"
+  },
+  "authored_events": [
+    {
+      "session": "S01",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "fix the failing `TestHTTPException::test_provides_IExceptionResponse` in `pyramid/tests/test_httpexceptions.py`"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S01",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 6,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_3900e89485af43769827ace376bccbc9",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "session": "S01",
+      "logical_event_index_zero_based": 4,
+      "jsonl_line_one_based": 7,
+      "origin": "authored",
+      "authored_kind": "script-interruption-marker",
+      "text": "[Request interrupted by user]"
+    },
+    {
+      "session": "S01",
+      "logical_event_index_zero_based": 5,
+      "jsonl_line_one_based": 8,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "stop. don't run the whole suite, it takes ten minutes here. run only the one test file I named, I'll run the rest myself"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S01",
+      "logical_event_index_zero_based": 6,
+      "call_jsonl_line_one_based": 9,
+      "result_jsonl_line_one_based": 10,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_8a5ff776298340cdbd2d8c9bc9cce4fa",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S01",
+      "logical_event_index_zero_based": 7,
+      "jsonl_line_one_based": 11,
+      "origin": "authored",
+      "authored_kind": "script-completion-template",
+      "text": "Changed pyramid/httpexceptions.py and pyramid/tests/test_httpexceptions.py; test pyramid/tests/test_httpexceptions.py passes (50 passed)."
+    },
+    {
+      "session": "S02",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "add a regression test for the `HTTPException with WebOb >=1.5.0` case"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S02",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Write",
+      "call_id": "call_76971d2a16e645a594bd65ebe0cc3f9e",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "session": "S02",
+      "logical_event_index_zero_based": 2,
+      "jsonl_line_one_based": 3,
+      "origin": "authored",
+      "authored_kind": "script-interruption-marker",
+      "text": "[Request interrupted by user]"
+    },
+    {
+      "session": "S02",
+      "logical_event_index_zero_based": 3,
+      "jsonl_line_one_based": 4,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "actually, do the changelog entry first, then the test"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S02",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": 6,
+      "fixture_tool_name": "Write",
+      "call_id": "call_66b6a0a7049b404da483149da5fe00b2",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S02",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 7,
+      "result_jsonl_line_one_based": 8,
+      "fixture_tool_name": "Write",
+      "call_id": "call_fccd798d57c74ab2b8258256c89827e4",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S02",
+      "logical_event_index_zero_based": 6,
+      "call_jsonl_line_one_based": 9,
+      "result_jsonl_line_one_based": 10,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_f766735fe71c405c822e4560ed6f5fd4",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "authored-shape-metadata",
+      "record_type": "session_meta",
+      "payload_type": null
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 2,
+      "origin": "authored",
+      "authored_kind": "authored-shape-metadata",
+      "record_type": "turn_context",
+      "payload_type": null
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 3,
+      "origin": "authored",
+      "authored_kind": "authored-lifecycle",
+      "record_type": "event_msg",
+      "payload_type": "task_started"
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 4,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "make `test_json_overrides` pass"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S03",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_a6832defe5ea4f258102b4d49e515b2f",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": 2,
+      "jsonl_line_one_based": 6,
+      "origin": "authored",
+      "authored_kind": "script-interruption-marker",
+      "record_type": "event_msg",
+      "payload_type": "turn_aborted"
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": 3,
+      "jsonl_line_one_based": 7,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "only run `test_json_overrides.py`, the full suite takes forever on this box"
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 8,
+      "origin": "authored",
+      "authored_kind": "authored-shape-metadata",
+      "record_type": "turn_context",
+      "payload_type": null
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 9,
+      "origin": "authored",
+      "authored_kind": "authored-lifecycle",
+      "record_type": "event_msg",
+      "payload_type": "task_started"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S03",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 12,
+      "result_jsonl_line_one_based": 13,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_f4181df66df94282b0d66de3e8a618fb",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": 6,
+      "jsonl_line_one_based": 14,
+      "origin": "authored",
+      "authored_kind": "script-completion-template",
+      "text": "Changed test_json_overrides.py; test test_json_overrides.py passes (1 passed)."
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 15,
+      "origin": "authored",
+      "authored_kind": "authored-zero-token-counts",
+      "record_type": "event_msg",
+      "payload_type": "token_count"
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 16,
+      "origin": "authored",
+      "authored_kind": "authored-lifecycle",
+      "record_type": "event_msg",
+      "payload_type": "task_complete"
+    },
+    {
+      "session": "S04",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-injected-continuation",
+      "text": "This session is being continued from a previous conversation that ran out of context. … The user asked to always use tabs …"
+    },
+    {
+      "session": "S04",
+      "logical_event_index_zero_based": 1,
+      "jsonl_line_one_based": 2,
+      "origin": "authored",
+      "authored_kind": "script-injected-cross-session",
+      "text": "Another Claude session sent a message: please also bump the version"
+    },
+    {
+      "session": "S04",
+      "logical_event_index_zero_based": 2,
+      "jsonl_line_one_based": 3,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "ok continue where you were"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S04",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 8,
+      "result_jsonl_line_one_based": 9,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_f8c57c8eb94a4ea0a0c5ce151cbe62a6",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S05",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "run the money tests"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": true,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": 3,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_931d502272c04a45a9b1eb6ca3c831de",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": true,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": 5,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_a66ced7c45d04f20954284fdf3ce5c6b",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": true,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 6,
+      "result_jsonl_line_one_based": 7,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_098d5a21df574a27973938d080d84751",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 8,
+      "result_jsonl_line_one_based": 9,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_a1bbdc85f621426db4ecf39440820f0f",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 10,
+      "result_jsonl_line_one_based": 11,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_57ac04c2a90d4586a265255c51635204",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S05",
+      "logical_event_index_zero_based": 6,
+      "jsonl_line_one_based": 12,
+      "origin": "authored",
+      "authored_kind": "script-completion-template",
+      "text": "Installed pyramid in editable mode; test pyramid/tests/test_httpexceptions.py passes (50 passed)."
+    },
+    {
+      "session": "S06",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "authored-shape-metadata",
+      "record_type": "session_meta",
+      "payload_type": null
+    },
+    {
+      "session": "S06",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 2,
+      "origin": "authored",
+      "authored_kind": "authored-shape-metadata",
+      "record_type": "turn_context",
+      "payload_type": null
+    },
+    {
+      "session": "S06",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 3,
+      "origin": "authored",
+      "authored_kind": "authored-lifecycle",
+      "record_type": "event_msg",
+      "payload_type": "task_started"
+    },
+    {
+      "session": "S06",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 4,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "the `TestHTTPException::test_provides_IExceptionResponse` is red, fix it"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S06",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_71543b97fe0740daaf9deb5ad0ad2ed6",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "session": "S06",
+      "logical_event_index_zero_based": 2,
+      "jsonl_line_one_based": 6,
+      "origin": "authored",
+      "authored_kind": "script-interruption-marker",
+      "record_type": "event_msg",
+      "payload_type": "turn_aborted"
+    },
+    {
+      "session": "S06",
+      "logical_event_index_zero_based": 3,
+      "jsonl_line_one_based": 7,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "don't run everything. one file. I run the suite myself"
+    },
+    {
+      "session": "S06",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 8,
+      "origin": "authored",
+      "authored_kind": "authored-shape-metadata",
+      "record_type": "turn_context",
+      "payload_type": null
+    },
+    {
+      "session": "S06",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 9,
+      "origin": "authored",
+      "authored_kind": "authored-lifecycle",
+      "record_type": "event_msg",
+      "payload_type": "task_started"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S06",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 12,
+      "result_jsonl_line_one_based": 13,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_81236a80378540df90cea799771587ba",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S06",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 14,
+      "origin": "authored",
+      "authored_kind": "authored-zero-token-counts",
+      "record_type": "event_msg",
+      "payload_type": "token_count"
+    },
+    {
+      "session": "S06",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 15,
+      "origin": "authored",
+      "authored_kind": "authored-lifecycle",
+      "record_type": "event_msg",
+      "payload_type": "task_complete"
+    },
+    {
+      "session": "S07",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "refactor `datalad.config` to pull the parsing into a helper, TDD"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": 3,
+      "fixture_tool_name": "Write",
+      "call_id": "call_8b6ad32576e64c01a9f1406e5e23bd34",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": true,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": 5,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_9673577670c44f158572a0331d3d8a90",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 6,
+      "result_jsonl_line_one_based": 7,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_36ee12291a3e420da3952021a8f51c6b",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 8,
+      "result_jsonl_line_one_based": 9,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_4fb83ac28fff4488bc1d0f0225ded6dd",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 10,
+      "result_jsonl_line_one_based": 11,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_75a97a62c0574ad4bcf722536fb80487",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 6,
+      "call_jsonl_line_one_based": 12,
+      "result_jsonl_line_one_based": 13,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_b53dafcc06204b468311b919be800b35",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 7,
+      "call_jsonl_line_one_based": 14,
+      "result_jsonl_line_one_based": 15,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_aed26e9483184169b70d2c7dbfa3e0ec",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S07",
+      "logical_event_index_zero_based": 8,
+      "jsonl_line_one_based": 16,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "nice, ship it"
+    },
+    {
+      "session": "S08",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "fix `TestHTTPException::test_provides_IExceptionResponse`"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S08",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": 5,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_e3dba0405fe44e7faeb04bc79b39cdc4",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S08",
+      "logical_event_index_zero_based": 5,
+      "jsonl_line_one_based": 10,
+      "origin": "authored",
+      "authored_kind": "script-completion-template",
+      "text": "Changed pyramid/httpexceptions.py; test pyramid/tests/test_httpexceptions.py passes (50 passed)."
+    },
+    {
+      "session": "S09",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "authored-shape-metadata",
+      "record_type": "session_meta",
+      "payload_type": null
+    },
+    {
+      "session": "S09",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 2,
+      "origin": "authored",
+      "authored_kind": "authored-shape-metadata",
+      "record_type": "turn_context",
+      "payload_type": null
+    },
+    {
+      "session": "S09",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 3,
+      "origin": "authored",
+      "authored_kind": "authored-lifecycle",
+      "record_type": "event_msg",
+      "payload_type": "task_started"
+    },
+    {
+      "session": "S09",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 4,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "fix `test_json_overrides`"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S09",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 7,
+      "result_jsonl_line_one_based": 8,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_37e3b7ae770b411aa398cddf029b951e",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S09",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 9,
+      "result_jsonl_line_one_based": 10,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_ee6ac21df10e4a578b5e70faa60db23c",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S09",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 11,
+      "result_jsonl_line_one_based": 12,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_b3b6293c4a0041a0ac2eaf11c46fc473",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S09",
+      "logical_event_index_zero_based": 5,
+      "jsonl_line_one_based": 13,
+      "origin": "authored",
+      "authored_kind": "script-completion-template",
+      "text": "Changed test_json_overrides.py; test test_json_overrides.py passes (1 passed)."
+    },
+    {
+      "session": "S09",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 14,
+      "origin": "authored",
+      "authored_kind": "authored-zero-token-counts",
+      "record_type": "event_msg",
+      "payload_type": "token_count"
+    },
+    {
+      "session": "S09",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 15,
+      "origin": "authored",
+      "authored_kind": "authored-lifecycle",
+      "record_type": "event_msg",
+      "payload_type": "task_complete"
+    },
+    {
+      "session": "S10",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "update the export path handling"
+    },
+    {
+      "session": "S10",
+      "logical_event_index_zero_based": 2,
+      "jsonl_line_one_based": 3,
+      "origin": "authored",
+      "authored_kind": "script-interruption-marker",
+      "text": "[Request interrupted by user]"
+    },
+    {
+      "session": "S10",
+      "logical_event_index_zero_based": 3,
+      "jsonl_line_one_based": 4,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "in P1 never touch `pyramid/tests/`, it's frozen. do it in `pyramid/config/` instead"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S10",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 7,
+      "result_jsonl_line_one_based": 8,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_9ca191bdfe3e494e9d32f25972ef1447",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S10",
+      "logical_event_index_zero_based": 6,
+      "call_jsonl_line_one_based": 9,
+      "result_jsonl_line_one_based": 10,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_050f7dbdd9324b6c8cc86bb32bd53afc",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S11",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "the `TestHTTPException::test_ctor_sets_detail` is flaky, look"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S11",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_27453a308ed5443e99530c8908a7821e",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "session": "S11",
+      "logical_event_index_zero_based": 3,
+      "jsonl_line_one_based": 5,
+      "origin": "authored",
+      "authored_kind": "script-interruption-marker",
+      "text": "[Request interrupted by user]"
+    },
+    {
+      "session": "S11",
+      "logical_event_index_zero_based": 4,
+      "jsonl_line_one_based": 6,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "whole suite again?? one file."
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S11",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 7,
+      "result_jsonl_line_one_based": 8,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_b80947711d824a8692fa5b3f1c8c4ae5",
+      "interrupted": false,
+      "source_result_copied": false
+    }
+  ],
+  "tool_events": [
+    {
+      "source_event_index_zero_based": 62,
+      "call_pointer": "/trajectory/62/tool_calls/0",
+      "result_pointer": "/trajectory/63/content",
+      "source_input_sha256": "17d8087e09986defa56c2351901becf65301a57f79bea68ed4a88b3ada065226",
+      "source_output_sha256": "b326abbae965f6e8441e9b7655f9f30c7322c64f02ec0dd59be5e7a96d45c5b1",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        1455
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S01",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": 3,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_039d2c98e9344e7ebb3dc3ca5393a9e3",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "source_event_index_zero_based": 66,
+      "call_pointer": "/trajectory/66/tool_calls/0",
+      "result_pointer": "/trajectory/67/content",
+      "source_input_sha256": "508372c6d0adcf8c48ea7db1106e15e321d4fb7626d81805e61d9bf42c69147e",
+      "source_output_sha256": "f2a3cfa2a11481c0c6e8e35bfa66a75870e3547f83d262ca905be700783b9af1",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        750
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S01",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": 5,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_8452de064d814b159e1e2577637f86c0",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S01",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 6,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_3900e89485af43769827ace376bccbc9",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S01",
+      "logical_event_index_zero_based": 6,
+      "call_jsonl_line_one_based": 9,
+      "result_jsonl_line_one_based": 10,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_8a5ff776298340cdbd2d8c9bc9cce4fa",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S02",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Write",
+      "call_id": "call_76971d2a16e645a594bd65ebe0cc3f9e",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S02",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": 6,
+      "fixture_tool_name": "Write",
+      "call_id": "call_66b6a0a7049b404da483149da5fe00b2",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S02",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 7,
+      "result_jsonl_line_one_based": 8,
+      "fixture_tool_name": "Write",
+      "call_id": "call_fccd798d57c74ab2b8258256c89827e4",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S02",
+      "logical_event_index_zero_based": 6,
+      "call_jsonl_line_one_based": 9,
+      "result_jsonl_line_one_based": 10,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_f766735fe71c405c822e4560ed6f5fd4",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S03",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_a6832defe5ea4f258102b4d49e515b2f",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "source_event_index_zero_based": 92,
+      "call_pointer": "/trajectory/92/tool_calls/0",
+      "result_pointer": "/trajectory/93/content",
+      "source_input_sha256": "d33ca3bd0f954dd7384dc9dedf8e24f6b43ef1a1ef16738e05e29d64db174845",
+      "source_output_sha256": "2c51b1b9f6dd4d310888830cbbba50f9a91c295a5d00e1043acce3a464c96a50",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd",
+        "mechanically re-encode real old_str/new_str as apply_patch inside exec; no invented hunk text"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        853
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 43,
+      "session": "S03",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 10,
+      "result_jsonl_line_one_based": 11,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_d562e976df634ba5af048cfd32b6a27b",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S03",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 12,
+      "result_jsonl_line_one_based": 13,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_f4181df66df94282b0d66de3e8a618fb",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "source_event_index_zero_based": 42,
+      "call_pointer": "/trajectory/42/tool_calls/0",
+      "result_pointer": "/trajectory/43/content",
+      "source_input_sha256": "a569e16895554f8f8fc228956f9190266133ee4be7e3b6ee32f4473d8f2665f3",
+      "source_output_sha256": "8a25ced04b9a0f1d28861cc236a4874d301567e8429fc3a2c47840b03f8be7bc",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        512
+      ],
+      "output_limit_chars": 512,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 43,
+      "session": "S04",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": 5,
+      "fixture_tool_name": "Read",
+      "call_id": "call_ecfcc805010d4517904d9252261fbf43",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "source_event_index_zero_based": 44,
+      "call_pointer": "/trajectory/44/tool_calls/0",
+      "result_pointer": "/trajectory/45/content",
+      "source_input_sha256": "59e68cf4fc16421a3935342b02cf815087f6ee2212b1d08fe95b026e9e377c62",
+      "source_output_sha256": "c0a3bc405e5af51da7ec3e22aac6150ed77baeab2b63260ba369614876a8bf15",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        1528
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 43,
+      "session": "S04",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 6,
+      "result_jsonl_line_one_based": 7,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_e74171fb16ec4557bbbfbfc321e1d5fe",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S04",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 8,
+      "result_jsonl_line_one_based": 9,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_f8c57c8eb94a4ea0a0c5ce151cbe62a6",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": true,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": 3,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_931d502272c04a45a9b1eb6ca3c831de",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": true,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": 5,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_a66ced7c45d04f20954284fdf3ce5c6b",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": true,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 6,
+      "result_jsonl_line_one_based": 7,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_098d5a21df574a27973938d080d84751",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 8,
+      "result_jsonl_line_one_based": 9,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_a1bbdc85f621426db4ecf39440820f0f",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 10,
+      "result_jsonl_line_one_based": 11,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_57ac04c2a90d4586a265255c51635204",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S06",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_71543b97fe0740daaf9deb5ad0ad2ed6",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "source_event_index_zero_based": 62,
+      "call_pointer": "/trajectory/62/tool_calls/0",
+      "result_pointer": "/trajectory/63/content",
+      "source_input_sha256": "17d8087e09986defa56c2351901becf65301a57f79bea68ed4a88b3ada065226",
+      "source_output_sha256": "b326abbae965f6e8441e9b7655f9f30c7322c64f02ec0dd59be5e7a96d45c5b1",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd",
+        "mechanically re-encode real old_str/new_str as apply_patch inside exec; no invented hunk text"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        1455
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S06",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 10,
+      "result_jsonl_line_one_based": 11,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_2b7133f8f8ec479d93f55090913138cb",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S06",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 12,
+      "result_jsonl_line_one_based": 13,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_81236a80378540df90cea799771587ba",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": 3,
+      "fixture_tool_name": "Write",
+      "call_id": "call_8b6ad32576e64c01a9f1406e5e23bd34",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": true,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": 5,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_9673577670c44f158572a0331d3d8a90",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 6,
+      "result_jsonl_line_one_based": 7,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_36ee12291a3e420da3952021a8f51c6b",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 8,
+      "result_jsonl_line_one_based": 9,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_4fb83ac28fff4488bc1d0f0225ded6dd",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 10,
+      "result_jsonl_line_one_based": 11,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_75a97a62c0574ad4bcf722536fb80487",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 6,
+      "call_jsonl_line_one_based": 12,
+      "result_jsonl_line_one_based": 13,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_b53dafcc06204b468311b919be800b35",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 7,
+      "call_jsonl_line_one_based": 14,
+      "result_jsonl_line_one_based": 15,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_aed26e9483184169b70d2c7dbfa3e0ec",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "source_event_index_zero_based": 62,
+      "call_pointer": "/trajectory/62/tool_calls/0",
+      "result_pointer": "/trajectory/63/content",
+      "source_input_sha256": "17d8087e09986defa56c2351901becf65301a57f79bea68ed4a88b3ada065226",
+      "source_output_sha256": "b326abbae965f6e8441e9b7655f9f30c7322c64f02ec0dd59be5e7a96d45c5b1",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        1455
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S08",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": 3,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_9b184333d6a24fbe9be1fde2dae00090",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S08",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": 5,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_e3dba0405fe44e7faeb04bc79b39cdc4",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "source_event_index_zero_based": 116,
+      "call_pointer": "/trajectory/116/tool_calls/0",
+      "result_pointer": "/trajectory/117/content",
+      "source_input_sha256": "64430c3843428bb647147eb2225da12dcc9bfbaeea4955062d0487bca5172a62",
+      "source_output_sha256": "b74d857ce94c35b7a35e4ee1b6fe8c17764097ba0a0acc8d8eb06d2d78589576",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        260
+      ],
+      "output_limit_chars": 512,
+      "source_exit_code": 0,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S08",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 6,
+      "result_jsonl_line_one_based": 7,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_c0971a86b13044c8afb9eba86e5d01ed",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "source_event_index_zero_based": 118,
+      "call_pointer": "/trajectory/118/tool_calls/0",
+      "result_pointer": "/trajectory/119/content",
+      "source_input_sha256": "5b708c71d5365bb3fce7a4b9e3cf7025267299e7f750280be002d7df8d697ba4",
+      "source_output_sha256": "154de33042122a3c6a724c1a718bb60e57382041c9ef1344f27aed6b74a29cae",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        512
+      ],
+      "output_limit_chars": 512,
+      "source_exit_code": 0,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S08",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 8,
+      "result_jsonl_line_one_based": 9,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_3a64af147536431f924e01bab7827c6c",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "source_event_index_zero_based": 92,
+      "call_pointer": "/trajectory/92/tool_calls/0",
+      "result_pointer": "/trajectory/93/content",
+      "source_input_sha256": "d33ca3bd0f954dd7384dc9dedf8e24f6b43ef1a1ef16738e05e29d64db174845",
+      "source_output_sha256": "2c51b1b9f6dd4d310888830cbbba50f9a91c295a5d00e1043acce3a464c96a50",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd",
+        "mechanically re-encode real old_str/new_str as apply_patch inside exec; no invented hunk text"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        853
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 43,
+      "session": "S09",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": 6,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_71fe1edd9dc34096b7d85968c6e35cfe",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S09",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 7,
+      "result_jsonl_line_one_based": 8,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_37e3b7ae770b411aa398cddf029b951e",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S09",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 9,
+      "result_jsonl_line_one_based": 10,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_ee6ac21df10e4a578b5e70faa60db23c",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S09",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 11,
+      "result_jsonl_line_one_based": 12,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_b3b6293c4a0041a0ac2eaf11c46fc473",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "source_event_index_zero_based": 66,
+      "call_pointer": "/trajectory/66/tool_calls/0",
+      "result_pointer": "/trajectory/67/content",
+      "source_input_sha256": "508372c6d0adcf8c48ea7db1106e15e321d4fb7626d81805e61d9bf42c69147e",
+      "source_output_sha256": "f2a3cfa2a11481c0c6e8e35bfa66a75870e3547f83d262ca905be700783b9af1",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        750
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S10",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_4086bbb4abaf452e8384baa7ecf78670",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "source_event_index_zero_based": 68,
+      "call_pointer": "/trajectory/68/tool_calls/0",
+      "result_pointer": "/trajectory/69/content",
+      "source_input_sha256": "12f66587128c94968b0af0691be9b6f5e347cd779dc04973bd6376e00aeca39e",
+      "source_output_sha256": "2c6cb362512cb7db6c9373878a2c8523d1e0b5afefe68fb667c6607926b05969",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        742
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S10",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": 6,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_7be1fa6f3cb4414e91a49d7ca02ab81e",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S10",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 7,
+      "result_jsonl_line_one_based": 8,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_9ca191bdfe3e494e9d32f25972ef1447",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S10",
+      "logical_event_index_zero_based": 6,
+      "call_jsonl_line_one_based": 9,
+      "result_jsonl_line_one_based": 10,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_050f7dbdd9324b6c8cc86bb32bd53afc",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "source_event_index_zero_based": 62,
+      "call_pointer": "/trajectory/62/tool_calls/0",
+      "result_pointer": "/trajectory/63/content",
+      "source_input_sha256": "17d8087e09986defa56c2351901becf65301a57f79bea68ed4a88b3ada065226",
+      "source_output_sha256": "b326abbae965f6e8441e9b7655f9f30c7322c64f02ec0dd59be5e7a96d45c5b1",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        1455
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S11",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": 3,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_e3fd788f9ccc41d7921b700436477c75",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S11",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_27453a308ed5443e99530c8908a7821e",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S11",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 7,
+      "result_jsonl_line_one_based": 8,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_b80947711d824a8692fa5b3f1c8c4ae5",
+      "interrupted": false,
+      "source_result_copied": false
+    }
+  ],
+  "events": [
+    {
+      "session": "S01",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "fix the failing `TestHTTPException::test_provides_IExceptionResponse` in `pyramid/tests/test_httpexceptions.py`"
+    },
+    {
+      "source_event_index_zero_based": 62,
+      "call_pointer": "/trajectory/62/tool_calls/0",
+      "result_pointer": "/trajectory/63/content",
+      "source_input_sha256": "17d8087e09986defa56c2351901becf65301a57f79bea68ed4a88b3ada065226",
+      "source_output_sha256": "b326abbae965f6e8441e9b7655f9f30c7322c64f02ec0dd59be5e7a96d45c5b1",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        1455
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S01",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": 3,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_039d2c98e9344e7ebb3dc3ca5393a9e3",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "source_event_index_zero_based": 66,
+      "call_pointer": "/trajectory/66/tool_calls/0",
+      "result_pointer": "/trajectory/67/content",
+      "source_input_sha256": "508372c6d0adcf8c48ea7db1106e15e321d4fb7626d81805e61d9bf42c69147e",
+      "source_output_sha256": "f2a3cfa2a11481c0c6e8e35bfa66a75870e3547f83d262ca905be700783b9af1",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        750
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S01",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": 5,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_8452de064d814b159e1e2577637f86c0",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S01",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 6,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_3900e89485af43769827ace376bccbc9",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "session": "S01",
+      "logical_event_index_zero_based": 4,
+      "jsonl_line_one_based": 7,
+      "origin": "authored",
+      "authored_kind": "script-interruption-marker",
+      "text": "[Request interrupted by user]"
+    },
+    {
+      "session": "S01",
+      "logical_event_index_zero_based": 5,
+      "jsonl_line_one_based": 8,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "stop. don't run the whole suite, it takes ten minutes here. run only the one test file I named, I'll run the rest myself"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S01",
+      "logical_event_index_zero_based": 6,
+      "call_jsonl_line_one_based": 9,
+      "result_jsonl_line_one_based": 10,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_8a5ff776298340cdbd2d8c9bc9cce4fa",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S01",
+      "logical_event_index_zero_based": 7,
+      "jsonl_line_one_based": 11,
+      "origin": "authored",
+      "authored_kind": "script-completion-template",
+      "text": "Changed pyramid/httpexceptions.py and pyramid/tests/test_httpexceptions.py; test pyramid/tests/test_httpexceptions.py passes (50 passed)."
+    },
+    {
+      "session": "S02",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "add a regression test for the `HTTPException with WebOb >=1.5.0` case"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S02",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Write",
+      "call_id": "call_76971d2a16e645a594bd65ebe0cc3f9e",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "session": "S02",
+      "logical_event_index_zero_based": 2,
+      "jsonl_line_one_based": 3,
+      "origin": "authored",
+      "authored_kind": "script-interruption-marker",
+      "text": "[Request interrupted by user]"
+    },
+    {
+      "session": "S02",
+      "logical_event_index_zero_based": 3,
+      "jsonl_line_one_based": 4,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "actually, do the changelog entry first, then the test"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S02",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": 6,
+      "fixture_tool_name": "Write",
+      "call_id": "call_66b6a0a7049b404da483149da5fe00b2",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S02",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 7,
+      "result_jsonl_line_one_based": 8,
+      "fixture_tool_name": "Write",
+      "call_id": "call_fccd798d57c74ab2b8258256c89827e4",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S02",
+      "logical_event_index_zero_based": 6,
+      "call_jsonl_line_one_based": 9,
+      "result_jsonl_line_one_based": 10,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_f766735fe71c405c822e4560ed6f5fd4",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 4,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "make `test_json_overrides` pass"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S03",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_a6832defe5ea4f258102b4d49e515b2f",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": 2,
+      "jsonl_line_one_based": 6,
+      "origin": "authored",
+      "authored_kind": "script-interruption-marker",
+      "record_type": "event_msg",
+      "payload_type": "turn_aborted"
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": 3,
+      "jsonl_line_one_based": 7,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "only run `test_json_overrides.py`, the full suite takes forever on this box"
+    },
+    {
+      "source_event_index_zero_based": 92,
+      "call_pointer": "/trajectory/92/tool_calls/0",
+      "result_pointer": "/trajectory/93/content",
+      "source_input_sha256": "d33ca3bd0f954dd7384dc9dedf8e24f6b43ef1a1ef16738e05e29d64db174845",
+      "source_output_sha256": "2c51b1b9f6dd4d310888830cbbba50f9a91c295a5d00e1043acce3a464c96a50",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd",
+        "mechanically re-encode real old_str/new_str as apply_patch inside exec; no invented hunk text"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        853
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 43,
+      "session": "S03",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 10,
+      "result_jsonl_line_one_based": 11,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_d562e976df634ba5af048cfd32b6a27b",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S03",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 12,
+      "result_jsonl_line_one_based": 13,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_f4181df66df94282b0d66de3e8a618fb",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S03",
+      "logical_event_index_zero_based": 6,
+      "jsonl_line_one_based": 14,
+      "origin": "authored",
+      "authored_kind": "script-completion-template",
+      "text": "Changed test_json_overrides.py; test test_json_overrides.py passes (1 passed)."
+    },
+    {
+      "session": "S04",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-injected-continuation",
+      "text": "This session is being continued from a previous conversation that ran out of context. … The user asked to always use tabs …"
+    },
+    {
+      "session": "S04",
+      "logical_event_index_zero_based": 1,
+      "jsonl_line_one_based": 2,
+      "origin": "authored",
+      "authored_kind": "script-injected-cross-session",
+      "text": "Another Claude session sent a message: please also bump the version"
+    },
+    {
+      "session": "S04",
+      "logical_event_index_zero_based": 2,
+      "jsonl_line_one_based": 3,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "ok continue where you were"
+    },
+    {
+      "source_event_index_zero_based": 42,
+      "call_pointer": "/trajectory/42/tool_calls/0",
+      "result_pointer": "/trajectory/43/content",
+      "source_input_sha256": "a569e16895554f8f8fc228956f9190266133ee4be7e3b6ee32f4473d8f2665f3",
+      "source_output_sha256": "8a25ced04b9a0f1d28861cc236a4874d301567e8429fc3a2c47840b03f8be7bc",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        512
+      ],
+      "output_limit_chars": 512,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 43,
+      "session": "S04",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": 5,
+      "fixture_tool_name": "Read",
+      "call_id": "call_ecfcc805010d4517904d9252261fbf43",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "source_event_index_zero_based": 44,
+      "call_pointer": "/trajectory/44/tool_calls/0",
+      "result_pointer": "/trajectory/45/content",
+      "source_input_sha256": "59e68cf4fc16421a3935342b02cf815087f6ee2212b1d08fe95b026e9e377c62",
+      "source_output_sha256": "c0a3bc405e5af51da7ec3e22aac6150ed77baeab2b63260ba369614876a8bf15",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        1528
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 43,
+      "session": "S04",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 6,
+      "result_jsonl_line_one_based": 7,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_e74171fb16ec4557bbbfbfc321e1d5fe",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S04",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 8,
+      "result_jsonl_line_one_based": 9,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_f8c57c8eb94a4ea0a0c5ce151cbe62a6",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S05",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "run the money tests"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": true,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": 3,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_931d502272c04a45a9b1eb6ca3c831de",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": true,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": 5,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_a66ced7c45d04f20954284fdf3ce5c6b",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": true,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 6,
+      "result_jsonl_line_one_based": 7,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_098d5a21df574a27973938d080d84751",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 8,
+      "result_jsonl_line_one_based": 9,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_a1bbdc85f621426db4ecf39440820f0f",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S05",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 10,
+      "result_jsonl_line_one_based": 11,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_57ac04c2a90d4586a265255c51635204",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S05",
+      "logical_event_index_zero_based": 6,
+      "jsonl_line_one_based": 12,
+      "origin": "authored",
+      "authored_kind": "script-completion-template",
+      "text": "Installed pyramid in editable mode; test pyramid/tests/test_httpexceptions.py passes (50 passed)."
+    },
+    {
+      "session": "S06",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 4,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "the `TestHTTPException::test_provides_IExceptionResponse` is red, fix it"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S06",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_71543b97fe0740daaf9deb5ad0ad2ed6",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "session": "S06",
+      "logical_event_index_zero_based": 2,
+      "jsonl_line_one_based": 6,
+      "origin": "authored",
+      "authored_kind": "script-interruption-marker",
+      "record_type": "event_msg",
+      "payload_type": "turn_aborted"
+    },
+    {
+      "session": "S06",
+      "logical_event_index_zero_based": 3,
+      "jsonl_line_one_based": 7,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "don't run everything. one file. I run the suite myself"
+    },
+    {
+      "source_event_index_zero_based": 62,
+      "call_pointer": "/trajectory/62/tool_calls/0",
+      "result_pointer": "/trajectory/63/content",
+      "source_input_sha256": "17d8087e09986defa56c2351901becf65301a57f79bea68ed4a88b3ada065226",
+      "source_output_sha256": "b326abbae965f6e8441e9b7655f9f30c7322c64f02ec0dd59be5e7a96d45c5b1",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd",
+        "mechanically re-encode real old_str/new_str as apply_patch inside exec; no invented hunk text"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        1455
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S06",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 10,
+      "result_jsonl_line_one_based": 11,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_2b7133f8f8ec479d93f55090913138cb",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S06",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 12,
+      "result_jsonl_line_one_based": 13,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_81236a80378540df90cea799771587ba",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S07",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "refactor `datalad.config` to pull the parsing into a helper, TDD"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": 3,
+      "fixture_tool_name": "Write",
+      "call_id": "call_8b6ad32576e64c01a9f1406e5e23bd34",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": true,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": 5,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_9673577670c44f158572a0331d3d8a90",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 6,
+      "result_jsonl_line_one_based": 7,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_36ee12291a3e420da3952021a8f51c6b",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 8,
+      "result_jsonl_line_one_based": 9,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_4fb83ac28fff4488bc1d0f0225ded6dd",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 10,
+      "result_jsonl_line_one_based": 11,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_75a97a62c0574ad4bcf722536fb80487",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 6,
+      "call_jsonl_line_one_based": 12,
+      "result_jsonl_line_one_based": 13,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_b53dafcc06204b468311b919be800b35",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S07",
+      "logical_event_index_zero_based": 7,
+      "call_jsonl_line_one_based": 14,
+      "result_jsonl_line_one_based": 15,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_aed26e9483184169b70d2c7dbfa3e0ec",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S07",
+      "logical_event_index_zero_based": 8,
+      "jsonl_line_one_based": 16,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "nice, ship it"
+    },
+    {
+      "session": "S08",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "fix `TestHTTPException::test_provides_IExceptionResponse`"
+    },
+    {
+      "source_event_index_zero_based": 62,
+      "call_pointer": "/trajectory/62/tool_calls/0",
+      "result_pointer": "/trajectory/63/content",
+      "source_input_sha256": "17d8087e09986defa56c2351901becf65301a57f79bea68ed4a88b3ada065226",
+      "source_output_sha256": "b326abbae965f6e8441e9b7655f9f30c7322c64f02ec0dd59be5e7a96d45c5b1",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        1455
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S08",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": 3,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_9b184333d6a24fbe9be1fde2dae00090",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S08",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": 5,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_e3dba0405fe44e7faeb04bc79b39cdc4",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "source_event_index_zero_based": 116,
+      "call_pointer": "/trajectory/116/tool_calls/0",
+      "result_pointer": "/trajectory/117/content",
+      "source_input_sha256": "64430c3843428bb647147eb2225da12dcc9bfbaeea4955062d0487bca5172a62",
+      "source_output_sha256": "b74d857ce94c35b7a35e4ee1b6fe8c17764097ba0a0acc8d8eb06d2d78589576",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        260
+      ],
+      "output_limit_chars": 512,
+      "source_exit_code": 0,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S08",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 6,
+      "result_jsonl_line_one_based": 7,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_c0971a86b13044c8afb9eba86e5d01ed",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "source_event_index_zero_based": 118,
+      "call_pointer": "/trajectory/118/tool_calls/0",
+      "result_pointer": "/trajectory/119/content",
+      "source_input_sha256": "5b708c71d5365bb3fce7a4b9e3cf7025267299e7f750280be002d7df8d697ba4",
+      "source_output_sha256": "154de33042122a3c6a724c1a718bb60e57382041c9ef1344f27aed6b74a29cae",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        512
+      ],
+      "output_limit_chars": 512,
+      "source_exit_code": 0,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S08",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 8,
+      "result_jsonl_line_one_based": 9,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_3a64af147536431f924e01bab7827c6c",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "session": "S08",
+      "logical_event_index_zero_based": 5,
+      "jsonl_line_one_based": 10,
+      "origin": "authored",
+      "authored_kind": "script-completion-template",
+      "text": "Changed pyramid/httpexceptions.py; test pyramid/tests/test_httpexceptions.py passes (50 passed)."
+    },
+    {
+      "session": "S09",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 4,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "fix `test_json_overrides`"
+    },
+    {
+      "source_event_index_zero_based": 92,
+      "call_pointer": "/trajectory/92/tool_calls/0",
+      "result_pointer": "/trajectory/93/content",
+      "source_input_sha256": "d33ca3bd0f954dd7384dc9dedf8e24f6b43ef1a1ef16738e05e29d64db174845",
+      "source_output_sha256": "2c51b1b9f6dd4d310888830cbbba50f9a91c295a5d00e1043acce3a464c96a50",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd",
+        "mechanically re-encode real old_str/new_str as apply_patch inside exec; no invented hunk text"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        853
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 43,
+      "session": "S09",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": 6,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_71fe1edd9dc34096b7d85968c6e35cfe",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S09",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 7,
+      "result_jsonl_line_one_based": 8,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_37e3b7ae770b411aa398cddf029b951e",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S09",
+      "logical_event_index_zero_based": 3,
+      "call_jsonl_line_one_based": 9,
+      "result_jsonl_line_one_based": 10,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_ee6ac21df10e4a578b5e70faa60db23c",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S09",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 11,
+      "result_jsonl_line_one_based": 12,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_b3b6293c4a0041a0ac2eaf11c46fc473",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S09",
+      "logical_event_index_zero_based": 5,
+      "jsonl_line_one_based": 13,
+      "origin": "authored",
+      "authored_kind": "script-completion-template",
+      "text": "Changed test_json_overrides.py; test test_json_overrides.py passes (1 passed)."
+    },
+    {
+      "session": "S10",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "update the export path handling"
+    },
+    {
+      "source_event_index_zero_based": 66,
+      "call_pointer": "/trajectory/66/tool_calls/0",
+      "result_pointer": "/trajectory/67/content",
+      "source_input_sha256": "508372c6d0adcf8c48ea7db1106e15e321d4fb7626d81805e61d9bf42c69147e",
+      "source_output_sha256": "f2a3cfa2a11481c0c6e8e35bfa66a75870e3547f83d262ca905be700783b9af1",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        750
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S10",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_4086bbb4abaf452e8384baa7ecf78670",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "session": "S10",
+      "logical_event_index_zero_based": 2,
+      "jsonl_line_one_based": 3,
+      "origin": "authored",
+      "authored_kind": "script-interruption-marker",
+      "text": "[Request interrupted by user]"
+    },
+    {
+      "session": "S10",
+      "logical_event_index_zero_based": 3,
+      "jsonl_line_one_based": 4,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "in P1 never touch `pyramid/tests/`, it's frozen. do it in `pyramid/config/` instead"
+    },
+    {
+      "source_event_index_zero_based": 68,
+      "call_pointer": "/trajectory/68/tool_calls/0",
+      "result_pointer": "/trajectory/69/content",
+      "source_input_sha256": "12f66587128c94968b0af0691be9b6f5e347cd779dc04973bd6376e00aeca39e",
+      "source_output_sha256": "2c6cb362512cb7db6c9373878a2c8523d1e0b5afefe68fb667c6607926b05969",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        742
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S10",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": 6,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_7be1fa6f3cb4414e91a49d7ca02ab81e",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 2000,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S10",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 7,
+      "result_jsonl_line_one_based": 8,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_9ca191bdfe3e494e9d32f25972ef1447",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S10",
+      "logical_event_index_zero_based": 6,
+      "call_jsonl_line_one_based": 9,
+      "result_jsonl_line_one_based": 10,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_050f7dbdd9324b6c8cc86bb32bd53afc",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S11",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "the `TestHTTPException::test_ctor_sets_detail` is flaky, look"
+    },
+    {
+      "source_event_index_zero_based": 62,
+      "call_pointer": "/trajectory/62/tool_calls/0",
+      "result_pointer": "/trajectory/63/content",
+      "source_input_sha256": "17d8087e09986defa56c2351901becf65301a57f79bea68ed4a88b3ada065226",
+      "source_output_sha256": "b326abbae965f6e8441e9b7655f9f30c7322c64f02ec0dd59be5e7a96d45c5b1",
+      "transformations": [
+        "transport adapter",
+        "replace selected public workspace root with sample cwd"
+      ],
+      "input_prefix_trims": {},
+      "output_span_after_cwd_rewrite": [
+        0,
+        1455
+      ],
+      "output_limit_chars": 2000,
+      "source_exit_code": null,
+      "is_error": false,
+      "origin": "sourced",
+      "row_idx": 18,
+      "session": "S11",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 2,
+      "result_jsonl_line_one_based": 3,
+      "fixture_tool_name": "Edit",
+      "call_id": "call_e3fd788f9ccc41d7921b700436477c75",
+      "interrupted": false,
+      "source_result_copied": true
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S11",
+      "logical_event_index_zero_based": 2,
+      "call_jsonl_line_one_based": 4,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_27453a308ed5443e99530c8908a7821e",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "session": "S11",
+      "logical_event_index_zero_based": 3,
+      "jsonl_line_one_based": 5,
+      "origin": "authored",
+      "authored_kind": "script-interruption-marker",
+      "text": "[Request interrupted by user]"
+    },
+    {
+      "session": "S11",
+      "logical_event_index_zero_based": 4,
+      "jsonl_line_one_based": 6,
+      "origin": "authored",
+      "authored_kind": "script-human",
+      "text": "whole suite again?? one file."
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S11",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 7,
+      "result_jsonl_line_one_based": 8,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_b80947711d824a8692fa5b3f1c8c4ae5",
+      "interrupted": false,
+      "source_result_copied": false
+    }
+  ],
+  "event_count_convention": "One logical event per script beat; tool call/result is one event. Per-session authored counts include human/assistant text and interruption markers but exclude transport/lifecycle metadata. Tool-only counts are also supplied.",
+  "bindings": {
+    "CHANGELOG": "CHANGES.txt (the existing Pyramid changelog; three-line authored Write)",
+    "P2_tests_template": "test_json_overrides.py for S03/S07/S09; a real source-trajectory test path outside tests/",
+    "S10": {
+      "frozen_directory": "pyramid/tests/",
+      "new_directory": "pyramid/config/",
+      "interrupted_file": "pyramid/tests/test_httpexceptions.py",
+      "follow_up_file": "pyramid/config/__init__.py",
+      "test_file": "pyramid/tests/test_config/test_init.py",
+      "mapping": "Retain the licensed HTTPException test edit and its inverse. The export-path request maps to authored asset-spec separator normalization in Configurator. Both directories are real siblings under pyramid/. Reverting the interrupted edit is the only post-boundary write to the frozen directory. No source hunk is relocated or attributed to the authored follow-up."
+    },
+    "S07": {
+      "module": "datalad/config.py",
+      "test_file": "test_json_overrides.py",
+      "baseline": "Module state with both DATALAD_CONFIG_OVERRIDES and DATALAD_CONFIG_OVERRIDES_JSON branches; successive hunks extract shared JSON parsing into a helper."
+    }
+  },
+  "gap_closures": [
+    {
+      "session": "S01",
+      "original_requirement": "Real full-suite pytest command before the interruption; the row only has focused runs.",
+      "resolution": "Inserted an authored full-suite pytest call with no result, followed immediately by the Claude interruption marker and the exact directive; authored file-only -q pass after it."
+    },
+    {
+      "session": "S02",
+      "original_requirement": "Real CHANGELOG Write between the pivot and the test Write. The row contains no changelog edit.",
+      "resolution": "Added an authored three-line Write to CHANGES.txt, the real repo changelog, immediately after the pivot."
+    },
+    {
+      "session": "S02",
+      "original_requirement": "Source Write exercises edge cases with a Python script, not a pytest regression test.",
+      "resolution": "Replaced the script-style test Writes with an authored pytest test at the existing test_edge_cases.py path, and an authored passing focused run."
+    },
+    {
+      "session": "S03",
+      "original_requirement": "Real full-suite pytest command before turn_aborted.",
+      "resolution": "Inserted authored full-suite pytest exec with no output, immediately followed by turn_aborted and the human directive."
+    },
+    {
+      "session": "S03",
+      "original_requirement": "The source focused pytest command uses -v, not -q.",
+      "resolution": "Replaced the -v command/result with authored pytest test_json_overrides.py -q and a plain 1-passed summary; kept the real apply_patch hunk."
+    },
+    {
+      "session": "S05",
+      "original_requirement": "MIT source material for the prescribed ModuleNotFoundError; the exported real error is ValueError: Invalid status code, integer required.",
+      "resolution": "Removed the ValueError replay; authored three identical file-only pytest commands and identical four-line ModuleNotFoundError results, all is_error true."
+    },
+    {
+      "session": "S05",
+      "original_requirement": "Real uv pip install -e . call/output and the adjacent post-install passing test. No uv pip install -e . appears in either 50-row census.",
+      "resolution": "Authored uv pip install -e . and a short editable-install output, immediately followed by a passing focused test."
+    },
+    {
+      "session": "S05",
+      "original_requirement": "Completion report omitted because the prescribed recovery cannot be sourced.",
+      "resolution": "Added the authored completion report with the matching 50-passed count."
+    },
+    {
+      "session": "S06",
+      "original_requirement": "Real full-suite pytest command before turn_aborted.",
+      "resolution": "Inserted authored full-suite pytest exec with no output before turn_aborted."
+    },
+    {
+      "session": "S06",
+      "original_requirement": "The source focused pytest command uses -v and a test node, not a whole file with -q.",
+      "resolution": "Authored pytest pyramid/tests/test_httpexceptions.py -q and a passing whole-file summary instead of the source node-id/-v run."
+    },
+    {
+      "session": "S07",
+      "original_requirement": "Four real successive edits to one module: row 43 has one edit to datalad/config.py, two edits to comprehensive_test.py, and one to test_json_overrides.py.",
+      "resolution": "Authored four successive Edit transactions to datalad/config.py, after one test Write and one red run."
+    },
+    {
+      "session": "S07",
+      "original_requirement": "No parsing-helper refactor in the source patch.",
+      "resolution": "The four small hunks introduce _parse_env_overrides, move JSON error handling into it, then use it in both parsing branches."
+    },
+    {
+      "session": "S07",
+      "original_requirement": "The real red test is a Python test-script run, not pytest. The final passing check is pytest.",
+      "resolution": "Authored one failed pytest run (count 1), followed after the edits by one passing run; kept the exact human approval."
+    },
+    {
+      "session": "S08",
+      "original_requirement": "Source focused command uses -v and a test node, not the exact file-only -q command.",
+      "resolution": "Authored the exact file-only -q command and a matching plain 50-passed summary; retained both real diff transactions and made the report count match."
+    },
+    {
+      "session": "S09",
+      "original_requirement": "Real git diff --stat and git diff call/output in P2; row 43 contains neither. Do not borrow P1 tools into a P2 session.",
+      "resolution": "Authored git diff --stat and git diff exec outputs consistent with the retained test_json_overrides.py hunk: three insertions and three deletions."
+    },
+    {
+      "session": "S09",
+      "original_requirement": "The source focused pytest command uses -v, not -q.",
+      "resolution": "Authored pytest test_json_overrides.py -q and its plain passing summary."
+    },
+    {
+      "session": "S10",
+      "original_requirement": "The sourced patch concerns HTTPException initialization, not export path handling. The boundary/revert/new-file sequence itself is real sourced material.",
+      "resolution": "Kept the real test edit/revert hunks; froze pyramid/tests/ and redirected to sibling pyramid/config/. Authored a small asset-spec export-path normalization edit in pyramid/config/__init__.py and a passing config-file test; disclosed the mapping."
+    },
+    {
+      "session": "S11",
+      "original_requirement": "Real full-suite pytest command before the interruption.",
+      "resolution": "Inserted authored full-suite pytest with no result immediately before the Claude interrupt marker."
+    },
+    {
+      "session": "S11",
+      "original_requirement": "The source focused pytest command uses -v and a test node, not a file-only run.",
+      "resolution": "Authored pytest pyramid/tests/test_httpexceptions.py -q and its whole-file passing summary."
+    }
+  ],
+  "original_gap_count": 19,
+  "unmet_gap_count": 0,
+  "authored_transport_fields": [
+    "UUIDs",
+    "call ids",
+    "parent links",
+    "synthetic timestamps",
+    "cwd",
+    "branches",
+    "message/tool envelopes",
+    "lifecycle/turn context metadata"
+  ],
+  "authored_global_rule_files": [
+    "home/.claude/CLAUDE.md",
+    "home/.codex/AGENTS.md"
+  ],
+  "expected_outcomes": [
+    {
+      "session": "S01",
+      "expects": {
+        "episode_type": 1,
+        "family": "repeated genuine directive",
+        "corroborating_sessions": [
+          "S03",
+          "S06"
+        ],
+        "receipt": "stop. don't run the whole suite, it takes ten minutes here. run only the one test file I named, I'll run the rest myself"
+      }
+    },
+    {
+      "session": "S02",
+      "expects": {
+        "episode_type": 1,
+        "disposition": "pivot",
+        "room": "neutral Event",
+        "monster_count": 0
+      }
+    },
+    {
+      "session": "S03",
+      "expects": {
+        "interrupt_pairing": "turn_aborted -> next user message",
+        "patch_inside_exec": true,
+        "family": "repeated genuine directive",
+        "card_targets": [
+          "claude",
+          "codex"
+        ],
+        "project": "P2",
+        "conflict_with_rule": "Run the full test suite before reporting done."
+      }
+    },
+    {
+      "session": "S04",
+      "expects": {
+        "cards_containing": [
+          "tabs",
+          "bump the version"
+        ],
+        "count": 0,
+        "excluded_system_turns": 2
+      }
+    },
+    {
+      "session": "S05",
+      "expects": {
+        "episode_type": 2,
+        "family": "repeated unsuccessful command",
+        "identical_command_error_count": 3,
+        "error_contains": "ModuleNotFoundError",
+        "adjacent_action": "uv pip install -e ."
+      }
+    },
+    {
+      "session": "S06",
+      "expects": {
+        "family": "repeated genuine directive",
+        "support_number": 3,
+        "card_targets": [
+          "claude",
+          "codex"
+        ],
+        "remains_open_if_targets": [
+          "claude"
+        ]
+      }
+    },
+    {
+      "session": "S07",
+      "expects": {
+        "episode_type": 3,
+        "same_file_edit_count": {
+          "gte": 4
+        },
+        "candidate_only": true,
+        "promoted": false,
+        "expected_failure_count": 1,
+        "episode_type_2_count": 0,
+        "human_approval": "nice, ship it"
+      }
+    },
+    {
+      "session": "S08",
+      "expects": {
+        "workflow": [
+          "focused passing test",
+          "git diff --stat",
+          "git diff",
+          "result-bearing report"
+        ],
+        "observable_passing_check": true,
+        "sharpen_candidate_for": "Report what you changed in one short paragraph."
+      }
+    },
+    {
+      "session": "S09",
+      "expects": {
+        "episode_type": 5,
+        "verified": true,
+        "workflow_session_count": 2,
+        "skill": "verify-change",
+        "targets": [
+          "claude",
+          "codex"
+        ]
+      }
+    },
+    {
+      "session": "S10",
+      "expects": {
+        "episode_type": 1,
+        "family": "boundary intervention",
+        "project_scope": "P1",
+        "covers_project": "P1",
+        "does_not_cover_project": "P2",
+        "frozen_directory": "pyramid/tests/",
+        "new_directory": "pyramid/config/"
+      }
+    },
+    {
+      "session": "S11",
+      "expects": {
+        "withheld_from_room": true,
+        "boss_replay": true,
+        "family": "repeated genuine directive",
+        "covered_by_shared_card": true,
+        "covered_by_claude_only_card": true,
+        "covered_by_P2_scoped_card": false
+      }
+    }
+  ],
+  "expected_outcomes_status": "All script evidence is present and checked by verify.py; downstream parser/game outcomes remain expectations, not measured game results.",
+  "deck_assertions": {
+    "fuse_uv_lines": true,
+    "fused_uv_targets": [
+      "claude",
+      "codex"
+    ],
+    "force_push_exception_survives": "except to your own feature branch right after a rebase",
+    "protected_notes": "## Notes\nMonorepo tooling lives under tools/. Ask before touching CI config.\n",
+    "apply_scope": "sample/home only",
+    "undo_restores_exact_bytes": true
+  },
+  "tutorial_assertions": {
+    "character": "Boundary Keeper",
+    "expected_boundary_interventions": 5,
+    "expected_all_interventions": 6,
+    "explicit_interrupt_pairs_in_script": 6,
+    "boundary_sessions": [
+      "S01",
+      "S03",
+      "S06",
+      "S10",
+      "S11"
+    ],
+    "pivot_sessions": [
+      "S02"
+    ],
+    "display": "5 of 6 interventions drew a line around what the agent may run or touch",
+    "disposition": "Denominator agrees with the six scripted interrupt-to-human pairs; describes the synthetic sampled build, not the person."
+  },
+  "shape_validation": {
+    "probe": "design/probe-findings.md",
+    "spike_report_present": true,
+    "spike_report": "spike-roots.md",
+    "spike_sha256": "e22c1c27628f697086268633dec9ebc085ade6c764b0a2ae2dba631cc0745819",
+    "probe_disagreements": [],
+    "public_codex_source_revision": "588f616e8b6aee417d4b2f480e48b7e6d8741993",
+    "public_codex_sources": [
+      "codex-rs/history/src/rollout_payload.rs",
+      "codex-rs/protocol/src/protocol.rs",
+      "codex-rs/protocol/src/models.rs"
+    ],
+    "real_log_privacy": "Previous shape census read only one small file per agent and retained names/types/counts. This finishing leg read no owner logs and ran no codex command.",
+    "notes": [
+      "Spike arrived while conversion was running; it was read in full and checked before final delivery.",
+      "All emitted top-level/nested type values are supported by the spike source snapshot; optional call IDs and array outputs are supported by real logs but this fixture uses present IDs and string outputs.",
+      "Current RolloutItemWire uses snake_case type/payload envelopes. Probe item_completed was observed in the one rollout; no disagreement on that field.",
+      "Owner exec calls in the one inspected rollout used custom_tool_call; script-requested function_call exec is also supported by the public ResponseItem enum.",
+      "Claude Bash toolUseResult was observed as a string, so emitted Bash results use that shape.",
+      "Authored Codex context uses the supported workspace-write sandbox variant because these sessions apply patches; this is synthetic metadata, not a change to the owner environment.",
+      "No probe/spike disagreement required a change; public function_call exec remains the specified supported shape. No downstream parser was provided or executed. Verification checks fixture evidence, not card/room outcomes."
+    ]
+  },
+  "acquisition_failures": [
+    "SWE-smith filter endpoint returned HTTP 500 for the selected repo prefix.",
+    "Two one-row SWE-Hero MIT repo filters returned HTTP 500; no extra rows received."
+  ],
+  "budget_bytes": 500000
+}
