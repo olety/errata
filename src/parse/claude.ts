@@ -10,7 +10,6 @@ export interface ParseMeta {
   file: string;
   /** Set by the importer from the path (…/subagents/…). */
   agentAuthored?: boolean;
-  window?: 'full' | 'tail-window';
 }
 
 type Json = Record<string, unknown>;
@@ -40,8 +39,8 @@ export class ClaudeParser {
       client: null,
       source: null,
       agentAuthored: meta.agentAuthored ?? false,
-      partial: meta.window === 'tail-window',
-      partialReason: meta.window === 'tail-window' ? 'tail-window' : null,
+      partial: false,
+      partialReason: null,
       turns: [],
       stats: this.stats,
     };
@@ -53,9 +52,6 @@ export class ClaudeParser {
     this.s.gaps.push({ afterSeq: this.stats.lines - 1, kind: 'oversized-row' });
   }
 
-  tailGap(): void {
-    this.s.gaps.push({ afterSeq: this.stats.lines, kind: 'tail-window' });
-  }
 
   push(line: string): void {
     this.stats.lines++;

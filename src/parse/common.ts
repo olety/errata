@@ -1,7 +1,7 @@
 // Helpers shared by both parsers.
 
 import type { InjectedKind, InterruptKind, ResultStatus, Session, SessionStats, ToolCall, ToolKind, ToolResult, Turn } from '../model';
-import { TEXT_LIMITS } from '../model';
+import { CUT_MARKER, TEXT_LIMITS } from '../model';
 import { redactBounded } from '../redact';
 
 export type UserTextClass =
@@ -92,13 +92,29 @@ export function fingerprint(command: string): string {
   return s;
 }
 
+/**
+ * The program whose exit status a command line reports: the last && / ; / || segment, then the last pipeline
+ * stage (a pipeline exits with its last stage), skipping wrappers. "cat x | grep y" → grep.
+ */
+export function exitProgramOf(command: string): string | null {
+  const segs = command.split(/&&|;|\|\|/).map((s) => s.trim()).filter(Boolean);
+  const seg = segs[segs.length - 1] ?? '';
+  const stages = seg.split(/(?<![|>&])\|(?![|&])/).map((s) => s.trim()).filter(Boolean);
+  const stage = stages[stages.length - 1] ?? '';
+  const words = stage.split(/\s+/).filter(Boolean);
+  const w = words[skipWrappers(words)];
+  return w ? w.replace(/^.*\//, '') : null;
+}
+
 /** Status for a shell result with a known exit code. */
 export function shellStatus(command: string | null, exitCode: number | null, fallback: ResultStatus): ResultStatus {
   if (exitCode === null) return fallback;
   if (exitCode === 0) return 'ok';
   if (exitCode === 130 || exitCode === 143) return 'interrupted';
-  const prog = command ? programOf(command) : null;
+  const prog = command ? exitProgramOf(command) : null;
   if (exitCode === 1 && prog && NOMATCH_PROGRAMS.has(prog)) return 'nomatch';
+  // `git diff --exit-code` / `--quiet` exit 1 means "differences found", not failure.
+  if (exitCode === 1 && command && /\bgit\s+diff\b[^|;&]*\s--(?:exit-code|quiet)\b/.test(command)) return 'nomatch';
   return 'error';
 }
 
@@ -148,7 +164,10 @@ export class TurnBuilder {
     const t = this.assistant(ts);
     const add = this.r(text);
     if (!add) return;
-    t.text = t.text ? (t.text + '\n' + add).slice(0, TEXT_LIMITS.message + 1) : add;
+    t.lastTextSeq = this.seq;
+    if (t.text.endsWith(CUT_MARKER)) return;
+    const joined = t.text ? t.text + '\n' + add : add;
+    t.text = joined.length > TEXT_LIMITS.message ? joined.slice(0, TEXT_LIMITS.message) + CUT_MARKER : joined;
   }
 
   addCall(ts: string | null, c: Omit<ToolCall, 'ts' | 'result' | 'seq'> & { result?: Omit<ToolResult, 'seq'> | null }): ToolCall {
@@ -175,7 +194,7 @@ export class TurnBuilder {
 
 export function toolKindFor(name: string): ToolKind {
   const n = name.toLowerCase();
-  if (['bash', 'shell', 'exec_command', 'local_shell', 'container.exec', 'unified_exec'].includes(n)) return 'shell';
+  if (['bash', 'shell', 'exec_command', 'local_shell', 'container.exec', 'unified_exec', 'shell_command'].includes(n)) return 'shell';
   if (['edit', 'write', 'multiedit', 'notebookedit', 'apply_patch'].includes(n)) return 'edit';
   if (['read', 'view_image', 'notebookread'].includes(n)) return 'read';
   if (['grep', 'glob', 'ls', 'websearch', 'webfetch'].includes(n)) return 'search';

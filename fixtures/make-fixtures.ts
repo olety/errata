@@ -337,4 +337,149 @@ const DESKTOP_META = (id: string, cwd: string, extra: Row = {}): Row => ({
   write('codex/rollout-2026-10-03T15-00-00-0c0d0e0f-bbbb-7bbb-8bbb-00000000000b.jsonl', c.rows);
 }
 
+// ---------------------------------------------------------------- engine leg fixtures (noise filter, types 3–5)
+
+const OR = '/home/dev/orchard';
+
+// 12. Named negatives (Claude): harness rejection, permission denial, worktree refusal, pipeline grep with no match.
+//     Each happens twice with nothing changed; none of them is an unsuccessful command.
+{
+  const s = new CC('a1b2c3d4-c0c0-4c0c-8c0c-00000000000c', TP, '2026-10-04T09:00:00.000Z');
+  const rejected = "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.";
+  const denied = 'Permission to use Bash with command rm -rf build has been denied.';
+  const worktree = 'This session is isolated in the worktree /home/dev/wt/tidepool-fix, but this command targets /home/dev/tidepool. Run it inside the worktree instead.';
+  s.user('Tidy up the build output and push the branch.');
+  for (const n of [1, 2]) {
+    s.tool(`toolu_ccc_p${n}`, 'Bash', { command: 'git push --force origin main' }).result(`toolu_ccc_p${n}`, rejected, { isError: true, tur: 'User rejected tool use' });
+  }
+  for (const n of [1, 2]) {
+    s.tool(`toolu_ccc_r${n}`, 'Bash', { command: 'rm -rf build' }).result(`toolu_ccc_r${n}`, denied, { isError: true, tur: `Error: ${denied}` });
+  }
+  for (const n of [1, 2]) {
+    s.tool(`toolu_ccc_s${n}`, 'Bash', { command: `cd ${TP} && git status --short` }).result(`toolu_ccc_s${n}`, worktree, { isError: true, tur: `Error: ${worktree}` });
+  }
+  for (const n of [1, 2]) s.bash(`toolu_ccc_g${n}`, 'cat build.log | grep -n ERROR', '', 1);
+  s.say('Nothing was pushed or removed; the log has no errors.');
+  write('claude/noise-negatives.jsonl', s.rows);
+}
+
+// 13. Named negatives (Codex CLI): a declined exec twice and a sandbox denial twice; neither is a failure.
+{
+  const c = new CX('2026-10-04T10:00:00.000Z');
+  c.row('session_meta', { id: '0c0d0e0f-cccc-7ccc-8ccc-00000000000c', timestamp: '2026-10-04T10:00:00.000Z', cwd: OR, originator: 'codex_cli_rs', cli_version: '0.50.0' })
+    .msg('user', [[null, 'Deploy the staging build.']], {}, false);
+  for (const n of [1, 2]) {
+    c.row('response_item', { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: 'make deploy-staging' }), call_id: `call_d${n}` })
+      .row('event_msg', { type: 'item_completed', item: { type: 'CommandExecution', id: `ced${n}`, command: ['bash', '-lc', 'make deploy-staging'], status: 'declined', aggregated_output: '' } })
+      .row('response_item', { type: 'function_call_output', call_id: `call_d${n}`, output: 'exec command rejected by user' });
+  }
+  for (const n of [1, 2]) {
+    c.row('response_item', { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: 'curl -fsS https://example.test/health' }), call_id: `call_n${n}` })
+      .row('response_item', { type: 'function_call_output', call_id: `call_n${n}`, output: JSON.stringify({ output: 'network access denied by the sandbox policy', metadata: { exit_code: 1 } }) });
+  }
+  c.msg('assistant', [[null, 'The deploy needs your approval and network access; nothing ran.']]);
+  write('codex/rollout-2026-10-04T10-00-00-0c0d0e0f-cccc-7ccc-8ccc-00000000000c.jsonl', c.rows);
+}
+
+// 14. Type 3 POSITIVE (Claude): three edits to one file, the fourth is cut off by the person, who then draws a line.
+{
+  const s = new CC('a1b2c3d4-d0d0-4d0d-8d0d-00000000000d', LN, '2026-10-04T11:00:00.000Z');
+  const f = `${LN}/src/parse/mesh.ts`;
+  s.user('The mesh parser rejects sizes with a unit suffix. Fix that.')
+    .edit('toolu_ccd_e1', f, 'parseInt(raw)', 'parseFloat(raw)')
+    .edit('toolu_ccd_e2', f, 'export function parseMesh', 'export function parseMeshSize')
+    .edit('toolu_ccd_e3', f, 'const UNITS = []', "const UNITS = ['mm', 'cm']")
+    .tool('toolu_ccd_e4', 'Edit', { file_path: f, old_string: 'export function parseMeshSize', new_string: 'export class MeshParser', replace_all: false })
+    .userBlocks([{ type: 'text', text: '[Request interrupted by user for tool use]' }])
+    .user('stop rewriting the parser. only change the unit regex, nothing else in that file.')
+    .edit('toolu_ccd_e5', f, '/^\\d+$/', '/^\\d+(mm|cm)?$/');
+  write('claude/edit-rewrite.jsonl', s.rows);
+}
+
+// 15. Type 3 dedupe (Codex Desktop): code-mode patches with FileChange children count once per patch.
+//     Three patches to one file → one candidate of three edits; a second file patched twice → nothing.
+{
+  const c = new CX('2026-10-04T12:00:00.000Z');
+  const id = '0c0d0e0f-dddd-7ddd-8ddd-00000000000d';
+  c.row('session_meta', DESKTOP_META(id, OR)).msg('user', [['user.text', 'Make the basket totals round to cents.']]);
+  const patchOnce = (n: number, file: string) => {
+    const p = `*** Begin Patch\n*** Update File: ${file}\n@@\n-    total = ${n}\n+    total = ${n + 1}\n*** End Patch`;
+    c.row('response_item', { type: 'custom_tool_call', id: `ctd${n}`, status: 'completed', call_id: `call_dp${n}`, name: 'exec', input: `await tools.apply_patch(${JSON.stringify(p)});` })
+      .row('event_msg', { type: 'item_completed', item: { type: 'FileChange', id: `fcd${n}`, changes: { [file]: { type: 'update' } }, status: 'completed' } })
+      .row('response_item', { type: 'custom_tool_call_output', call_id: `call_dp${n}`, output: [{ type: 'input_text', text: 'Script completed\n' }] });
+  };
+  patchOnce(1, 'app/basket.py');
+  patchOnce(2, 'app/basket.py');
+  patchOnce(3, 'app/money.py');
+  patchOnce(4, 'app/basket.py');
+  patchOnce(5, 'app/money.py');
+  c.msg('assistant', [[null, 'Totals now round to cents.']]);
+  write('codex/rollout-2026-10-04T12-00-00-0c0d0e0f-dddd-7ddd-8ddd-00000000000d.jsonl', c.rows);
+}
+
+// 16. Type 4 POSITIVES: the same genuine directive in two sessions (Claude, then Codex), near-duplicate wording.
+//     NEGATIVES in the same files: the directive repeated inside one session only, and the same words inside an
+//     injected continuation summary (quarantined, never a member).
+{
+  const s = new CC('a1b2c3d4-e0e0-4e0e-8e0e-00000000000e', OR, '2026-10-05T09:00:00.000Z');
+  s.user('This session is being continued from a previous conversation. Summary: please use uv, never pip, for installs in this repo.', { isCompactSummary: true })
+    .user('please use uv, never pip, for installs in this repo')
+    .bash('toolu_cce_i1', 'uv add httpx', 'Resolved 4 packages')
+    .user('keep the changelog entries in past tense from now on')
+    .user('keep the changelog entries in past tense from now on')
+    .say('Noted.');
+  write('claude/directive-a.jsonl', s.rows);
+  const c = new CX('2026-10-05T14:00:00.000Z');
+  c.row('session_meta', { id: '0c0d0e0f-eeee-7eee-8eee-00000000000e', timestamp: '2026-10-05T14:00:00.000Z', cwd: OR, originator: 'codex_cli_rs', cli_version: '0.50.0' })
+    .msg('user', [[null, 'Please use uv and never pip for installs in this repo.']], {}, false)
+    .row('response_item', { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: 'uv add rich' }), call_id: 'call_e1' })
+    .row('response_item', { type: 'function_call_output', call_id: 'call_e1', output: 'Process exited with code 0\nOutput:\nResolved 2 packages' })
+    .msg('user', [[null, 'use the new logger here as well']], {}, false);
+  write('codex/rollout-2026-10-05T14-00-00-0c0d0e0f-eeee-7eee-8eee-00000000000e.jsonl', c.rows);
+}
+
+// 17. Type 5 POSITIVES: the narrow workflow (focused passing test → diff review → report with the result) in a Claude
+//     session and a Codex CLI session. NEGATIVES in a third session: a whole-suite run, a failing focused test, and a
+//     report written before the diff.
+{
+  const s = new CC('a1b2c3d4-f0f0-4f0f-8f0f-00000000000f', TP, '2026-10-05T10:00:00.000Z');
+  s.user('Fix the off-by-one in the pager.')
+    .edit('toolu_ccf_e1', `${TP}/src/pager.ts`, 'i <= n', 'i < n')
+    .bash('toolu_ccf_t1', 'bun test tests/pager.test.ts', '6 pass\n0 fail')
+    .bash('toolu_ccf_d1', 'git diff --stat', ' src/pager.ts | 2 +-\n 1 file changed')
+    .bash('toolu_ccf_d2', 'git diff', 'diff --git a/src/pager.ts b/src/pager.ts\n-  for (i = 0; i <= n; i++)\n+  for (i = 0; i < n; i++)')
+    .say('Changed src/pager.ts; tests/pager.test.ts passes (6 pass, 0 fail).');
+  write('claude/workflow-a.jsonl', s.rows);
+
+  const c = new CX('2026-10-05T16:00:00.000Z');
+  c.row('session_meta', { id: '0c0d0e0f-ffff-7fff-8fff-00000000000f', timestamp: '2026-10-05T16:00:00.000Z', cwd: OR, originator: 'codex_cli_rs', cli_version: '0.50.0' })
+    .msg('user', [[null, 'The basket total test is red, fix it.']], {}, false)
+    .row('response_item', { type: 'function_call', name: 'exec', arguments: JSON.stringify({ cmd: "apply_patch <<'EOF'\n*** Begin Patch\n*** Update File: app/basket.py\n@@\n-    return total\n+    return round(total, 2)\n*** End Patch\nEOF", workdir: OR }), call_id: 'call_f1' })
+    .row('response_item', { type: 'function_call_output', call_id: 'call_f1', output: 'The file /home/dev/orchard/app/basket.py has been edited.' })
+    .row('response_item', { type: 'function_call', name: 'exec', arguments: JSON.stringify({ cmd: 'pytest tests/test_basket.py -q', workdir: OR }), call_id: 'call_f2' })
+    .row('response_item', { type: 'function_call_output', call_id: 'call_f2', output: '3 passed in 0.21s\n' })
+    .row('response_item', { type: 'function_call', name: 'exec', arguments: JSON.stringify({ cmd: 'git diff', workdir: OR }), call_id: 'call_f3' })
+    .row('response_item', { type: 'function_call_output', call_id: 'call_f3', output: 'diff --git a/app/basket.py b/app/basket.py\n-    return total\n+    return round(total, 2)\n' })
+    .msg('assistant', [[null, 'Fixed app/basket.py; tests/test_basket.py passes (3 passed).']]);
+  write('codex/rollout-2026-10-05T16-00-00-0c0d0e0f-ffff-7fff-8fff-00000000000f.jsonl', c.rows);
+
+  const n = new CC('a1b2c3d4-f1f1-4f1f-8f1f-0000000000f1', TP, '2026-10-05T18:00:00.000Z');
+  n.user('Fix the date header.')
+    .edit('toolu_ccn_e1', `${TP}/src/header.ts`, 'toUTCString()', 'toISOString()')
+    .bash('toolu_ccn_t1', 'bun test', '120 pass\n0 fail')
+    .bash('toolu_ccn_d1', 'git diff', 'diff --git a/src/header.ts b/src/header.ts')
+    .say('Changed src/header.ts; the whole suite passes (120 pass).')
+    .user('Now fix the footer.')
+    .edit('toolu_ccn_e2', `${TP}/src/footer.ts`, 'year', 'fullYear')
+    .bash('toolu_ccn_t2', 'bun test tests/footer.test.ts', '1 pass\n1 fail', 1)
+    .bash('toolu_ccn_d2', 'git diff', 'diff --git a/src/footer.ts b/src/footer.ts')
+    .say('Changed src/footer.ts; tests/footer.test.ts still fails (1 fail).')
+    .user('And the sidebar.')
+    .edit('toolu_ccn_e3', `${TP}/src/sidebar.ts`, 'width: 200', 'width: 240')
+    .say('Changed src/sidebar.ts; tests/sidebar.test.ts passes (2 pass).')
+    .bash('toolu_ccn_t3', 'bun test tests/sidebar.test.ts', '2 pass\n0 fail')
+    .bash('toolu_ccn_d3', 'git diff', 'diff --git a/src/sidebar.ts b/src/sidebar.ts');
+  write('claude/workflow-negatives.jsonl', n.rows);
+}
+
 console.log('fixtures written');

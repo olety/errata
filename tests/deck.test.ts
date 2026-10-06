@@ -1,7 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 import { ALLOWANCE, BEGIN, END, budgetFor, bytes, fitProblem, parseGlobal, renderGlobal, sanitizeLine, text, weigh } from '../src/deck/file';
 import { buildLane, CLAUDE_LANE, codexLane, exportMap, SKILL_FILE, SKILL_LANES } from '../src/deck/lanes';
-import { draftCards, groupRooms } from '../src/deck/templates';
+import { draftCards } from '../src/deck/templates';
+import { buildRooms } from '../src/rooms';
+import type { Session } from '../src/model';
+
+const roomsOf = (ss: Session[]) => buildRooms(ss, ss.flatMap(detectEpisodes));
 import { setTaken, updateCard, acceptMapping, cardDigest } from '../src/deck/card';
 import { detectEpisodes } from '../src/episodes';
 import { CC, CX, fixture } from './helpers';
@@ -74,7 +78,7 @@ describe('weight', () => {
 describe('lanes', () => {
   test('a card targeting both reaches both files; the export map is read from the rendered bytes', async () => {
     const all = await Promise.all([fixture(CC.repeated), fixture(CX.cli)]);
-    const room = groupRooms(all.flatMap(detectEpisodes)).find((r) => r.family === 'repeated-command')!;
+    const room = roomsOf(all).find((r) => r.family === 'repeated-command')!;
     const [a] = draftCards(room, { targets: 'both' });
     const taken = setTaken(a!, true);
     const cl = buildLane(CLAUDE_LANE, bytes('# Claude\n'), [taken]);
@@ -94,7 +98,7 @@ describe('lanes', () => {
     expect(codexLane(bytes('  \n')).blocker).toBeNull();
     expect(codexLane(null).blocker).toBeNull();
     // A card for both agents then reaches Claude only, so it cannot cover a Codex case.
-    const room = groupRooms((await Promise.all([fixture(CC.repeated), fixture(CX.build)])).flatMap(detectEpisodes))[0]!;
+    const room = roomsOf(await Promise.all([fixture(CC.repeated), fixture(CX.build)]))[0]!;
     const card = setTaken(draftCards(room)[0]!, true);
     expect(card.targets).toBe('both');
     const orig = bytes('# Codex\n');
@@ -117,8 +121,8 @@ describe('lanes', () => {
 
 describe('cards', () => {
   test('any change to a coverage field changes the digest and the revision', async () => {
-    const room = groupRooms(detectEpisodes(await fixture(CC.repeated)))[0]!;
-    const [c] = draftCards(room);
+    const room = roomsOf([await fixture(CC.repeated)])[0]!;
+    const [c] = draftCards(room, { scope: { kind: 'global' } });
     const accepted = acceptMapping(c!, 'case-1');
     expect(accepted.acceptedMappings['case-1']).toBe(cardDigest(c!));
     for (const patch of [{ text: 'other words' }, { targets: 'codex' as const }, { scope: { kind: 'project' as const, projectKey: 'p1', label: 'x' } }, { trigger: { event: 'command_failed' as const } }, { exceptions: [{ text: 'not in CI', when: { projectKey: 'p2' } }] }]) {
@@ -131,8 +135,8 @@ describe('cards', () => {
   });
 
   test('three drafts differ in what the agent will do', async () => {
-    const room = groupRooms(detectEpisodes(await fixture(CC.repeated)))[0]!;
-    const cards = draftCards(room);
+    const room = roomsOf([await fixture(CC.repeated)])[0]!;
+    const cards = draftCards(room, { scope: { kind: 'global' } });
     expect(new Set(cards.map((c) => c.responseKey)).size).toBe(3);
     expect(new Set(cards.map((c) => c.id)).size).toBe(3);
     expect(cards[0]!.text).toBe('When `bun run build` fails, read its error output before running it again unchanged.');

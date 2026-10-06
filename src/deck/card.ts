@@ -1,7 +1,7 @@
 // The only way to change a card. Any change to a coverage-deciding field yields a new digest,
 // so every earlier mapping acceptance stops matching without anyone remembering to clear it.
 
-import type { Card, CardException, Scope, Targets, Trigger } from './types';
+import type { Card, CardException, Claim, ResponseKey, Scope, Targets, Trigger } from './types';
 
 function fnv(s: string): string {
   let h = 0x811c9dc5;
@@ -27,8 +27,8 @@ function stable(v: unknown): string {
 }
 
 /** Digest of every field that decides what the card says and whom it covers. */
-export function cardDigest(c: Pick<Card, 'type' | 'text' | 'targets' | 'scope' | 'trigger' | 'responseKey' | 'exceptions'>): string {
-  return fnv(stable({ type: c.type, text: c.text, targets: c.targets, scope: c.scope, trigger: c.trigger, responseKey: c.responseKey, exceptions: c.exceptions }));
+export function cardDigest(c: Pick<Card, 'type' | 'text' | 'targets' | 'scope' | 'trigger' | 'responseKey' | 'exceptions'> & { claims?: Card['claims'] }): string {
+  return fnv(stable({ type: c.type, text: c.text, targets: c.targets, scope: c.scope, trigger: c.trigger, responseKey: c.responseKey, exceptions: c.exceptions, claims: c.claims ?? [] }));
 }
 
 export interface CardPatch {
@@ -38,6 +38,8 @@ export interface CardPatch {
   trigger?: Trigger;
   exceptions?: CardException[];
   title?: string;
+  claims?: Claim[];
+  responseKey?: ResponseKey;
 }
 
 /** Returns a new card. Exceptions changes reset their review; the revision counter always moves on a real change. */
@@ -50,6 +52,8 @@ export function updateCard(card: Card, patch: CardPatch, sanitize: (s: string) =
     ...(patch.scope !== undefined ? { scope: structuredClone(patch.scope) } : {}),
     ...(patch.trigger !== undefined ? { trigger: Object.freeze(structuredClone(patch.trigger)) } : {}),
     ...(patch.exceptions !== undefined ? { exceptions: Object.freeze(patch.exceptions.map((e) => Object.freeze(structuredClone(e)))), exceptionsReviewed: false } : {}),
+    ...(patch.claims !== undefined ? { claims: Object.freeze(patch.claims.map((c) => Object.freeze({ ...c }))) } : {}),
+    ...(patch.responseKey !== undefined ? { responseKey: patch.responseKey } : {}),
   });
   const changed = cardDigest(next) !== cardDigest(card);
   return changed ? Object.freeze({ ...next, textRevision: card.textRevision + 1 }) : next;

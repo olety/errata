@@ -42,8 +42,8 @@ export class CodexParser {
       client: null,
       source: null,
       agentAuthored: meta.agentAuthored ?? false,
-      partial: meta.window === 'tail-window',
-      partialReason: meta.window === 'tail-window' ? 'tail-window' : null,
+      partial: false,
+      partialReason: null,
       turns: [],
       stats: this.stats,
     };
@@ -55,9 +55,6 @@ export class CodexParser {
     this.s.gaps.push({ afterSeq: this.stats.lines - 1, kind: 'oversized-row' });
   }
 
-  tailGap(): void {
-    this.s.gaps.push({ afterSeq: this.stats.lines, kind: 'tail-window' });
-  }
 
   push(line: string): void {
     this.stats.lines++;
@@ -209,6 +206,14 @@ export class CodexParser {
       const named = codeModeCommands(rawInput);
       if (named.length) command = named.join(' ; ');
       this.openExec = callId;
+    } else if (name === 'exec' && str(p.type) === 'function_call') {
+      // A function-call exec carries a shell command as JSON arguments ({"cmd": "...", "workdir": "..."}).
+      kind = 'shell';
+      command = shellCommandFromArgs(rawInput, p);
+      if (command && /\*\*\* Begin Patch/.test(command)) {
+        files = patchFiles(command);
+        kind = 'edit';
+      }
     } else if (name === 'apply_patch') {
       files = patchFiles(rawInput);
       kind = 'edit';

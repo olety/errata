@@ -1,12 +1,13 @@
-// The 1-of-3 draft (spec §4) for the two families this slice detects. Each option differs in what the agent
-// will do. Cards are structured by construction: trigger, response_key, targets and scope are data.
+// The 1-of-3 draft (spec §4) for all five families. Each option differs in what the agent will do, and every text is
+// grounded in the room's own object: the command, the file or directory, the person's own wording, the workflow.
+// Cards are structured by construction: trigger, response_key, targets, scope and claims are data, not prose.
 
 import type { Agent } from '../model';
-import type { Card, Case, CaseFacts, Family, ResponseKey, Scope, Targets, Trigger } from './types';
-import { FAMILY_KEYS } from './types';
-import type { Episode, InterruptEpisode, RepeatedCommandEpisode } from '../episodes';
+import type { Card, Claim, Family, ResponseKey, Scope, Targets, Trigger } from './types';
+import type { Room } from '../rooms';
+import type { Episode, WorkflowEpisode } from '../episodes';
 import { sanitizeLine } from './file';
-import { programOf } from '../parse/common';
+import { suggestClaims } from './claims';
 
 /** FNV-1a, 24 bits, base36: stable short ids from the card's structure. */
 export function shortHash(s: string): string {
@@ -18,147 +19,201 @@ export function shortHash(s: string): string {
   return (h & 0xffffff).toString(36).padStart(4, '0');
 }
 
-export interface Room {
-  family: Extract<Family, 'repeated-command' | 'boundary'>;
-  /** What the episodes share: the command prefix, or the interrupted tool. */
-  object: string;
-  /** Project identity shared by every episode in the room (rooms never mix projects). */
-  projectKey: string | null;
-  projectLabel: string | null;
-  agents: Agent[];
-  episodes: Episode[];
-  /** Distinct sessions supporting this room. */
-  sessions: number;
-  name: string;
-  subtitle: string;
-}
-
-function familyOf(e: Episode): Room['family'] {
-  return e.type === 'repeated-command' ? 'repeated-command' : 'boundary';
-}
-
-function objectOf(e: Episode): string {
-  if (e.type === 'repeated-command') return e.prefix;
-  const c = e.interruptedCall;
-  if (!c) return 'a reply';
-  if (c.command) return programOf(c.command) ?? c.name;
-  return c.name;
-}
-
-/** Group episodes into rooms by family + object + project. Interrupts without a human reply are left out. */
-export function groupRooms(episodes: Episode[]): Room[] {
-  const m = new Map<string, Episode[]>();
-  for (const e of episodes) {
-    if (e.type === 'interrupt' && e.humanTurn === null) continue;
-    const k = `${familyOf(e)}|${objectOf(e)}|${e.projectKey ?? ''}`;
-    const list = m.get(k) ?? [];
-    list.push(e);
-    m.set(k, list);
-  }
-  const rooms: Room[] = [];
-  for (const list of m.values()) {
-    const e0 = list[0]!;
-    const family = familyOf(e0);
-    const object = objectOf(e0);
-    const sessions = new Set(list.map((e) => e.sessionId)).size;
-    const agents = [...new Set(list.map((e) => e.agent))];
-    const n = list.length;
-    const times = `${n} time${n === 1 ? '' : 's'} in ${sessions} session${sessions === 1 ? '' : 's'}`;
-    const name = family === 'repeated-command' ? 'The unchanged retry' : 'The stop';
-    const subtitle =
-      family === 'repeated-command'
-        ? `${object} failed and ran again with nothing changed · ${times}`
-        : `You stopped the agent during ${object}, then said what to do · ${times}`;
-    rooms.push({ family, object, projectKey: e0.projectKey, projectLabel: e0.projectLabel, agents, episodes: list, sessions, name, subtitle });
-  }
-  const typed = (r: Room) => r.episodes.filter((e) => e.type === 'interrupt' && !e.pasted).length;
-  return rooms.sort((a, b) => b.sessions - a.sessions || typed(b) - typed(a) || b.episodes.length - a.episodes.length);
-}
-
-/** One case per episode. Every case starts unreviewed; only the player's "issue" makes it count. */
-export function caseFor(e: Episode): Case {
-  const facts: CaseFacts =
-    e.type === 'repeated-command'
-      ? { event: 'command_failed', fingerprint: e.fingerprint, ...(e.program ? { program: e.program } : {}) }
-      : { event: 'resume_after_interrupt' };
-  return {
-    id: e.id,
-    agent: e.agent,
-    projectKey: e.projectKey,
-    projectLabel: e.projectLabel,
-    facts,
-    eligibleResponseKeys: FAMILY_KEYS[familyOf(e)],
-    disposition: 'unreviewed',
-    evidenceRefs: [{ sessionId: e.sessionId, agent: e.agent, turn: e.turn, callId: e.type === 'repeated-command' ? e.failures[1] ?? null : e.interruptedCall?.callId ?? null }],
-  };
-}
-
 /** Normalized key for a constraint the player stated in their own words. */
 export function constraintKeyOf(text: string): string {
   return text.toLowerCase().replace(/[^\p{L}\p{N}/._-]+/gu, ' ').trim().replace(/\s+/g, ' ').slice(0, 120);
 }
+
+export const VERIFY_SKILL_SLUG = 'verify-change';
 
 interface Draft {
   key: ResponseKey;
   title: string;
   text: string;
   trigger: Trigger;
+  claims: Claim[];
+  type?: Card['type'];
+  skillSlug?: string;
 }
 
 function projectClause(scope: Scope): string {
   return scope.kind === 'project' ? `In ${scope.label}, ` : '';
 }
 
-function cap(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+/** Join a project clause and a sentence: "In api, when …" or "When …". */
+function sentence(scope: Scope, body: string): string {
+  const pc = projectClause(scope);
+  const b = body.trim();
+  return pc ? pc + b.charAt(0).toLowerCase() + b.slice(1) : b.charAt(0).toUpperCase() + b.slice(1);
 }
 
-function drafts(room: Room, scope: Scope, boundary: string | null): Draft[] {
-  const pc = projectClause(scope);
-  if (room.family === 'repeated-command') {
-    const cmd = `\`${room.object}\``;
-    const trigger: Trigger = { event: 'command_failed', commandPrefix: room.object };
-    const list: Draft[] = [
-      { key: 'inspect_error_before_retry', title: 'Read the error first', text: `${pc}when ${cmd} fails, read its error output before running it again unchanged.`, trigger },
-      { key: 'state_hypothesis_before_retry', title: 'Name the change', text: `${pc}before re-running a failed ${cmd}, say what changed or what new hypothesis the retry tests.`, trigger },
-      { key: 'report_blocker_after_two', title: 'Stop after two', text: `${pc}after ${cmd} fails twice, stop and report the blocker with both attempts instead of retrying.`, trigger },
-    ];
-    return list.map((d) => ({ ...d, text: cap(d.text) }));
-  }
-  // Boundary family. Option A names the constraint; B and C are generic and say so in their trigger.
-  const generic: Trigger = { event: 'resume_after_interrupt', generic: true };
-  const named: Trigger = boundary ? { event: 'resume_after_interrupt', constraintKey: constraintKeyOf(boundary) } : { event: 'resume_after_interrupt' };
-  const list: Draft[] = [
-    {
-      key: 'preserve_boundary',
-      title: 'Keep the stated boundary',
-      text: boundary ? `${pc}${boundary.replace(/[.\s]+$/, '')}. Keep to this after any interruption, for the rest of the task.` : `${pc}when the user stops you and states a boundary, keep to it for the rest of the task.`,
-      trigger: named,
-    },
-    { key: 'confirm_scope_before_edit', title: 'Confirm the new scope', text: `${pc}after the user interrupts, restate the revised scope in one line before the next edit.`, trigger: generic },
-    { key: 'inspect_diff_against_boundary', title: 'Check the diff', text: `${pc}after an interruption, check the final diff against the boundary the user stated before reporting done.`, trigger: generic },
-  ];
-  return list.map((d) => ({ ...d, text: cap(d.text) }));
+function endStop(s: string): string {
+  const t = s.trim().replace(/[\s.…]+$/, '');
+  return t + '.';
+}
+
+const code = (s: string) => '`' + s.replace(/`/g, "'") + '`';
+
+/** The scope a room proposes: its one project when every case shares it, else all projects. */
+export function proposedScope(room: Room): Scope {
+  return room.projectKey ? { kind: 'project', projectKey: room.projectKey, label: room.projectLabel ?? 'this project' } : { kind: 'global' };
 }
 
 function targetsFor(agents: Agent[]): Targets {
   return agents.length === 1 ? agents[0]! : 'both';
 }
 
-/**
- * Three response cards for a room. `boundary` is the player's own wording of the constraint (boundary family);
- * without it, option A's trigger stays incomplete and covers nothing until the player names the constraint.
- */
-export function draftCards(room: Room, opts: { scope?: Scope; targets?: Targets; boundary?: string | null } = {}): Card[] {
-  const scope: Scope = opts.scope ?? { kind: 'global' };
+function objectTrigger(room: Room, events: Trigger['event']): Trigger | null {
+  if (room.object.kind === 'command') return { event: events, commandPrefix: room.object.label };
+  if (room.object.kind === 'path' || room.object.kind === 'file') return { event: events, pathPrefix: room.object.label };
+  if (room.object.kind === 'text') return { event: events, constraintKey: room.object.key.slice('text:'.length) };
+  return null;
+}
+
+function objectWords(room: Room): string {
+  if (room.object.kind === 'command' || room.object.kind === 'path' || room.object.kind === 'file') return code(room.object.label);
+  return 'this';
+}
+
+function polarityOf(text: string): 'do' | 'dont' {
+  return /\b(?:never|don'?t|dont|do not|not|no|avoid|stop|without)\b/i.test(text) ? 'dont' : 'do';
+}
+
+function drafts(room: Room, scope: Scope, wording: string | null): Draft[] {
+  const s = (b: string) => sentence(scope, b);
+  const obj = room.object.label;
+  switch (room.family) {
+    case 'repeated-command': {
+      const cmd = code(obj);
+      const trigger: Trigger = { event: 'command_failed', commandPrefix: obj };
+      const o = `cmd:${obj}`;
+      return [
+        { key: 'inspect_error_before_retry', title: 'Read the error first', text: s(`when ${cmd} fails, read its error output before running it again unchanged.`), trigger, claims: [{ polarity: 'do', act: 'read-error', object: o, when: 'after-failure' }] },
+        { key: 'state_hypothesis_before_retry', title: 'Name the change', text: s(`before re-running a failed ${cmd}, say what changed or what new hypothesis the retry tests.`), trigger, claims: [{ polarity: 'do', act: 'state-hypothesis', object: o, when: 'after-failure' }] },
+        { key: 'report_blocker_after_two', title: 'Stop after two', text: s(`after ${cmd} fails twice, stop and report the blocker with both attempts instead of retrying.`), trigger, claims: [{ polarity: 'dont', act: 'retry', object: o, when: 'after-two-failures' }] },
+      ];
+    }
+    case 'rewrite': {
+      const f = code(obj);
+      const trigger: Trigger = { event: 'file_rewritten', pathPrefix: obj };
+      const o = `path:${obj}`;
+      return [
+        { key: 'targeted_patch', title: 'One targeted patch', text: s(`when changing ${f}, make one targeted patch within the reviewed scope instead of rewriting it again.`), trigger, claims: [{ polarity: 'dont', act: 'rewrite', object: o }] },
+        { key: 'reproduce_first', title: 'Reproduce it first', text: s(`before editing ${f} again, add or run a focused check that reproduces the problem.`), trigger, claims: [{ polarity: 'do', act: 'reproduce', object: o, when: 'before-edit' }] },
+        { key: 'summarise_hypotheses', title: 'Summarise what failed', text: s(`before a third edit to ${f}, summarise what the earlier edits tried and why they did not work.`), trigger, claims: [{ polarity: 'do', act: 'summarise', object: o, when: 'before-edit' }] },
+      ];
+    }
+    case 'boundary': {
+      const ev: Trigger['event'] = 'resume_after_interrupt';
+      const named = objectTrigger(room, ev) ?? (wording ? { event: ev, constraintKey: constraintKeyOf(wording) } : { event: ev });
+      const generic = objectTrigger(room, ev) ?? { event: ev, generic: true };
+      const ow = objectWords(room);
+      const lineObj = room.object.kind === 'path' ? `path:${obj}` : room.object.kind === 'command' ? `cmd:${obj}` : 'boundary:stated';
+      const w = wording ? endStop(wording) : null;
+      return [
+        {
+          key: 'preserve_boundary',
+          title: 'Keep the stated line',
+          text: w ? s(`${w} Keep to this after any interruption, for the rest of the task.`) : s('when the user stops you and states a boundary, keep to it for the rest of the task.'),
+          trigger: named,
+          claims: w ? [{ polarity: polarityOf(w), act: room.object.kind === 'command' ? 'run' : 'edit', object: lineObj }] : [],
+        },
+        {
+          key: 'confirm_scope_before_edit',
+          title: 'Confirm the new scope',
+          text: s(room.object.kind === 'none' ? 'after the user interrupts, restate the revised scope in one line before the next edit.' : `after the user stops you during ${ow}, restate the revised scope in one line before the next step.`),
+          trigger: generic,
+          claims: [{ polarity: 'do', act: 'confirm-scope', object: lineObj, when: 'after-interrupt' }],
+        },
+        {
+          key: 'inspect_diff_against_boundary',
+          title: 'Check the diff',
+          text: s(room.object.kind === 'none' ? 'after an interruption, check the final diff against the boundary the user stated before reporting done.' : `after an interruption during ${ow}, check the final diff against the line the user drew before reporting done.`),
+          trigger: generic,
+          claims: [{ polarity: 'do', act: 'inspect-diff', object: lineObj, when: 'before-done' }],
+        },
+      ];
+    }
+    case 'directive': {
+      const ev: Trigger['event'] = ['resume_after_interrupt', 'directive_repeated'];
+      const trig = objectTrigger(room, ev) ?? (wording ? { event: ev, constraintKey: constraintKeyOf(wording) } : { event: ev });
+      const ow = objectWords(room);
+      const w = wording ? endStop(wording) : null;
+      let a: Draft;
+      if (room.narrowedTests && room.object.kind === 'command') {
+        const prog = obj.split(' ')[0]!;
+        a = {
+          key: 'standing_instruction',
+          title: 'A standing instruction',
+          text: s(`when testing with ${code(prog)}, run only the test file for the change; run the whole suite only when the user asks.`),
+          trigger: trig,
+          claims: [
+            { polarity: 'dont', act: 'run', object: 'tests:full', unless: 'the user asks' },
+            { polarity: 'do', act: 'run', object: 'tests:focused' },
+          ],
+        };
+      } else {
+        a = { key: 'standing_instruction', title: 'A standing instruction', text: w ? s(w) : s(`follow the instruction the user repeated about ${ow}.`), trigger: trig, claims: w ? suggestClaims(w) : [] };
+      }
+      const about = room.narrowedTests ? 'about running tests' : room.object.kind === 'text' ? 'from earlier in the task' : `about ${ow}`;
+      return [
+        a,
+        { key: 'reread_on_resume', title: 'Reread on resuming', text: s(`when resuming after an interruption or a context summary, reread the standing instructions ${about} before the next step.`), trigger: trig, claims: [{ polarity: 'do', act: 'reread-instructions', object: 'instructions', when: 'after-interrupt' }] },
+        {
+          key: 'record_at_handoff',
+          title: 'Carry it across handoffs',
+          text: s(`at a handoff or a context summary, write the user's standing constraint into the summary${w ? `: ${w}` : '.'}`),
+          trigger: trig,
+          claims: [{ polarity: 'do', act: 'record-constraint', object: 'handoff', when: 'at-handoff' }],
+        },
+      ];
+    }
+    case 'workflow': {
+      const wf = room.episodes.filter((e): e is WorkflowEpisode => e.type === 'workflow');
+      const progs = [...new Set(wf.map((e) => e.testProgram).filter(Boolean))];
+      const runner = progs.length === 1 ? ` with ${code(progs[0]!)}` : '';
+      const trigger: Trigger = { event: 'workflow_completed', workflowKey: wf[0]?.workflowKey ?? 'focused-test>diff-review>report' };
+      return [
+        { key: 'verification_gate', title: 'A verification gate', text: s(`before reporting a fix done, run the focused test for it${runner} and confirm it passes.`), trigger, claims: [{ polarity: 'do', act: 'run', object: 'tests:focused', when: 'before-done' }] },
+        { key: 'result_summary', title: 'A result-bearing report', text: s('when reporting done, say what changed and give the test result with its pass count.'), trigger, claims: [{ polarity: 'do', act: 'report', object: 'result-summary', when: 'before-done' }] },
+        {
+          key: 'mint_skill',
+          title: 'Mint it as a Skill',
+          text: s(`for the reviewed fix-and-verify workflow, use the ${code(VERIFY_SKILL_SLUG)} skill.`),
+          trigger,
+          claims: [
+            { polarity: 'do', act: 'run', object: 'tests:focused', when: 'before-done' },
+            { polarity: 'do', act: 'report', object: 'result-summary', when: 'before-done' },
+          ],
+          type: 'skill',
+          skillSlug: VERIFY_SKILL_SLUG,
+        },
+      ];
+    }
+  }
+}
+
+export interface DraftOptions {
+  scope?: Scope;
+  targets?: Targets;
+  /** The player's wording of the line (boundary and directive families). Defaults to the room's proposal. */
+  wording?: string | null;
+}
+
+/** Three response cards for a room, or none for an event room (a pivot has no card). */
+export function draftCards(room: Room, opts: DraftOptions = {}): Card[] {
+  if (room.kind === 'event') return [];
+  const scope: Scope = opts.scope ?? proposedScope(room);
   const targets = opts.targets ?? targetsFor(room.agents);
-  const boundary = opts.boundary ? sanitizeLine(opts.boundary) : null;
-  return drafts(room, scope, boundary).map((d) => {
-    const id = `r_${shortHash(`${room.family}|${d.key}|${JSON.stringify(scope)}|${JSON.stringify(d.trigger)}`)}`;
+  const raw = opts.wording !== undefined ? opts.wording : room.proposedConstraint;
+  const wording = raw ? sanitizeLine(raw) : null;
+  return drafts(room, scope, wording).map((d) => {
+    const prefix = d.type === 'skill' ? 's' : 'r';
+    const id = `${prefix}_${shortHash(`${room.family}|${room.object.key}|${d.key}|${JSON.stringify(scope)}|${JSON.stringify(d.trigger)}`)}`;
     const card: Card = {
       id,
-      type: 'rule',
-      family: room.family,
+      type: d.type ?? 'rule',
+      family: room.family as Family,
       title: d.title,
       targets,
       scope,
@@ -169,8 +224,10 @@ export function draftCards(room: Room, opts: { scope?: Scope; targets?: Targets;
       text: sanitizeLine(d.text),
       textRevision: 1,
       acceptedMappings: Object.freeze({}),
-      evidenceRefs: Object.freeze(room.episodes.map((e) => caseFor(e).evidenceRefs[0]!)),
+      evidenceRefs: Object.freeze(room.episodes.map((e) => ({ sessionId: e.sessionId, agent: e.agent, turn: e.turn, callId: null }))),
       taken: false,
+      claims: Object.freeze(d.claims.map((c) => Object.freeze({ ...c }))),
+      ...(d.skillSlug ? { skillSlug: d.skillSlug } : {}),
     };
     return Object.freeze(card);
   });
@@ -179,5 +236,3 @@ export function draftCards(room: Room, opts: { scope?: Scope; targets?: Targets;
 export function episodeById(episodes: Episode[], id: string): Episode | undefined {
   return episodes.find((e) => e.id === id);
 }
-
-export type { InterruptEpisode, RepeatedCommandEpisode };

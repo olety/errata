@@ -2,6 +2,7 @@
 // before it is stored, rendered or logged. Secrets become "[redacted:<kind>]" and are counted per session.
 
 import type { RedactionCounts } from './model';
+import { CUT_MARKER } from './model';
 
 export type RedactKind =
   | 'private-key'
@@ -111,6 +112,6 @@ export function redact(input: string, counts?: RedactionCounts): string {
 /** Truncate to a head window, then redact. A secret cut at the window edge is still caught or harmless. */
 export function redactBounded(input: string | null | undefined, limit: number, counts?: RedactionCounts): string {
   if (!input) return '';
-  const head = input.length > limit ? input.slice(0, limit) + '…' : input;
+  const head = input.length > limit ? input.slice(0, limit) + CUT_MARKER : input;
   return redact(head, counts);
 }

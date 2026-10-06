@@ -3,7 +3,7 @@
 
 import type { Agent } from '../model';
 import type { Card, ExportMap } from './types';
-import { budgetFor, fitProblem, parseGlobal, renderGlobal, weigh, type ManagedLine, type Weight } from './file';
+import { budgetFor, fitProblem, parseGlobal, renderGlobal, weigh, type ManagedLine, type ProtectedEdit, type Weight } from './file';
 
 export interface GlobalLane {
   agent: Agent;
@@ -84,7 +84,14 @@ function linesFor(original: Uint8Array | null, cards: readonly Card[], agent: Ag
   return out;
 }
 
-export function buildLane(lane: GlobalLane, original: Uint8Array | null, cards: readonly Card[], removed: ReadonlySet<string> = new Set(), raisedAllowance?: number): LaneResult {
+export function buildLane(
+  lane: GlobalLane,
+  original: Uint8Array | null,
+  cards: readonly Card[],
+  removed: ReadonlySet<string> = new Set(),
+  raisedAllowance?: number,
+  edits: readonly ProtectedEdit[] = [],
+): LaneResult {
   const p = parseGlobal(original);
   const budget = budgetFor(original);
   const before = weigh(original ?? new Uint8Array(0));
@@ -93,7 +100,7 @@ export function buildLane(lane: GlobalLane, original: Uint8Array | null, cards: 
     return { lane, original, next: original ?? new Uint8Array(0), before, after: before, allowance: budget.allowance, noGrowth: budget.noGrowth, problem: lane.blocker ? null : p.problem, blocker: lane.blocker };
   }
   const lines = linesFor(original, cards, lane.agent, removed);
-  const next = renderGlobal(p, lines);
+  const next = renderGlobal(p, lines, edits);
   return {
     lane,
     original,

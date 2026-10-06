@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { allCalls, OVERSIZED_SESSION_BYTES, projectFromCwd } from '../src/model';
+import { allCalls, CUT_MARKER, MAX_LINE_BYTES, TEXT_LIMITS, projectFromCwd } from '../src/model';
 import { parseLines, parseSessionFile } from '../src/parse/index';
 import { CC, CX, fixture } from './helpers';
 
@@ -165,19 +165,46 @@ describe('robustness', () => {
     expect(Object.values(s.stats.redactions).reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(3);
   });
 
-  test('oversized sessions are read as header + tail window and marked partial', async () => {
+  test('a big session is read in full: no tail window, every turn kept, progress reported per chunk', async () => {
     const head = JSON.stringify({ timestamp: 't0', type: 'session_meta', payload: { id: 'big', cwd: '/home/dev/big', originator: 'codex_cli_rs' } });
+    const first = JSON.stringify({ timestamp: 't1', type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'first words' }] } });
     const filler = JSON.stringify({ timestamp: 't', type: 'event_msg', payload: { type: 'token_count', pad: 'x'.repeat(4000) } });
     const tail = JSON.stringify({ timestamp: 't9', type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'final words' }] } });
-    const n = Math.ceil(OVERSIZED_SESSION_BYTES / filler.length) + 10;
-    const blob = new Blob([head + '\n', (filler + '\n').repeat(n), tail + '\n']);
-    const s = await parseSessionFile({ rel: 'rollout-big.jsonl', blob });
+    const n = 9000; // ~36 MB, bigger than the old 24 MiB tail threshold
+    const blob = new Blob([head + '\n', first + '\n', (filler + '\n').repeat(n), tail + '\n']);
+    const seen: number[] = [];
+    const s = await parseSessionFile({ rel: 'rollout-big.jsonl', blob }, undefined, { onBytes: (b) => seen.push(b) });
     expect(s.id).toBe('codex:big');
-    expect(s.partial).toBe(true);
-    expect(s.partialReason).toBe('tail-window');
-    expect(s.gaps[0]!.kind).toBe('tail-window');
-    expect(s.turns.at(-1)!.text).toBe('final words');
-    expect(s.stats.lines).toBeLessThan(n);
+    expect(s.partial).toBe(false);
+    expect(s.gaps).toEqual([]);
+    expect(s.turns.filter((t) => t.role === 'human').map((t) => t.text)).toEqual(['first words', 'final words']);
+    expect(s.stats.lines).toBe(n + 3);
+    expect(seen.length).toBeGreaterThan(1);
+    expect(seen.at(-1)).toBe(blob.size);
+  });
+
+  test('the read is cancellable between chunks', async () => {
+    const filler = JSON.stringify({ timestamp: 't', type: 'event_msg', payload: { type: 'token_count', pad: 'x'.repeat(4000) } });
+    const blob = new Blob([(filler + '\n').repeat(4000)]);
+    const ac = new AbortController();
+    const p = parseSessionFile({ rel: 'rollout-x.jsonl', blob }, undefined, { signal: ac.signal, onBytes: (b) => b > 1_000_000 && ac.abort() });
+    await expect(p).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  test('an oversized row is dropped, counted and becomes a gap; the rows around it still parse', async () => {
+    const u = (text: string) => JSON.stringify({ type: 'user', sessionId: 's', timestamp: '2026-10-01T00:00:00.000Z', message: { role: 'user', content: text } });
+    const huge = JSON.stringify({ type: 'user', sessionId: 's', message: { role: 'user', content: 'y'.repeat(MAX_LINE_BYTES + 10) } });
+    const s = await parseSessionFile({ rel: 's.jsonl', blob: new Blob([u('before') + '\n', huge + '\n', u('after') + '\n']) });
+    expect(s.stats.oversizedRows).toBe(1);
+    expect(s.gaps.map((g) => g.kind)).toEqual(['oversized-row']);
+    expect(s.turns.map((t) => t.text)).toEqual(['before', 'after']);
+  });
+
+  test('retained text is capped at 4 KB with a cut marker', () => {
+    const long = 'word '.repeat(2000);
+    const s = parseLines('claude', 's.jsonl', [JSON.stringify({ type: 'user', sessionId: 's', message: { role: 'user', content: long } })]);
+    expect(s.turns[0]!.text.length).toBe(TEXT_LIMITS.message + CUT_MARKER.length);
+    expect(s.turns[0]!.text.endsWith(CUT_MARKER)).toBe(true);
   });
 
   test('project chips: homes and drive roots are not projects', () => {

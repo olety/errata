@@ -1,14 +1,12 @@
 // Incremental JSONL line reading. Never holds a whole file; never JSON.parses a whole file.
-// Oversized sessions are read as header line + a complete-line tail window (spec §1).
+// Every file is read in full, chunk by chunk; rows above MAX_LINE_BYTES are dropped and reported.
 
-import { MAX_LINE_BYTES, OVERSIZED_SESSION_BYTES, TAIL_WINDOW_BYTES } from '../model';
+import { MAX_LINE_BYTES } from '../model';
 
 export interface LineSink {
   line(text: string): void;
   /** A row above MAX_LINE_BYTES was skipped. */
   oversized(): void;
-  /** The middle of the file was skipped (oversized-session tail rule). */
-  gap?(): void;
 }
 
 /** Splits a byte stream into UTF-8 lines. Rows longer than maxLine are dropped and reported. */
@@ -16,13 +14,11 @@ export class LineSplitter {
   private parts: Uint8Array[] = [];
   private partBytes = 0;
   private dropping = false;
-  private skipFirst: boolean;
   private decoder = new TextDecoder('utf-8');
   constructor(
     private sink: LineSink,
-    opts: { skipFirstPartial?: boolean; maxLine?: number } = {},
+    opts: { maxLine?: number } = {},
   ) {
-    this.skipFirst = opts.skipFirstPartial ?? false;
     this.maxLine = opts.maxLine ?? MAX_LINE_BYTES;
   }
   private maxLine: number;
@@ -63,11 +59,6 @@ export class LineSplitter {
   }
 
   private emit(): void {
-    if (this.skipFirst) {
-      this.skipFirst = false;
-      this.reset();
-      return;
-    }
     if (this.dropping) {
       this.sink.oversized();
       this.reset();
@@ -103,54 +94,45 @@ export interface BlobLike {
   stream(): ReadableStream<Uint8Array>;
 }
 
-async function pump(blob: BlobLike, splitter: LineSplitter, stopAfterFirstLine?: () => boolean): Promise<void> {
-  const reader = blob.stream().getReader();
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      splitter.push(value);
-      if (stopAfterFirstLine?.()) break;
-    }
-  } finally {
-    reader.releaseLock?.();
-  }
+export interface ReadOptions {
+  /** Aborts the read between chunks; the promise rejects with an AbortError. */
+  signal?: AbortSignal;
+  /** Called after every chunk with the bytes read so far in this file. */
+  onBytes?: (bytesRead: number) => void;
 }
 
 export interface ReadOutcome {
-  /** 'tail-window' when the middle of the file was skipped. */
-  window: 'full' | 'tail-window';
   /** The file did not end with a newline (possibly still being written or cut). */
   unterminated: boolean;
+  bytesRead: number;
 }
 
-/** Feed every line of a session file into sink, applying the oversized-session tail rule. */
-export async function readSessionLines(blob: BlobLike, sink: LineSink, opts: { fullRead?: boolean } = {}): Promise<ReadOutcome> {
-  if (blob.size <= OVERSIZED_SESSION_BYTES || opts.fullRead) {
-    const sp = new LineSplitter(sink);
-    await pump(blob, sp);
-    return { window: 'full', unterminated: sp.end() };
+export function abortError(): Error {
+  const e = new Error('The import was cancelled.');
+  e.name = 'AbortError';
+  return e;
+}
+
+/**
+ * Feed every line of a session file into sink: a full, incremental read (no tail window).
+ * Memory stays bounded by the row cap (MAX_LINE_BYTES) plus what the parser chooses to keep.
+ */
+export async function readSessionLines(blob: BlobLike, sink: LineSink, opts: ReadOptions = {}): Promise<ReadOutcome> {
+  const sp = new LineSplitter(sink);
+  const reader = blob.stream().getReader();
+  let bytesRead = 0;
+  try {
+    for (;;) {
+      if (opts.signal?.aborted) throw abortError();
+      const { done, value } = await reader.read();
+      if (done) break;
+      sp.push(value);
+      bytesRead += value.length;
+      opts.onBytes?.(bytesRead);
+    }
+  } finally {
+    if (opts.signal?.aborted) await reader.cancel().catch(() => undefined);
+    reader.releaseLock?.();
   }
-  // Header: the first complete line (session_meta for Codex; first rows for Claude Code).
-  let got = false;
-  const headSink: LineSink = {
-    line: (t) => {
-      if (!got) {
-        got = true;
-        sink.line(t);
-      }
-    },
-    oversized: () => {
-      if (!got) {
-        got = true;
-        sink.oversized();
-      }
-    },
-  };
-  await pump(blob.slice(0, Math.min(blob.size, MAX_LINE_BYTES + 1)), new LineSplitter(headSink), () => got);
-  // Tail: drop the first (partial) line of the window.
-  sink.gap?.();
-  const sp = new LineSplitter(sink, { skipFirstPartial: true });
-  await pump(blob.slice(blob.size - TAIL_WINDOW_BYTES), sp);
-  return { window: 'tail-window', unterminated: sp.end() };
+  return { unterminated: sp.end(), bytesRead };
 }

@@ -3,7 +3,8 @@
 import type { Agent, Session } from '../model';
 import { ClaudeParser, type ParseMeta } from './claude';
 import { CodexParser } from './codex';
-import { readSessionLines, type BlobLike } from './lines';
+import { readSessionLines, type BlobLike, type ReadOptions } from './lines';
+import { annotateSession } from '../noise';
 
 export interface SessionFile {
   /** Path relative to the granted root, '/'-separated (used for agent detection and subagent tagging). */
@@ -29,23 +30,19 @@ export function agentForFirstLine(line: string): Agent | null {
   return null;
 }
 
-export async function parseSessionFile(f: SessionFile, agent?: Agent, opts: { fullRead?: boolean } = {}): Promise<Session> {
+/** Parse one session file with a full incremental read. Cancellable through opts.signal. */
+export async function parseSessionFile(f: SessionFile, agent?: Agent, opts: ReadOptions = {}): Promise<Session> {
   const name = f.rel.split('/').pop() ?? f.rel;
   const a = agent ?? agentForPath(f.rel);
   const meta: ParseMeta = { file: name, agentAuthored: /(^|\/)subagents\//.test(f.rel) || /^agent-/.test(name) };
   const parser = a === 'codex' ? new CodexParser(meta) : new ClaudeParser(meta);
-  const out = await readSessionLines(f.blob, { line: (t) => parser.push(t), oversized: () => parser.oversized(), gap: () => parser.tailGap() }, opts);
-  const s = parser.finish();
-  if (out.window === 'tail-window') {
-    s.partial = true;
-    s.partialReason = 'tail-window';
-  }
-  return s;
+  await readSessionLines(f.blob, { line: (t) => parser.push(t), oversized: () => parser.oversized() }, opts);
+  return annotateSession(parser.finish());
 }
 
 /** Parse lines already in memory (tests, fixtures). */
 export function parseLines(agent: Agent, file: string, lines: string[], agentAuthored = false): Session {
   const parser = agent === 'codex' ? new CodexParser({ file, agentAuthored }) : new ClaudeParser({ file, agentAuthored });
   for (const l of lines) if (l.trim()) parser.push(l);
-  return parser.finish();
+  return annotateSession(parser.finish());
 }

@@ -36,21 +36,26 @@ export function fingerprintHasPrefix(fp: string, prefix: string): boolean {
   return fp === p || fp.startsWith(p + ' ');
 }
 
+/** "src/" matches "src/a.ts" and "src/" itself; a path without a trailing slash matches only itself. */
+export function pathHasPrefix(path: string, prefix: string): boolean {
+  const p = prefix.trim();
+  if (p === '') return true;
+  return p.endsWith('/') ? path.startsWith(p) || path + '/' === p : path === p;
+}
+
 export function evalTrigger(t: Readonly<Trigger>, f: CaseFacts): Tri {
   if (f.event === undefined) return 'unknown';
-  if (f.event !== t.event) return 'false';
-  if (t.commandPrefix !== undefined) {
-    if (f.fingerprint === undefined) return 'unknown';
-    if (!fingerprintHasPrefix(f.fingerprint, t.commandPrefix)) return 'false';
-  }
-  if (t.event === 'resume_after_interrupt') {
-    if (t.constraintKey !== undefined) {
-      if (f.constraintKey === undefined) return 'unknown';
-      if (f.constraintKey !== t.constraintKey) return 'false';
-    } else if (t.generic !== true) {
-      return 'unknown'; // a boundary card must name its constraint or be approved as generic
-    }
-  }
+  const events = typeof t.event === 'string' ? [t.event] : t.event;
+  if (!events.includes(f.event)) return 'false';
+  const parts: Tri[] = [];
+  if (t.commandPrefix !== undefined) parts.push(f.fingerprint === undefined ? 'unknown' : fingerprintHasPrefix(f.fingerprint, t.commandPrefix) ? 'true' : 'false');
+  if (t.pathPrefix !== undefined) parts.push(f.path === undefined ? 'unknown' : pathHasPrefix(f.path, t.pathPrefix) ? 'true' : 'false');
+  if (t.workflowKey !== undefined) parts.push(f.workflowKey === undefined ? 'unknown' : f.workflowKey === t.workflowKey ? 'true' : 'false');
+  if (t.constraintKey !== undefined) parts.push(f.constraintKey === undefined ? 'unknown' : f.constraintKey === t.constraintKey ? 'true' : 'false');
+  if (parts.includes('false')) return 'false';
+  if (parts.includes('unknown')) return 'unknown';
+  // A trigger that names no object at all must be approved as generic, or it is unknown, never true.
+  if (parts.length === 0 && t.generic !== true) return 'unknown';
   return 'true';
 }
 
@@ -61,6 +66,9 @@ function exceptionHolds(when: Card['exceptions'][number]['when'], c: Case): Tri 
   }
   if (when.projectKey !== undefined) {
     parts.push(c.projectKey === null ? 'unknown' : c.projectKey === when.projectKey ? 'true' : 'false');
+  }
+  if (when.pathPrefix !== undefined) {
+    parts.push(c.facts.path === undefined ? 'unknown' : pathHasPrefix(c.facts.path, when.pathPrefix) ? 'true' : 'false');
   }
   if (parts.length === 0) return 'unknown'; // an exception with no predicate cannot be evaluated
   if (parts.includes('false')) return 'false';
@@ -86,8 +94,9 @@ export function cover(card: Card, c: Case, exported: ExportMap): CoverResult {
     in_export: card.type !== 'trait' && exported[c.agent].has(card.id) ? 'true' : 'false',
     targets_agent: card.targets === 'both' || card.targets === c.agent ? 'true' : 'false',
     scope_matches: scopeMatches(card.scope, c.projectKey),
-    trigger_true: evalTrigger(card.trigger, c.facts),
-    response_eligible: c.eligibleResponseKeys.includes(card.responseKey) ? 'true' : 'false',
+    // A suggested mapping on imported prose is not a mapping until the player accepts it.
+    trigger_true: card.mappingSuggested ? 'unknown' : evalTrigger(card.trigger, c.facts),
+    response_eligible: card.responseKey !== 'unmapped' && c.eligibleResponseKeys.includes(card.responseKey) ? 'true' : 'false',
     exceptions_clear: exceptionsClear(card, c),
     mapping_accepted: accepted === undefined ? 'unknown' : accepted === cardDigest(card) ? 'true' : 'false',
   };

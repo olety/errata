@@ -39,6 +39,8 @@ export interface Turn {
   interrupt?: InterruptKind;
   /** Tool calls the assistant made in this turn, in call order. Only assistant turns carry calls. */
   calls: ToolCall[];
+  /** Assistant turns: source position of the last text appended, so text can be ordered against calls. */
+  lastTextSeq?: number;
 }
 
 export type ToolKind = 'shell' | 'edit' | 'read' | 'search' | 'agent' | 'other';
@@ -55,8 +57,12 @@ export interface ToolResult {
   ts: string | null;
   status: ResultStatus;
   exitCode: number | null;
-  /** Redacted head of the output, bounded (see TEXT_LIMITS). */
+  /** Redacted head of the output, bounded (see TEXT_LIMITS). Bulk output is cut back after detection. */
   text: string;
+  /** Where the status came from: an exit code or harness flag (default), or an observable output pattern. */
+  statusFrom?: 'output';
+  /** A named negative from the noise filter (src/noise.ts): looks like a failure, is not one. */
+  negative?: import('./noise').NegativeKind;
 }
 
 export interface ToolCall {
@@ -97,7 +103,7 @@ export interface SessionStats {
 export interface Gap {
   /** The gap sits right after this source position (0 = before the first line). */
   afterSeq: number;
-  kind: 'bad-line' | 'oversized-row' | 'tail-window';
+  kind: 'bad-line' | 'oversized-row';
 }
 
 export interface Session {
@@ -124,17 +130,20 @@ export interface Session {
   source: string | null;
   /** Agent-authored thread (Claude subagent file, Codex subagent thread). Its user turns are not human. */
   agentAuthored: boolean;
-  /** True when the session was read through a tail window or has a truncated last line. */
+  /** True when the session has a truncated last line. Partial sessions are never bridged for pairing, counting or durations. */
   partial: boolean;
-  partialReason: 'tail-window' | 'truncated-line' | 'bad-lines' | null;
+  partialReason: 'truncated-line' | 'bad-lines' | null;
   gaps: Gap[];
   turns: Turn[];
   stats: SessionStats;
 }
 
+/** Appended to any retained text that was cut at its limit. */
+export const CUT_MARKER = ' …[cut]';
+
 export const TEXT_LIMITS = {
-  /** Human and assistant message text kept per turn. */
-  message: 4000,
+  /** Human and assistant message text kept per turn (the 4 KB cap; longer text ends with CUT_MARKER). */
+  message: 4096,
   /** Tool input summary. */
   input: 1200,
   /** Tool result head. */
@@ -143,11 +152,10 @@ export const TEXT_LIMITS = {
 
 /** Rows above this are dropped and counted, never parsed. */
 export const MAX_LINE_BYTES = 8 * 1024 * 1024;
-/** Sessions above this are read as header line + complete-line tail window. */
-export const OVERSIZED_SESSION_BYTES = 24 * 1024 * 1024;
-export const TAIL_WINDOW_BYTES = 8 * 1024 * 1024;
-/** Total import budget across all selected files. */
-export const MAX_IMPORT_BYTES = 128 * 1024 * 1024;
+/** Soft guide for one run: above it the player sees a warning and may continue anyway. Never a stop. */
+export const SOFT_IMPORT_BYTES = 128 * 1024 * 1024;
+/** Measured full-read throughput under Bun on the owner's logs (1,288 MiB in 21 s), used for the time estimate. */
+export const READ_BYTES_PER_SEC = 60 * 1024 * 1024;
 
 /** All calls in a session, in order. */
 export function allCalls(s: Session): ToolCall[] {
