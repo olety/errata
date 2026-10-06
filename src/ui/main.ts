@@ -815,7 +815,10 @@ function viewCampfire(): HTMLElement {
       const t = ex.value.trim();
       if (t) set({ deck: resolveConflict(S.deck, c, { kind: 'exception', on, text: t, when: {} }) });
     };
-    const short = (id: string) => textOf(id).slice(0, 40) + (textOf(id).length > 40 ? '…' : '');
+    const short = (id: string) => {
+      const t = textOf(id).replace(/`/g, '');
+      return t.slice(0, 40) + (t.length > 40 ? '…' : '');
+    };
     return h(
       'div',
       { class: 'card conflict' },
