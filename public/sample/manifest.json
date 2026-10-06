@@ -289,6 +289,25 @@
       "authored_event_count": 5,
       "sourced_tool_count": 1,
       "authored_tool_count": 2
+    },
+    {
+      "session": "S12",
+      "session_id": "8eb57076-17e9-4541-a427-32d778768e67",
+      "agent": "codex",
+      "project": "P1",
+      "repo": "Pylons/pyramid",
+      "cwd": "/home/sample/pyramid",
+      "git_branch": "main",
+      "file": "home/.codex/sessions/2026/10/05/rollout-2026-10-05T15-12-00-8eb57076-17e9-4541-a427-32d778768e67.jsonl",
+      "date": "2026-10-05",
+      "record_count": 16,
+      "logical_event_count": 7,
+      "script_contract_satisfied": true,
+      "missing_requirements": [],
+      "sourced_event_count": 0,
+      "authored_event_count": 7,
+      "sourced_tool_count": 0,
+      "authored_tool_count": 3
     }
   ],
   "attribution": [
@@ -326,7 +345,10 @@
       "min": 20,
       "max": 90
     },
-    "first_record_time": "10:12:00Z",
+    "default_first_record_time": "10:12:00Z",
+    "first_record_time_overrides": {
+      "S12": "15:12:00Z"
+    },
     "source_times_copied": false,
     "token_counts": "Claude usage omitted; Codex token_count fields all zero; no real token counts copied",
     "uuid_generation": "seeded random 128 bits with UUIDv4 version/variant forced"
@@ -1217,6 +1239,147 @@
       "call_id": "call_b80947711d824a8692fa5b3f1c8c4ae5",
       "interrupted": false,
       "source_result_copied": false
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 1,
+      "origin": "authored",
+      "authored_kind": "authored-shape-metadata",
+      "record_type": "session_meta",
+      "payload_type": null
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 2,
+      "origin": "authored",
+      "authored_kind": "authored-shape-metadata",
+      "record_type": "turn_context",
+      "payload_type": null
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 3,
+      "origin": "authored",
+      "authored_kind": "authored-lifecycle",
+      "record_type": "event_msg",
+      "payload_type": "task_started"
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 4,
+      "origin": "authored",
+      "authored_kind": "authored",
+      "text": "fix the failing `TestHTTPException::test_ctor_calls_Response_ctor` please"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S12",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_ceba9a80b719439eaffe66b8bba4e78b",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": 2,
+      "jsonl_line_one_based": 6,
+      "origin": "authored",
+      "authored_kind": "authored",
+      "record_type": "event_msg",
+      "payload_type": "turn_aborted"
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": 3,
+      "jsonl_line_one_based": 7,
+      "origin": "authored",
+      "authored_kind": "authored",
+      "text": "one file only, again."
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 8,
+      "origin": "authored",
+      "authored_kind": "authored-shape-metadata",
+      "record_type": "turn_context",
+      "payload_type": null
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 9,
+      "origin": "authored",
+      "authored_kind": "authored-lifecycle",
+      "record_type": "event_msg",
+      "payload_type": "task_started"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S12",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 10,
+      "result_jsonl_line_one_based": 11,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_b994ad6ebf754fa193038b0f0e3a1610",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S12",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 12,
+      "result_jsonl_line_one_based": 13,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_55ab37aa1dec4d429e5272b38a582810",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": 6,
+      "jsonl_line_one_based": 14,
+      "origin": "authored",
+      "authored_kind": "authored",
+      "text": "Updated the response-constructor test to check status 520. Ran only pyramid/tests/test_httpexceptions.py: 50 passed."
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 15,
+      "origin": "authored",
+      "authored_kind": "authored-zero-token-counts",
+      "record_type": "event_msg",
+      "payload_type": "token_count"
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": null,
+      "jsonl_line_one_based": 16,
+      "origin": "authored",
+      "authored_kind": "authored-lifecycle",
+      "record_type": "event_msg",
+      "payload_type": "task_complete"
     }
   ],
   "tool_events": [
@@ -2062,6 +2225,51 @@
       "result_jsonl_line_one_based": 8,
       "fixture_tool_name": "Bash",
       "call_id": "call_b80947711d824a8692fa5b3f1c8c4ae5",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S12",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_ceba9a80b719439eaffe66b8bba4e78b",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S12",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 10,
+      "result_jsonl_line_one_based": 11,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_b994ad6ebf754fa193038b0f0e3a1610",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S12",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 12,
+      "result_jsonl_line_one_based": 13,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_55ab37aa1dec4d429e5272b38a582810",
       "interrupted": false,
       "source_result_copied": false
     }
@@ -3161,6 +3369,84 @@
       "call_id": "call_b80947711d824a8692fa5b3f1c8c4ae5",
       "interrupted": false,
       "source_result_copied": false
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": 0,
+      "jsonl_line_one_based": 4,
+      "origin": "authored",
+      "authored_kind": "authored",
+      "text": "fix the failing `TestHTTPException::test_ctor_calls_Response_ctor` please"
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S12",
+      "logical_event_index_zero_based": 1,
+      "call_jsonl_line_one_based": 5,
+      "result_jsonl_line_one_based": null,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_ceba9a80b719439eaffe66b8bba4e78b",
+      "interrupted": true,
+      "source_result_copied": false
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": 2,
+      "jsonl_line_one_based": 6,
+      "origin": "authored",
+      "authored_kind": "authored",
+      "record_type": "event_msg",
+      "payload_type": "turn_aborted"
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": 3,
+      "jsonl_line_one_based": 7,
+      "origin": "authored",
+      "authored_kind": "authored",
+      "text": "one file only, again."
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S12",
+      "logical_event_index_zero_based": 4,
+      "call_jsonl_line_one_based": 10,
+      "result_jsonl_line_one_based": 11,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_b994ad6ebf754fa193038b0f0e3a1610",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "origin": "authored",
+      "authored_kind": "tool",
+      "is_error": false,
+      "output_limit_chars": 512,
+      "disclosure": "Script-authored call and output; not a dataset observation or a local execution.",
+      "session": "S12",
+      "logical_event_index_zero_based": 5,
+      "call_jsonl_line_one_based": 12,
+      "result_jsonl_line_one_based": 13,
+      "fixture_tool_name": "Bash",
+      "call_id": "call_55ab37aa1dec4d429e5272b38a582810",
+      "interrupted": false,
+      "source_result_copied": false
+    },
+    {
+      "session": "S12",
+      "logical_event_index_zero_based": 6,
+      "jsonl_line_one_based": 14,
+      "origin": "authored",
+      "authored_kind": "authored",
+      "text": "Updated the response-constructor test to check status 520. Ran only pyramid/tests/test_httpexceptions.py: 50 passed."
     }
   ],
   "event_count_convention": "One logical event per script beat; tool call/result is one event. Per-session authored counts include human/assistant text and interruption markers but exclude transport/lifecycle metadata. Tool-only counts are also supplied.",
@@ -3179,6 +3465,12 @@
       "module": "datalad/config.py",
       "test_file": "test_json_overrides.py",
       "baseline": "Module state with both DATALAD_CONFIG_OVERRIDES and DATALAD_CONFIG_OVERRIDES_JSON branches; successive hunks extract shared JSON parsing into a helper."
+    },
+    "S12": {
+      "test_name": "TestHTTPException::test_ctor_calls_Response_ctor",
+      "test_file": "pyramid/tests/test_httpexceptions.py",
+      "patch_file": "pyramid/tests/test_httpexceptions.py",
+      "mapping": "The real constructor test and path are confirmed in the cached P1 source. The small authored hunk changes its obsolete None None status assertion to status_int 520, matching the constructor fallback retained in S11. This is an authored fixture event, not a copied dataset transaction or locally observed test fix. The tests/<file>.py template binds to the real pyramid/tests/ path."
     }
   },
   "gap_closures": [
@@ -3427,6 +3719,30 @@
         "covered_by_claude_only_card": true,
         "covered_by_P2_scoped_card": false
       }
+    },
+    {
+      "session": "S12",
+      "expects": {
+        "episode_type": 1,
+        "withheld_from_room": true,
+        "boss_replay": true,
+        "distinct_case_of": "S01",
+        "family": "repeated genuine directive",
+        "other_agent_than": "S01",
+        "room_scope": "global",
+        "card_scope": "global",
+        "card_targets": [
+          "claude",
+          "codex"
+        ],
+        "covered_by_shared_card": true,
+        "covered_by_global_both_target_card": true,
+        "covered_by_claude_only_card": false,
+        "remains_open_if_targets": [
+          "claude"
+        ],
+        "receipt": "one file only, again."
+      }
     }
   ],
   "expected_outcomes_status": "All script evidence is present and checked by verify.py; downstream parser/game outcomes remain expectations, not measured game results.",
@@ -3443,21 +3759,31 @@
   },
   "tutorial_assertions": {
     "character": "Boundary Keeper",
-    "expected_boundary_interventions": 5,
-    "expected_all_interventions": 6,
-    "explicit_interrupt_pairs_in_script": 6,
+    "expected_boundary_interventions": 6,
+    "expected_all_interventions": 7,
+    "explicit_interrupt_pairs_in_script": 7,
     "boundary_sessions": [
       "S01",
       "S03",
       "S06",
       "S10",
-      "S11"
+      "S11",
+      "S12"
     ],
     "pivot_sessions": [
       "S02"
     ],
-    "display": "5 of 6 interventions drew a line around what the agent may run or touch",
-    "disposition": "Denominator agrees with the six scripted interrupt-to-human pairs; describes the synthetic sampled build, not the person."
+    "display": "6 stops in 12 sessions · 5 cut off a full test run",
+    "disposition": "Counts are recounted from actual session events: six boundary/test stops, five interrupted full-suite pytest calls, and twelve sessions. S02 is a pivot, not a stop; including it gives seven interruption pairs. Describes the synthetic sampled build, not the person.",
+    "expected_session_count": 12,
+    "expected_full_suite_cutoffs": 5,
+    "full_suite_cutoff_sessions": [
+      "S01",
+      "S03",
+      "S06",
+      "S11",
+      "S12"
+    ]
   },
   "shape_validation": {
     "probe": "design/probe-findings.md",

@@ -5,7 +5,8 @@
 import type { InjectedKind, Session } from './model';
 import { allCalls } from './model';
 import type { Episode } from './episodes';
-import { negativeCounts, isGenuineFailure, type NegativeKind } from './noise';
+import { negativeCounts, isGenuineFailure, isFocusedTest, isTestCommand, type NegativeKind } from './noise';
+import { commandPrefixOf, fingerprint } from './parse/common';
 import type { Room } from './rooms';
 import type { Dispositions } from './rooms';
 
@@ -133,8 +134,18 @@ export function character(m: Mirror, episodes: Episode[], total: number): Charac
   const lineSessions = sess((e) => e.type === 'interrupt' && e.humanTurn !== null && e.reply === 'line');
   const pivotSessions = sess((e) => e.type === 'interrupt' && e.humanTurn !== null && e.reply === 'pivot');
   const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  // Boundary Keeper's line is counts only: stops that drew a line, and what most of them cut off.
+  const stops = episodes.filter((e): e is Extract<Episode, { type: 'interrupt' }> => e.type === 'interrupt' && e.humanTurn !== null && e.reply === 'line');
+  const cutoff = new Map<string, number>();
+  for (const e of stops) {
+    const c = e.interruptedCall;
+    const what = !c ? null : c.kind === 'shell' && c.command ? (isTestCommand(c.command) && !isFocusedTest(c.command) ? 'a full test run' : `\`${commandPrefixOf(fingerprint(c.command))}\``) : c.kind === 'edit' ? 'an edit' : null;
+    if (what) cutoff.set(what, (cutoff.get(what) ?? 0) + 1);
+  }
+  const top = [...cutoff.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+  const stopLine = `${plural(stops.length, 'stop')} in ${plural(total, 'session')}${top && top[1] >= 2 ? ` · ${top[1]} cut off ${top[0]}` : ''}`;
   const table: Record<CharacterName, { n: number; line: string }> = {
-    'Boundary Keeper': { n: lineSessions, line: `${m.interventions.lines} of ${plural(m.interventions.total, 'intervention')} drew a line around what the agent may run or touch` },
+    'Boundary Keeper': { n: lineSessions, line: stopLine },
     'Ritual Smith': { n: m.workflows.sessions, line: `The same check, diff and report sequence ran in ${m.workflows.sessions} of ${plural(total, 'session')}` },
     Patchsmith: { n: m.editSequences.sessionsWith, line: `${m.editSequences.sessionsWith} of ${plural(total, 'session')} had three or more edits to one file` },
     'Anvil Striker': { n: m.repeatedCommand.sessionsWith, line: `A failed command ran again unchanged in ${m.repeatedCommand.sessionsWith} of ${plural(total, 'session')}` },

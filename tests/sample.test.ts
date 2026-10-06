@@ -29,7 +29,7 @@ const manifest = JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8')) a
   projects: Record<string, { name: string }>;
   expected_outcomes: { session: string; expects: Record<string, unknown> }[];
   deck_assertions: Record<string, unknown>;
-  tutorial_assertions: { character: string; display: string; expected_all_interventions: number; expected_boundary_interventions: number };
+  tutorial_assertions: { character: string; display: string; expected_all_interventions: number; expected_boundary_interventions: number; expected_session_count: number; expected_full_suite_cutoffs: number };
 };
 const expects = (sid: string) => manifest.expected_outcomes.find((x) => x.session === sid)!.expects as Record<string, any>;
 const CLAUDE_MD = readFileSync(join(ROOT, 'home/.claude/CLAUDE.md'));
@@ -60,10 +60,10 @@ const deckWith = (cards: Card[]): DeckState => withCards(newDeck(CLAUDE_MD, AGEN
 const coversIn = (d: DeckState, card: Card, c: Case) => cover(card, c, deckExportMap(d, renderLanes(d)));
 
 describe('manifest: per-session expected outcomes', () => {
-  test('the manifest is the synthetic sample and names eleven sessions', () => {
+  test('the manifest is the synthetic sample and every session in it is parsed', () => {
     expect(manifest.label).toBe('synthetic sample');
-    expect(manifest.sessions.length).toBe(11);
-    expect(A.sessions.length).toBe(11);
+    expect(manifest.sessions.length).toBe(manifest.tutorial_assertions.expected_session_count);
+    expect(A.sessions.length).toBe(manifest.sessions.length);
   });
 
   test('S01: interrupt → directive is the anchor of the repeated-directive room, corroborated by S03 and S06', () => {
@@ -219,6 +219,30 @@ describe('manifest: per-session expected outcomes', () => {
     expect(coversIn(deckWith([claudeOnly]), claudeOnly, c).covers).toBe(x.covered_by_claude_only_card);
     const p2 = take(updateCard(base, { scope: { kind: 'project', projectKey: projectKey('P2'), label: 'datalad' } }), [c]);
     expect(coversIn(deckWith([p2]), p2, c).covers).toBe(x.covered_by_P2_scoped_card);
+  });
+});
+
+describe('manifest: S12', () => {
+  test('S12: a later Codex case of the S01 directive, withheld; a global card for both agents covers it, a Claude-only card does not', () => {
+    const x = expects('S12');
+    const r = directiveRoom();
+    const e = r.withheld.find((y) => labelOf.get(y.sessionId) === 'S12')!;
+    expect(!!e).toBe(x.withheld_from_room);
+    expect(e.type).toBe('interrupt');
+    expect(e.receipt.quote).toBe(x.receipt);
+    expect(e.agent).not.toBe(byLabel.get(x.distinct_case_of)!.agent);
+    expect(r.projectKey).toBeNull(); // the room is not project-bound
+    const base = draftCards(r)[0]!;
+    expect(base.scope.kind).toBe(x.card_scope);
+    expect([...x.card_targets].sort()).toEqual(['claude', 'codex']);
+    const c = issue(caseFor(e, r));
+    const shared = take(base, [c]);
+    expect(coversIn(deckWith([shared]), shared, c).covers).toBe(x.covered_by_shared_card);
+    const claudeOnly = take(updateCard(base, { targets: 'claude' }), [c]);
+    const res = coversIn(deckWith([claudeOnly]), claudeOnly, c);
+    expect(res.covers).toBe(x.covered_by_claude_only_card);
+    expect(res.checks.targets_agent).toBe('false');
+    expect(A.route.nodes.find((n) => n.kind === 'boss')!.rooms).toContain(r.key);
   });
 });
 
