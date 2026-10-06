@@ -496,6 +496,7 @@ export function selectRoom(s: PlayState, roomKey?: string): C.RoomView | null {
     hand: p.phase === 'dealt' ? hand.map((c) => cardView(s, c, { room: draftRoom(s, r), heads: ctxHeads })) : [],
     unavailable: unavailable.map((u) => cardView(s, u.card, { room: draftRoom(s, r), heads: ctxHeads, unavailable: u.reasons })),
     books: selectBooks(s),
+    deck: presentCards(s.deck).filter((c) => c.type !== 'trait').map((c) => cardView(s, c)),
     piles: selectPiles(s),
     route: selectRoute(s),
     status: selectStatus(s),

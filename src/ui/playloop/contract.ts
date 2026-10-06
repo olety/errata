@@ -246,6 +246,8 @@ export interface RoomView {
   /** Drafts not dealt, with their reasons, for the inspector. */
   unavailable: CardView[];
   books: BookView[];
+  /** The cards already in the proposal (BookView.cardIds index into these): drag one onto a standing head to accept it. */
+  deck: CardView[];
   piles: PilesView;
   route: RouteView;
   status: StatusView;

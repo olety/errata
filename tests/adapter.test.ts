@@ -100,6 +100,8 @@ describe('room 1 on the sample', () => {
     expect(v.beast.pips).toMatchObject({ text: '3/3 confirmed addressed', fully: true });
     expect(v.piles.open).toEqual([]);
     expect(v.books.map((b) => b.weight.now)).toEqual([172, 102]);
+    expect(v.books[0]!.cardIds.every((id) => v.deck.some((c) => c.id === id))).toBe(true);
+    expect(v.deck.find((c) => c.id === result.cardId)!.inFiles).toEqual(['claude', 'codex']);
   });
 
   test('a CLAUDE.md play leaves the Codex heads standing: two pages on the Open pile, once each', () => {
