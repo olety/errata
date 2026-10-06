@@ -54,6 +54,14 @@ export interface InterruptEpisode extends EpisodeBase {
   pasted: boolean;
   /** The reply reads as a change of plan ("actually, do X first") with no boundary words: a discovery aid. */
   pivotHint: boolean;
+  /**
+   * What the reply did, deterministically: 'line' = boundary words, or the agent's next run narrowed the cut-off
+   * command, or the reply names the cut-off object; 'pivot' = a change of plan; 'other' = neither (a question, a
+   * remark). 'other' replies are counted in the mirror and never form a room. Discovery aids, never verdicts.
+   */
+  reply: 'line' | 'pivot' | 'other';
+  /** The reply names the cut-off object, or the next run of the same program narrowed it. */
+  relatesToCut: boolean;
   /** What the agent did next about the cut-off action (the next run of the same program, or the first call). */
   followUp: ToolCall | null;
   /** The file the cut-off edit touched, relative to the session cwd. */
@@ -161,12 +169,54 @@ function gap(a: string | null, b: string | null): number | null {
 
 /** Boundary and directive words. Their presence means the reply states a line, not just a new plan. */
 export const DIRECTIVE_WORDS = /\b(?:never|don'?t|dont|do not|not|no|only|stop|avoid|without|leave|keep|instead|always|must|make sure|please use|use|prefer)\b/i;
-const PIVOT_OPENERS = /^\s*(?:actually|wait|hmm+|oh|ok(?:ay)?,? (?:actually|instead)|on second thought|change of plan|let'?s|how about|first,?|before that)\b/i;
-const BOUNDARY_WORDS = /\b(?:never|don'?t|dont|do not|not|no|only|stop|avoid|without|leave|instead of)\b/i;
+const PIVOT_OPENERS = /^\s*(?:actually|wait|hmm+|oh|ok(?:ay)?,? (?:actually|instead)|on second thought|change of plan|let'?s|how about|first,?|before that|can we|could we|shall we|should we)\b/i;
+/** Strong line words draw a line on their own. */
+const STRONG_LINE = /\b(?:never|don'?t|dont|do not|only|stop|avoid|without|instead of|no more|leave (?:it|that|them|this) alone)\b/i;
+export function drawsLine(text: string): boolean {
+  return STRONG_LINE.test(text);
+}
 
 /** A change of plan with no boundary words: "actually, do the changelog entry first, then the test". */
 export function isPivotText(text: string): boolean {
-  return PIVOT_OPENERS.test(text) && !BOUNDARY_WORDS.test(text);
+  return PIVOT_OPENERS.test(text) && !STRONG_LINE.test(text);
+}
+
+/** The next run of the same program changed its arguments (e.g. the whole suite narrowed to one file). */
+export function narrowedRerun(cut: ToolCall | null, next: ToolCall | null): boolean {
+  if (!cut?.command || !next?.command) return false;
+  const a = fingerprint(cut.command);
+  const b = fingerprint(next.command);
+  return a !== b && programOf(a) === programOf(b) && b.length > a.length;
+}
+
+const GENERIC_WORDS = new Set(['src', 'lib', 'app', 'test', 'tests', 'docs', 'bin', 'build', 'dist', 'main', 'index', 'home', 'run', 'the', 'and', 'cat', 'echo', 'bash', 'sh', 'for', 'cd', 'ls']);
+
+/** The reply names the cut-off object: the command's program or subcommand, or a directory or file of the edit. */
+export function mentionsCut(text: string, cut: ToolCall | null, cwd: string | null): boolean {
+  if (!cut) return false;
+  const t = text.toLowerCase();
+  const words: string[] = [];
+  if (cut.command) words.push(...commandPrefixOf(fingerprint(cut.command)).split(' '));
+  for (const f of cut.files) {
+    const rel = relPath(f, cwd);
+    words.push(rel, rel.split('/').pop() ?? '');
+    const dir = rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '';
+    if (dir) words.push(dir);
+  }
+  return words.some((w) => {
+    const x = w.toLowerCase().replace(/^\.\//, '');
+    if (x.length < 3 || GENERIC_WORDS.has(x)) return false;
+    return new RegExp(`(?:^|[^\\w/.-])${x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`).test(t);
+  });
+}
+
+function classifyReply(text: string | null, cut: ToolCall | null, next: ToolCall | null, cwd: string | null): { pivotHint: boolean; reply: InterruptEpisode['reply']; relatesToCut: boolean } {
+  if (text === null) return { pivotHint: false, reply: 'other', relatesToCut: false };
+  const relatesToCut = narrowedRerun(cut, next) || mentionsCut(text, cut, cwd);
+  const pivot = isPivotText(text);
+  // Weak words alone ("no", "not") are corrections of fact as often as lines; they do not make a line by themselves.
+  const reply = STRONG_LINE.test(text) || relatesToCut ? 'line' : pivot ? 'pivot' : 'other';
+  return { pivotHint: reply === 'pivot', reply, relatesToCut };
 }
 
 /**
@@ -241,7 +291,7 @@ export function interruptEpisodes(s: Session): InterruptEpisode[] {
       gapSec: human ? gap(t.ts, human.ts) : null,
       interruptedCall: cut,
       pasted: human !== null && isPasted(human.text),
-      pivotHint: human !== null && isPivotText(human.text),
+      ...classifyReply(human?.text ?? null, cut, human ? nextRelatedCall(turns, human.i, cut) : null, s.cwd),
       followUp: human ? nextRelatedCall(turns, human.i, cut) : null,
       cutPath: cut && cut.kind === 'edit' && cut.files[0] ? relPath(cut.files[0], s.cwd) : null,
       receipt: {
@@ -418,9 +468,14 @@ export function editSequenceEpisodes(s: Session, min = 3): EditSequenceEpisode[]
               break;
             }
           }
+          // An interrupt inside the sequence promotes it only when the reply names this file.
           if (i > firstT.i && i < lastT.i && !promoted) {
-            promoted = true;
-            promotedAt = i;
+            const next = s.turns.slice(i + 1).find((u) => u.role === 'human');
+            const base = file.split('/').pop() ?? file;
+            if (next && base.length >= 3 && next.text.includes(base)) {
+              promoted = true;
+              promotedAt = i;
+            }
           }
         }
       }

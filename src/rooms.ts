@@ -6,7 +6,8 @@
 
 import type { Agent, Session } from './model';
 import type { DirectiveEpisode, Episode, InterruptEpisode, WorkflowEpisode } from './episodes';
-import { contentTokens, isPasted, jaccard, relPath } from './episodes';
+import { contentTokens, isPasted, jaccard, narrowedRerun, relPath } from './episodes';
+import { isFocusedTest, isTestCommand } from './noise';
 import { commandPrefixOf, fingerprint } from './parse/common';
 import type { Case, CaseFacts, Disposition, Family } from './deck/types';
 import { FAMILY_KEYS } from './deck/types';
@@ -24,6 +25,8 @@ export interface RoomObject {
   key: string;
   /** What the player reads: the command, the directory, the file, or the instruction. */
   label: string;
+  /** The exact value a trigger matches (command prefix or path). Defaults to label. */
+  match?: string;
   kind: 'command' | 'path' | 'file' | 'text' | 'workflow' | 'none';
 }
 
@@ -184,11 +187,14 @@ export function buildRooms(sessions: Session[], episodes: Episode[]): Room[] {
   // 2. Stops grouped by the object they cut off. Pivot-looking replies become neutral events, one per stop.
   for (const e of interrupts) {
     if (consumed.has(e.id)) continue;
-    if (e.pivotHint) {
+    if (e.reply === 'pivot') {
       add(`event|ep:${e.id}`, { family: 'boundary', kind: 'event', object: { key: `ep:${e.id}`, label: e.interruptedCall?.name ?? 'a reply', kind: 'none' }, projectBound: false }, e);
       continue;
     }
-    const obj = interruptObject(e, cwdOf.get(e.sessionId) ?? null);
+    // A reply that draws no line and changes no plan is counted in the mirror; it never becomes a room.
+    if (e.reply === 'other') continue;
+    // Only a reply that is about the cut-off object groups by that object; any other stop stands alone.
+    const obj = e.relatesToCut ? interruptObject(e, cwdOf.get(e.sessionId) ?? null) : null;
     const object = obj ?? { key: `ep:${e.id}`, label: e.interruptedCall?.name ?? 'a reply', kind: 'none' as const };
     add(`stop|${object.key}`, { family: 'stop', kind: 'encounter', object, projectBound: false }, e);
   }
@@ -202,7 +208,8 @@ export function buildRooms(sessions: Session[], episodes: Episode[]): Room[] {
   // 4. Rewrites: only promoted edit sequences (an interrupt landed on the file). Candidates stay in the mirror.
   for (const e of episodes) {
     if (e.type !== 'edit-sequence' || !e.promoted) continue;
-    add(`rewrite|file:${e.file}|${e.projectKey ?? ''}`, { family: 'rewrite', kind: 'encounter', object: { key: `file:${e.file}`, label: e.file, kind: 'file' }, projectBound: true }, e);
+    const short = e.file.startsWith('/') ? '…/' + e.file.split('/').slice(-2).join('/') : e.file;
+    add(`rewrite|file:${e.file}|${e.projectKey ?? ''}`, { family: 'rewrite', kind: 'encounter', object: { key: `file:${e.file}`, label: short, match: e.file, kind: 'file' }, projectBound: true }, e);
   }
 
   // 5. Workflows: verified only when the same narrow sequence appears in two or more sessions.
@@ -282,14 +289,12 @@ function finalizeRoom(g: Group): Room | null {
   };
 }
 
+/** The cut-off run was a whole test suite and the next run of the same runner was a focused one. */
 function isNarrowing(e: InterruptEpisode): boolean {
   const cut = e.interruptedCall;
   const next = e.followUp;
   if (!cut?.command || !next?.command) return false;
-  const a = fingerprint(cut.command);
-  const b = fingerprint(next.command);
-  const prog = (s: string) => s.split(' ')[0];
-  return prog(a) === prog(b) && b.length > a.length && /\.(?:py|ts|tsx|js|go|rs|rb)\b|::/.test(b) && !/\.(?:py|ts|tsx|js|go|rs|rb)\b|::/.test(a);
+  return narrowedRerun(cut, next) && isTestCommand(cut.command) && !isFocusedTest(cut.command) && isFocusedTest(next.command);
 }
 
 /** Strongest first: more distinct sessions, then a typed receipt, then the earliest anchor. */

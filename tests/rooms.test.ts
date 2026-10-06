@@ -79,6 +79,44 @@ describe('rooms', () => {
   });
 });
 
+describe('stop replies', () => {
+  /** A stop during `cmd` and a reply; the agent then runs `next`. */
+  function stopDuring(n: number, cmd: string, reply: string, next = 'echo done'): Session {
+    const sid = `${String(n).padStart(8, '0')}-1111-4000-8000-000000000000`;
+    const row = (o: object) => JSON.stringify({ sessionId: sid, cwd: '/home/dev/web', ...o });
+    return parseLines('claude', `${sid}.jsonl`, [
+      row({ type: 'user', timestamp: `2026-10-0${n}T10:00:00.000Z`, message: { role: 'user', content: 'go on' } }),
+      row({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', id: `a${n}`, name: 'Bash', input: { command: cmd } }] } }),
+      row({ type: 'user', message: { role: 'user', content: [{ type: 'text', text: '[Request interrupted by user]' }] } }),
+      row({ type: 'user', timestamp: `2026-10-0${n}T10:01:00.000Z`, message: { role: 'user', content: reply } }),
+      row({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', id: `b${n}`, name: 'Bash', input: { command: next } }] } }),
+      row({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: `b${n}`, content: 'ok' }] } }),
+    ]);
+  }
+
+  test('stops during the same generic command with unrelated replies stand alone; a question forms no room', () => {
+    const ss = [stopDuring(1, 'grep -rn foo src', "don't touch the generated files"), stopDuring(2, 'grep -rn bar lib', 'never push to main'), stopDuring(3, 'grep -rn baz .', 'will more workers help here?')];
+    const eps = ss.flatMap(detectEpisodes);
+    expect(eps.filter((e) => e.type === 'interrupt').map((e) => (e.type === 'interrupt' ? e.reply : ''))).toEqual(['line', 'line', 'other']);
+    const rooms = buildRooms(ss, eps);
+    expect(rooms.map((r) => [r.family, r.object.kind])).toEqual([
+      ['boundary', 'none'],
+      ['boundary', 'none'],
+    ]);
+  });
+
+  test('a reply that names the cut-off command groups by it; so does a narrowed rerun with no line words', () => {
+    const ss = [stopDuring(1, 'git push --force origin main', 'no force push, ever'), stopDuring(2, 'git push -f origin dev', 'git push without force please'), stopDuring(4, 'pytest', 'one file.', 'pytest tests/test_a.py -q')];
+    const rooms = buildRooms(ss, ss.flatMap(detectEpisodes));
+    const push = rooms.find((r) => r.object.key === 'cmd:git push')!;
+    expect(push.family).toBe('directive');
+    expect(push.sessions).toBe(2);
+    const narrowed = rooms.find((r) => r.object.key === 'cmd:pytest')!;
+    expect(narrowed.family).toBe('boundary');
+    expect(narrowed.narrowedTests).toBe(true);
+  });
+});
+
 describe('route', () => {
   test('rich evidence: eight slots in order, the elite is a recurring pattern, the boss replays withheld cases', async () => {
     const extra = [...WORDS.map((w, i) => stopSession(i + 1, i + 1, '/home/dev/web', w)), ...WORDS.slice(0, 3).map((w, i) => stopSession(20 + i, 10 + i, '/home/dev/web', 'leave the e2e run to me', 'npm run e2e'))];

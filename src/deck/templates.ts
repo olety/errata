@@ -8,6 +8,7 @@ import type { Room } from '../rooms';
 import type { Episode, WorkflowEpisode } from '../episodes';
 import { sanitizeLine } from './file';
 import { suggestClaims } from './claims';
+import { drawsLine } from '../episodes';
 
 /** FNV-1a, 24 bits, base36: stable short ids from the card's structure. */
 export function shortHash(s: string): string {
@@ -49,7 +50,7 @@ function sentence(scope: Scope, body: string): string {
 
 function endStop(s: string): string {
   const t = s.trim().replace(/[\s.…]+$/, '');
-  return t + '.';
+  return /[!?]$/.test(t) ? t : t + '.';
 }
 
 const code = (s: string) => '`' + s.replace(/`/g, "'") + '`';
@@ -64,8 +65,9 @@ function targetsFor(agents: Agent[]): Targets {
 }
 
 function objectTrigger(room: Room, events: Trigger['event']): Trigger | null {
-  if (room.object.kind === 'command') return { event: events, commandPrefix: room.object.label };
-  if (room.object.kind === 'path' || room.object.kind === 'file') return { event: events, pathPrefix: room.object.label };
+  const m = room.object.match ?? room.object.label;
+  if (room.object.kind === 'command') return { event: events, commandPrefix: m };
+  if (room.object.kind === 'path' || room.object.kind === 'file') return { event: events, pathPrefix: m };
   if (room.object.kind === 'text') return { event: events, constraintKey: room.object.key.slice('text:'.length) };
   return null;
 }
@@ -95,8 +97,8 @@ function drafts(room: Room, scope: Scope, wording: string | null): Draft[] {
     }
     case 'rewrite': {
       const f = code(obj);
-      const trigger: Trigger = { event: 'file_rewritten', pathPrefix: obj };
-      const o = `path:${obj}`;
+      const trigger: Trigger = { event: 'file_rewritten', pathPrefix: room.object.match ?? obj };
+      const o = `path:${room.object.match ?? obj}`;
       return [
         { key: 'targeted_patch', title: 'One targeted patch', text: s(`when changing ${f}, make one targeted patch within the reviewed scope instead of rewriting it again.`), trigger, claims: [{ polarity: 'dont', act: 'rewrite', object: o }] },
         { key: 'reproduce_first', title: 'Reproduce it first', text: s(`before editing ${f} again, add or run a focused check that reproduces the problem.`), trigger, claims: [{ polarity: 'do', act: 'reproduce', object: o, when: 'before-edit' }] },
@@ -152,6 +154,13 @@ function drafts(room: Room, scope: Scope, wording: string | null): Draft[] {
             { polarity: 'do', act: 'run', object: 'tests:focused' },
           ],
         };
+      } else if (w && drawsLine(w) && (room.object.kind === 'text' || room.object.kind === 'none' || w.toLowerCase().includes(obj.toLowerCase().replace(/\/$/, '')))) {
+        a = { key: 'standing_instruction', title: 'A standing instruction', text: s(w), trigger: trig, claims: suggestClaims(w) };
+      } else if (room.object.kind === 'command') {
+        // The person's words draw no clear line; the evidence does: they stopped this command in several sessions.
+        a = { key: 'standing_instruction', title: 'A standing instruction', text: s(`ask before running ${ow}; the user stopped it in ${room.totalSessions} sessions.`), trigger: trig, claims: [{ polarity: 'dont', act: 'run', object: `cmd:${obj}`, unless: 'the user asks' }] };
+      } else if (room.object.kind === 'path') {
+        a = { key: 'standing_instruction', title: 'A standing instruction', text: s(`ask before editing files under ${ow}; the user stopped such edits in ${room.totalSessions} sessions.`), trigger: trig, claims: [{ polarity: 'dont', act: 'edit', object: `path:${obj}`, unless: 'the user asks' }] };
       } else {
         a = { key: 'standing_instruction', title: 'A standing instruction', text: w ? s(w) : s(`follow the instruction the user repeated about ${ow}.`), trigger: trig, claims: w ? suggestClaims(w) : [] };
       }

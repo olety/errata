@@ -29,7 +29,7 @@ export interface Mirror {
   excluded: { total: number; byKind: Partial<Record<InjectedKind, number>> };
   interrupts: number;
   /** Interrupts followed by the person's next message (interventions), split into lines drawn and plan changes. */
-  interventions: { total: number; lines: number; pivots: number };
+  interventions: { total: number; lines: number; pivots: number; other: number };
   repeatedCommand: { episodes: number; sessionsWith: number; shellCalls: number; genuineFailures: number };
   /** Results that looked like failures and were not, by named negative. */
   negatives: Record<NegativeKind, number>;
@@ -53,7 +53,7 @@ export function buildMirror(sessions: Session[], episodes: Episode[], rooms: Roo
     humanTurns: 0,
     excluded: { total: 0, byKind: {} },
     interrupts: 0,
-    interventions: { total: 0, lines: 0, pivots: 0 },
+    interventions: { total: 0, lines: 0, pivots: 0, other: 0 },
     repeatedCommand: { episodes: 0, sessionsWith: 0, shellCalls: 0, genuineFailures: 0 },
     negatives: negativeCounts(sessions),
     editSequences: { candidates: 0, sessionsWith: 0, promoted: 0 },
@@ -106,8 +106,9 @@ export function buildMirror(sessions: Session[], episodes: Episode[], rooms: Roo
   const sessionsOf = (pred: (e: Episode) => boolean) => new Set(episodes.filter(pred).map((e) => e.sessionId));
   const paired = episodes.filter((e) => e.type === 'interrupt' && e.humanTurn !== null);
   m.interventions.total = paired.length;
-  m.interventions.pivots = paired.filter((e) => e.type === 'interrupt' && e.pivotHint).length;
-  m.interventions.lines = m.interventions.total - m.interventions.pivots;
+  m.interventions.pivots = paired.filter((e) => e.type === 'interrupt' && e.reply === 'pivot').length;
+  m.interventions.lines = paired.filter((e) => e.type === 'interrupt' && e.reply === 'line').length;
+  m.interventions.other = m.interventions.total - m.interventions.lines - m.interventions.pivots;
   const rc = episodes.filter((e) => e.type === 'repeated-command');
   m.repeatedCommand.episodes = rc.length;
   m.repeatedCommand.sessionsWith = sessionsOf((e) => e.type === 'repeated-command').size;
@@ -129,8 +130,8 @@ export function buildMirror(sessions: Session[], episodes: Episode[], rooms: Roo
  */
 export function character(m: Mirror, episodes: Episode[], total: number): CharacterCard | null {
   const sess = (pred: (e: Episode) => boolean) => new Set(episodes.filter(pred).map((e) => e.sessionId)).size;
-  const lineSessions = sess((e) => e.type === 'interrupt' && e.humanTurn !== null && !e.pivotHint);
-  const pivotSessions = sess((e) => e.type === 'interrupt' && e.humanTurn !== null && e.pivotHint);
+  const lineSessions = sess((e) => e.type === 'interrupt' && e.humanTurn !== null && e.reply === 'line');
+  const pivotSessions = sess((e) => e.type === 'interrupt' && e.humanTurn !== null && e.reply === 'pivot');
   const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
   const table: Record<CharacterName, { n: number; line: string }> = {
     'Boundary Keeper': { n: lineSessions, line: `${m.interventions.lines} of ${plural(m.interventions.total, 'intervention')} drew a line around what the agent may run or touch` },
