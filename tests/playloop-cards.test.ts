@@ -641,4 +641,41 @@ window.__done = true;
     },
     60_000,
   );
+
+  test.skipIf(!have)(
+    "a Skill's inspector shows its SKILL.md first lines and its estimate outside the allowance",
+    async () => {
+      let s = fresh();
+      for (let i = 0; i < 20 && A.currentNode(s)?.kind !== 'workshop'; i++) {
+        const sc = A.selectScreen(s);
+        if (sc.kind === 'room' || sc.kind === 'event') {
+          for (const h of sc.view.heads) s = A.actStamp(s, h.caseId, 'issue');
+          s = A.actDeal(s);
+          const v = A.selectRoom(s)!;
+          s = v.hand.length ? A.actPlay(s, v.hand[0]!.id, 'beast').state : A.actSkip(s).state;
+        }
+        s = A.actAdvance(s);
+      }
+      s = A.actDeal(s);
+      const skill = A.selectRoom(s)!.hand.find((c) => c.type === 'skill')!;
+      const view = A.selectInspector(s, { cardId: skill.id })!;
+      expect(view.kind === 'card' && view.card.inspector.skill).toBeTruthy();
+      const r = await renderPage<{ text: string; pre: string }>({
+        viewport: { w: 1440, h: 900 },
+        data: { view },
+        entry: `import { Inspector } from ${JSON.stringify(join(SRC, 'cards', 'index.ts'))};
+const d = await (await fetch('/data.json')).json();
+const api = new Proxy({}, { get: () => new Proxy(() => null, { get: () => () => null }) });
+const n = Inspector({ card: null, receipt: null, layout: 'side', api, view: d.view });
+document.getElementById('root').append(n);
+window.__result = { text: n.textContent, pre: n.querySelector('.pl-cards-skill')?.textContent ?? '' };
+window.__done = true;
+`,
+      });
+      const sk = view.kind === 'card' ? view.card.inspector.skill! : null;
+      expect(r.pre).toBe(sk!.firstLines.join('\n'));
+      expect(r.text).toContain(`+${sk!.estimate} estimated · outside the allowance`);
+    },
+    60_000,
+  );
 });
