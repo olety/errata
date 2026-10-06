@@ -142,6 +142,8 @@ describe('contract fields the workers asked for', () => {
       s = A.actAdvance(s);
     }
     expect(A.selectBoss(s).skin).toBe('suite-wyrm');
+    // Every fraction carries its unreviewed count (§0a.6), the earlier cases' line too.
+    expect(A.selectBoss(s).score.lines[1]).toMatch(/^Earlier confirmed cases: \d+ of \d+ addressed by the final deck · \d+ unreviewed$/);
   });
 
   test('the allowance raise: steps above the allowance, only upward, printed per lane', () => {
@@ -254,7 +256,7 @@ describe('the tutorial coach on the sample (§11, §0a.16): one line per gesture
     expect(room.view.hand.length).toBe(1);
     expect(t()).toEqual({ text: 'One response fits what the logs show. Drag the card onto the beast: it adds to your proposed files for every agent whose head glows.', focus: { kind: 'card', cardId: room.view.hand[0]!.id } });
     c.key('Enter');
-    expect(t()).toBeNull();
+    expect(t()!.text).toBe('A red thread: two lines in your files now disagree. The fire settles it. Continue when you are ready.');
     c.key('Enter');
     expect(c.screen().kind).toBe('event');
     expect(t()!.text).toContain('A change of plan flies off');

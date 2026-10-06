@@ -417,11 +417,12 @@
 @keyframes pl-cards-type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 
 /* the buckle (§5): an explicit allowance raise, picked and confirmed by the player */
-.pl-cards-buckle { position: relative; margin-top: 4px; }
-.pl-cards-buckle-btn { min-height: 44px; width: 100%; padding: 4px 8px; font: 500 12px/14px var(--pl-cards-f-body); color: var(--pl-cards-ink-2); background: transparent; border: 1px dashed var(--pl-cards-line-2); border-radius: 4px; cursor: pointer; }
-.pl-cards-buckle-btn:hover { color: var(--pl-cards-ink); border-color: var(--pl-cards-ink-3); }
-.pl-cards-buckle-panel { position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 31; width: 260px; padding: 10px 12px; background: var(--pl-cards-paper); border: 1px solid var(--pl-cards-line-2); border-radius: 4px; box-shadow: var(--pl-cards-sh-well); }
-.pl-cards-buckle-panel[hidden] { display: none; }
+.pl-cards-buckle { position: absolute; top: 2px; right: 2px; z-index: 5; }
+.pl-cards-buckle-btn { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; background: transparent; border: 1px dashed transparent; border-radius: 4px; color: var(--pl-cards-ink-2); cursor: pointer; }
+.pl-cards-buckle-btn:hover, .pl-cards-buckle-btn.is-open { border-color: var(--pl-cards-line-2); color: var(--pl-cards-ink); background: var(--pl-cards-paper-2); }
+.pl-cards-buckle-glyph { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.4; }
+.pl-cards-buckle-keep { min-height: 44px; width: 100%; margin-top: 6px; background: transparent; border: 1px solid var(--pl-cards-line-2); border-radius: 4px; font: 500 13px var(--pl-cards-f-body); color: var(--pl-cards-ink-2); cursor: pointer; }
+.pl-cards-buckle-panel { position: absolute; left: 0; bottom: calc(100% + 12px); z-index: 31; width: 280px; padding: 10px 12px; background: var(--pl-cards-paper); border: 1px solid var(--pl-cards-line-2); border-radius: 4px; box-shadow: var(--pl-cards-sh-well); }
 .pl-cards-buckle-q, .pl-cards-buckle-note { margin: 0 0 8px; font-size: 12.5px; line-height: 16px; color: var(--pl-cards-ink); }
 .pl-cards-buckle-steps { display: flex; gap: 8px; margin-bottom: 8px; }
 .pl-cards-buckle-step, .pl-cards-buckle-go { min-height: 44px; min-width: 64px; padding: 4px 10px; font: 600 13px var(--pl-cards-f-mono); color: var(--pl-cards-ink); background: var(--pl-cards-paper-2); border: 1px solid var(--pl-cards-line-2); border-radius: 4px; cursor: pointer; }

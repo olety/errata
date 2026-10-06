@@ -17,7 +17,7 @@ export const SAMPLE_LINES = {
 
 const line = (text: string, focus: Tutorial['focus'] = null): Tutorial => ({ text, focus });
 
-function roomLine(v: C.RoomView, first: boolean): Tutorial | null {
+function roomLine(v: C.RoomView, first: boolean, redThread: boolean): Tutorial | null {
   if (v.kind === 'event') return line('A change of plan flies off and counts nowhere. A problem turns the heron into a room with one head.');
   if (!first) return null;
   const stamped = v.heads.length - v.review.remaining;
@@ -34,6 +34,8 @@ function roomLine(v: C.RoomView, first: boolean): Tutorial | null {
     const why = v.hand.length === 1 ? 'One response fits what the logs show. ' : '';
     return line(`${why}Drag the card onto the beast: it ${COPY.addsTo} for every agent whose head glows.`, { kind: 'card', cardId: card.id });
   }
+  // After the play: the new line disagrees with one already in a file (the red thread). Continue leads to the fire.
+  if (v.phase === 'done' && v.result?.played && redThread) return line('A red thread: two lines in your files now disagree. The fire settles it. Continue when you are ready.');
   return null;
 }
 
@@ -83,7 +85,7 @@ export function tutorialFor(s: A.PlayState, screen: C.Screen, pending: C.UiView[
   switch (screen.kind) {
     case 'room':
     case 'event':
-      return roomLine(screen.view, s.node === firstRoom && s.sub === 0);
+      return roomLine(screen.view, s.node === firstRoom && s.sub === 0, A.selectCampfire(s).threads.some((t) => t.color === 'red'));
     case 'campfire':
       return s.node === firstFire ? campfireLine(screen.view, pending) : null;
     case 'boss':

@@ -49,14 +49,25 @@ const still = () => typeof matchMedia === 'function' && matchMedia('(prefers-red
 export function Books(p: BooksProps): HTMLElement {
   const root = el('div', `pl-cards-books pl-cards-books-${p.layout} pl-cards-books-${p.mode}`);
   const line = p.preview?.line ?? null;
+  // The raise panel opens above the books, where the reading page shows while dragging (the books clip their content).
+  const panelHost = el('div', 'pl-cards-buckle-host');
+  const togglesHost: (() => void)[] = [];
+  const renderPanel = (): void => {
+    const lane = [...buckle.keys()][0];
+    const b = p.books.find((x) => x.lane === lane);
+    panelHost.replaceChildren(...(b && p.onRaise && !p.preview ? [BucklePanel(b, p, renderPanel)] : []));
+    for (const f of togglesHost) f();
+  };
   for (const b of p.books) {
     const ghost = p.preview ? p.preview.ghost[b.lane] : null;
     const dest = !!line && line.files.includes(b.file);
-    const node = p.layout === 'tabs' ? Tab(b, ghost, dest) : Book(b, ghost, dest, p);
+    const node = p.layout === 'tabs' ? Tab(b, ghost, dest) : Book(b, ghost, dest, p, renderPanel, togglesHost);
     p.drag.bindTarget(`book:${b.lane}:${p.mode}`, p.mode === 'play' ? { kind: 'book', lane: b.lane } : { kind: 'book-retarget', lane: b.lane }, node);
     root.append(node);
   }
   // The open page: the exact line at reading size, its scope, exceptions and destination files, before release (§0a.5).
+  root.append(panelHost);
+  renderPanel();
   if (p.preview && (line || p.preview.refused)) root.append(Page(p.preview, p));
   else {
     const inked = Ink(p.ink ?? null);
@@ -89,54 +100,57 @@ function Ink(r: PlayResultView | null): HTMLElement | null {
 /** The buckle: which lane's raise panel is open, and the step picked (presentation memory across repaints). */
 const buckle = new Map<Agent, number | null>();
 
-function Buckle(b: BookView, p: BooksProps): HTMLElement | null {
+/** The buckle in a book's corner: a 44 px toggle for the raise panel (the book clips, so the panel lives at the root). */
+function BuckleToggle(b: BookView, p: BooksProps, onChange: () => void): HTMLElement | null {
   if (!p.onRaise || b.raiseSteps.length === 0) return null;
-  const wrap = el('div', 'pl-cards-buckle');
-  const toggle = el('button', 'pl-cards-buckle-btn', 'Raise the allowance');
+  const toggle = el('button', `pl-cards-buckle-btn${buckle.has(b.lane) ? ' is-open' : ''}`, svg('0 0 16 16', 'pl-cards-buckle-glyph', [{ d: 'M2.5 4.5h8v7h-8Z' }, { d: 'M10.5 8H14' }, { d: 'M6.5 4.5v7' }]));
   toggle.type = 'button';
+  toggle.title = 'Raise the allowance';
+  toggle.setAttribute('aria-label', `Raise ${b.file}'s allowance`);
+  toggle.setAttribute('aria-expanded', String(buckle.has(b.lane)));
   toggle.addEventListener('pointerdown', (e) => e.stopPropagation());
-  wrap.append(toggle);
-  const panel = el('div', 'pl-cards-buckle-panel');
-  const refresh = () => {
-    const isOpen = buckle.has(b.lane);
-    const pick = buckle.get(b.lane) ?? null;
-    panel.hidden = !isOpen;
-    wrap.classList.toggle('is-open', isOpen);
-    toggle.textContent = isOpen ? 'Keep the allowance' : 'Raise the allowance';
-    const kids: HTMLElement[] = [
-      el('p', 'pl-cards-buckle-q', `Raise ${b.file}'s allowance from ${fig(b.weight.allowance)} to:`),
-      el(
-        'div',
-        'pl-cards-buckle-steps',
-        ...b.raiseSteps.map((n) => {
-          const s = el('button', `pl-cards-buckle-step${pick === n ? ' is-picked' : ''}`, fig(n));
-          s.type = 'button';
-          s.setAttribute('aria-pressed', String(pick === n));
-          s.addEventListener('click', () => (buckle.set(b.lane, n), refresh()));
-          return s;
-        }),
-      ),
-    ];
-    if (pick !== null) {
-      const go = el('button', 'pl-cards-buckle-go', `Raise to ${fig(pick)}`);
-      go.type = 'button';
-      go.addEventListener('click', () => {
-        buckle.delete(b.lane);
-        p.onRaise!(b.lane, pick);
-      });
-      kids.push(el('p', 'pl-cards-buckle-note', `Apply then lets ${b.file} weigh up to ${fig(pick)} tokens (${COPY.estimated}). The end screen says you raised it.`), go);
-    }
-    panel.replaceChildren(...kids);
-  };
   toggle.addEventListener('click', () => {
-    if (buckle.has(b.lane)) buckle.delete(b.lane);
-    else buckle.set(b.lane, null);
-    refresh();
+    const open = buckle.has(b.lane);
+    buckle.clear();
+    if (!open) buckle.set(b.lane, null);
+    onChange();
   });
+  return el('div', 'pl-cards-buckle', toggle);
+}
+
+/** The raise panel (§5): pick a step, read what it means, confirm. Nothing changes until "Raise to N". */
+function BucklePanel(b: BookView, p: BooksProps, onChange: () => void): HTMLElement {
+  const pick = buckle.get(b.lane) ?? null;
+  const steps = el(
+    'div',
+    'pl-cards-buckle-steps',
+    ...b.raiseSteps.map((n) => {
+      const s = el('button', `pl-cards-buckle-step${pick === n ? ' is-picked' : ''}`, fig(n));
+      s.type = 'button';
+      s.setAttribute('aria-pressed', String(pick === n));
+      s.addEventListener('click', () => (buckle.set(b.lane, n), onChange()));
+      return s;
+    }),
+  );
+  const keep = el('button', 'pl-cards-buckle-keep', 'Keep it');
+  keep.type = 'button';
+  keep.addEventListener('click', () => (buckle.delete(b.lane), onChange()));
+  const kids: HTMLElement[] = [el('p', 'pl-cards-buckle-q', `Raise ${b.file}'s allowance from ${fig(b.weight.allowance)} to:`), steps];
+  if (pick !== null) {
+    const go = el('button', 'pl-cards-buckle-go', `Raise to ${fig(pick)}`);
+    go.type = 'button';
+    go.addEventListener('click', () => {
+      buckle.delete(b.lane);
+      p.onRaise!(b.lane, pick);
+    });
+    kids.push(el('p', 'pl-cards-buckle-note', `Apply then lets ${b.file} weigh up to ${fig(pick)} tokens (${COPY.estimated}). The end screen says you raised it.`), go);
+  }
+  kids.push(keep);
+  const panel = el('div', 'pl-cards-buckle-panel', ...kids);
+  panel.setAttribute('role', 'group');
+  panel.setAttribute('aria-label', `Raise ${b.file}'s allowance`);
   panel.addEventListener('pointerdown', (e) => e.stopPropagation());
-  refresh();
-  wrap.append(panel);
-  return wrap;
+  return panel;
 }
 
 function Strap(b: BookView, ghost: GhostDelta | null): HTMLElement {
@@ -186,7 +200,7 @@ function Notes(b: BookView): (HTMLElement | null)[] {
   ];
 }
 
-function Book(b: BookView, ghost: GhostDelta | null, dest: boolean, p: BooksProps): HTMLElement {
+function Book(b: BookView, ghost: GhostDelta | null, dest: boolean, p: BooksProps, onBuckle: () => void, toggles: (() => void)[]): HTMLElement {
   const book = el(
     'div',
     `pl-cards-book${dest ? ' is-dest' : ''}${b.weight.over ? ' is-over' : ''}`,
@@ -195,8 +209,16 @@ function Book(b: BookView, ghost: GhostDelta | null, dest: boolean, p: BooksProp
     Figures(b),
     ghost && p.preview ? el('p', 'pl-cards-book-ghost', el('span', 'pl-cards-mono', ghost.text), ` ${COPY.estimated}`) : null,
     ...Notes(b),
-    Buckle(b, p),
   );
+  const toggle = BuckleToggle(b, p, onBuckle);
+  if (toggle) {
+    book.append(toggle);
+    toggles.push(() => {
+      const btn = toggle.querySelector('button')!;
+      btn.classList.toggle('is-open', buckle.has(b.lane));
+      btn.setAttribute('aria-expanded', String(buckle.has(b.lane)));
+    });
+  }
   book.dataset.lane = b.lane;
   book.setAttribute('aria-label', `${b.file}: ${b.weight.now} of ${b.weight.allowance} ${COPY.estimated}${b.proposed ? `, ${COPY.proposed}` : ''}`);
   if (b.proposed) {

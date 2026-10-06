@@ -645,7 +645,10 @@
   left: 0;
   right: 0;
   bottom: 6px;
+  /* The strip spans the stage: only its own controls take the pointer, so the side panels' seal bars stay reachable. */
+  pointer-events: none;
 }
+.pl-campfire-bottom > * { pointer-events: auto; }
 .pl-campfire-lanetabs {
   position: absolute;
   top: 0;

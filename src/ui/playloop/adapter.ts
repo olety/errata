@@ -1072,7 +1072,12 @@ function bossItems(s: PlayState): { cases: Case[]; source: ('sealed' | 'open')[]
  * final deck; original = the original files on the same cohort, counting only per-case mappings the player accepted
  * for their own lines, with unjudged suggestions as unknown (§13, §0a.11).
  */
-function scoreLines(t: BossTally, sealed: number): string[] {
+/** Earlier heads the player left unreviewed or unclear (wrapped): printed beside the earlier fraction (§0a.6). */
+function earlierUnreviewed(s: PlayState): number {
+  return placedRooms(s).filter((r) => r.kind !== 'workshop').flatMap((r) => r.episodes).filter((e) => ['unreviewed', 'unclear'].includes(dispOf(s, e.id))).length;
+}
+
+function scoreLines(t: BossTally, sealed: number, earlierWrapped: number): string[] {
   const aside = t.setAside.notAProblem + t.setAside.changeOfPlan + t.setAside.unclear;
   const asideText = `${aside} set aside (${t.setAside.notAProblem} not a problem, ${t.setAside.changeOfPlan} a change of plan, ${t.setAside.unclear} unclear)`;
   const waiting = t.unreviewed > 0 ? ` · ${t.unreviewed} not yet stamped` : '';
@@ -1082,7 +1087,7 @@ function scoreLines(t: BossTally, sealed: number): string[] {
       : t.later.confirmed > 0
         ? `Later cases: ${t.later.addressed} of ${t.later.confirmed} addressed · ${asideText}${waiting}`
         : `Later cases: none confirmed a problem · ${asideText}${waiting}`,
-    `Earlier confirmed cases: ${t.earlier.addressed} of ${t.earlier.confirmed} addressed by the final deck`,
+    `Earlier confirmed cases: ${t.earlier.addressed} of ${t.earlier.confirmed} addressed by the final deck · ${earlierWrapped} unreviewed`,
     t.original.established ? `Your current files, same cases: ${t.original.addressed} of ${t.original.confirmed} · ${t.original.unknown} unknown` : `${C.COPY.applicabilityUnknown} · ${t.original.unknown} unknown`,
   ];
 }
@@ -1126,7 +1131,7 @@ export function selectBoss(s: PlayState): C.BossView {
     current: cur?.id ?? null,
     candidates,
     noEligibleCard: noEligible,
-    score: { later: t.later, setAside: t.setAside, unreviewed: t.unreviewed, earlier: { addressed: t.earlier.addressed, confirmed: t.earlier.confirmed }, original: t.original, lines: scoreLines(t, sealedCases.length), validity },
+    score: { later: t.later, setAside: t.setAside, unreviewed: t.unreviewed, earlier: { addressed: t.earlier.addressed, confirmed: t.earlier.confirmed }, original: t.original, lines: scoreLines(t, sealedCases.length, earlierUnreviewed(s)), validity },
     canContinue: true,
   };
 }
@@ -1257,7 +1262,7 @@ function runSummary(s: PlayState): C.RunSummaryView {
   setAside.sort((a, b) => (a.receipt.date ?? '').localeCompare(b.receipt.date ?? ''));
   const kinds = ['add', 'fuse', 'settle', 'cut', 'restore', 'sharpen', 'retarget', 'swap'] as const;
   return {
-    lines: scoreLines(t, sealed.length),
+    lines: scoreLines(t, sealed.length, earlierUnreviewed(s)),
     open: piles.open,
     openCount: piles.openCount,
     setAside,

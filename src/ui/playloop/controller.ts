@@ -227,13 +227,29 @@ export class Controller {
       const seq = this.ui.effectSeq + 1;
       patch = { ...patch, effectSeq: seq, effect: { id: seq, kind, bound: [...after].filter((x) => !before.has(x)), unbound: [...before].filter((x) => !after.has(x)) } };
     }
-    this.state = next;
+    this.state = this.followTutorial(next, nodeChanged ? null : (patch.pending !== undefined ? patch.pending : this.ui.pending));
     const prevBeat = nodeChanged ? null : (patch.beat ?? this.ui.beat);
     this.ui = { ...this.ui, drag: null, notice: null, ...patch, ...(nodeChanged ? { selected: null, inspect: null, pending: null, headIndex: 0, cardIndex: 0 } : {}) };
     this.ui.beat = patch.beat !== undefined && !nodeChanged ? patch.beat : beatFor(this.screen(), prevBeat);
     this.emit();
     // Arriving at Apply builds the diff at once (it reads the files through the port).
     if (nodeChanged && A.currentNode(next)?.kind === 'apply' && this.port) void this.api.apply.prepare();
+  }
+
+  /**
+   * At the fire the stage shows the pair the tutorial points at, but only when the focus is empty or names a thread
+   * that is gone (sealed or settled): a pair the player picked is never taken away.
+   */
+  private followTutorial(s: A.PlayState, pending: C.UiView['pending']): A.PlayState {
+    if (!s.sample || pending || A.currentNode(s)?.kind !== 'campfire') return s;
+    const screen = A.selectScreen(s);
+    if (screen.kind !== 'campfire') return s;
+    const f = tutorialFor(s, screen, null)?.focus;
+    if (f?.kind !== 'thread') return s;
+    const cur = s.campfire.focus;
+    if (cur && cur.threadId && screen.view.threads.some((t) => t.id === cur.threadId)) return s;
+    const t = screen.view.threads.find((x) => x.id === f.threadId);
+    return t ? A.actFocusPair(s, { a: t.members[0]!, b: t.members[1]!, threadId: t.id }) : s;
   }
 
   private notice(text: string): void {

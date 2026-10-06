@@ -243,8 +243,8 @@ export function undoBundle(bundleId: string, roots: Root[], only?: { root: RootI
       try {
         const before = e.before.absent ? null : await backup.read(e.before.path);
         const after = await backup.read(e.after.path);
-        if (!after || (await sha256(after)) !== e.after.sha) throw new Error('the bundle copy of the written file is damaged');
-        if (!e.before.absent && (!before || (await sha256(before)) !== e.before.sha)) throw new Error('the bundle copy of the original is damaged');
+        if (!after || (await sha256(after)) !== e.after.sha) throw new Error('the bundle copy of the written file no longer matches its checksum');
+        if (!e.before.absent && (!before || (await sha256(before)) !== e.before.sha)) throw new Error('the bundle copy of the original no longer matches its checksum');
         const cur = await r.read(e.rel);
         if (sameBytes(cur, before)) {
           results.push({ root: e.root, rel: e.rel, status: 'already-original' });
@@ -284,7 +284,7 @@ export function restoreOriginalSeen(bundleId: string, roots: Root[], target: { r
       const cur = await r.read(target.rel);
       if ((cur ? await sha256(cur) : null) !== seenSha) return { ...target, status: 'failed', error: 'the file changed again since the diff was shown' };
       const before = e.before.absent ? null : await backup.read(e.before.path);
-      if (!e.before.absent && (!before || (await sha256(before)) !== e.before.sha)) return { ...target, status: 'failed', error: 'the bundle copy of the original is damaged' };
+      if (!e.before.absent && (!before || (await sha256(before)) !== e.before.sha)) return { ...target, status: 'failed', error: 'the bundle copy of the original no longer matches its checksum' };
       if (before === null) await r.remove(target.rel);
       else await r.write(target.rel, before);
       if (!sameBytes(await r.read(target.rel), before)) return { ...target, status: 'failed', error: 'read-back after restore differs' };
