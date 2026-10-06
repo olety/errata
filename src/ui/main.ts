@@ -13,6 +13,8 @@ import { budgetFor, weigh } from '../deck/file';
 import { asset } from './playloop/cards/dom';
 import { strapText } from './playloop/contract';
 import { actLine, mirrorRows } from './mirror-view';
+import { browserStore, forgetApply, forgetGrants, keepGrants, keptGrants, loadApply, saveApply, type KeptGrants, type RememberedApply } from './persist';
+import { undoBundle } from '../apply/engine';
 import { CODEX_OVERRIDE } from '../deck/lanes';
 import { ensureWritable, fsaRoot, prefixedRoot } from '../apply/fsa-root';
 import type { Root } from '../apply/types';
@@ -52,6 +54,8 @@ interface State {
   roots: Root[] | null;
   /** The two global files as read on the import page once a folder is chosen (null = absent; undefined = not read). */
   books: { claude?: Uint8Array | null; codex?: Uint8Array | null };
+  /** The outcome of undoing a kept Apply from the import page. */
+  undoText: string | null;
 }
 
 const S: State = {
@@ -68,6 +72,7 @@ const S: State = {
   dirs: { claude: null, codex: null, agents: null, codexLoaded: false, claudeLoaded: false },
   roots: null,
   books: {},
+  undoText: null,
 };
 
 // ---------------------------------------------------------------- tiny DOM helpers (text only)
@@ -248,6 +253,11 @@ function playPort(): ApplyPort {
       return byId.get(root)?.read(rel) ?? Promise.resolve(null);
     },
     ensureWritable: async () => S.mode !== 'real' || ((await ensureWritable(S.dirs.claude!)) && (await ensureWritable(S.dirs.codex!)) && (!S.dirs.agents || (await ensureWritable(S.dirs.agents)))),
+    // Without folder access (Firefox, Safari) real files cannot be written: Apply exports the blocks instead.
+    canWrite: () => S.mode === 'sample' || hasFSA,
+    // The second visit (spec §7): the receipt is kept only when the player says so, and forgotten the same way.
+    remember: (r) => void rememberApply(r),
+    remembered: (bundleId) => loadApply(browserStore())?.bundleId === bundleId,
     grant: async (which) => {
       try {
         const dir = await pick({ id: `${which}-home`, mode: 'readwrite' });
@@ -319,6 +329,62 @@ function closedBook(name: string, path: string, bytes: Uint8Array | null | undef
   return b;
 }
 
+/**
+ * Keep (or forget) the written receipt and, beside it, the granted folders with the identities Apply wrote with, so a
+ * later visit can Undo from the backups on disk (spec §7). Only on the player's word.
+ */
+async function rememberApply(r: RememberedApply | null): Promise<void> {
+  if (!r) {
+    forgetApply(browserStore());
+    await forgetGrants();
+    return;
+  }
+  saveApply(browserStore(), r);
+  const roots = rootsFor() ?? [];
+  const id = (rid: string) => roots.find((x) => x.id === rid)?.identity;
+  const g: KeptGrants = {};
+  if (S.dirs.claude && id('claude')) g.claude = { handle: S.dirs.claude, identity: id('claude')! };
+  if (S.dirs.codex && id('codex')) g.codex = { handle: S.dirs.codex, identity: id('codex')! };
+  const agents = id('codex-skills');
+  if (S.dirs.agents && agents) g.agents = { handle: S.dirs.agents, identity: agents.replace(/\/skills$/, '') };
+  await keepGrants(r.bundleId, g);
+}
+
+/** The Apply this browser kept (spec §7), with Undo from its backups once the folders are granted again. */
+function keptSlip(): HTMLElement | null {
+  const r = loadApply(browserStore());
+  if (!r) return null;
+  const files = r.files.map((f) => f.rel).join(' and ');
+  const lines = r.lines.reduce((a, l) => a + l.ids.length, 0);
+  const when = r.writtenAt.slice(0, 16).replace('T', ' ');
+  return h(
+    'div',
+    { class: 'mt-slip mt-run tilt-a' },
+    h('h2', {}, r.sample ? 'Your last sample Apply, kept in this browser' : 'Your last Apply, kept in this browser'),
+    h('p', {}, `Written ${when} UTC: ${files}, ${lines} ${lines === 1 ? 'line' : 'lines'} with stable ids. Backups: .deck-backups/${r.bundleId} in ${r.sample ? 'the sample folder' : '~/.claude'}.`),
+    S.undoText && h('p', { class: 'mt-note', role: 'status' }, S.undoText),
+    h('div', { class: 'row' }, h('button', { onclick: () => void undoKept(r) }, 'Undo it'), h('button', { onclick: () => void rememberApply(null).then(() => set({ undoText: null })) }, 'Forget it')),
+  );
+}
+
+/** Undo a kept Apply on a later visit: the engine reads its bundle from disk and restores only unchanged files. */
+async function undoKept(r: RememberedApply): Promise<void> {
+  try {
+    // The same folders Apply wrote, restored from this browser with the identities they had (never a fresh pick).
+    const g = await keptGrants(r.bundleId);
+    if (!g?.claude || !g.codex) return set({ undoText: 'The folders for this Apply were not kept in this browser. Its backups are still on disk under .deck-backups.' });
+    for (const k of [g.claude, g.codex, g.agents]) if (k && !(await ensureWritable(k.handle))) return set({ undoText: 'Write access was not granted, so nothing was restored.' });
+    const label = r.sample ? 'sample' : '~';
+    const c = fsaRoot('claude', g.claude.handle, `${label}/.claude`, g.claude.identity);
+    const roots: Root[] = [c, fsaRoot('codex', g.codex.handle, `${label}/.codex`, g.codex.identity), fsaRoot('backup', g.claude.handle, `${label}/.claude`), prefixedRoot(c, 'claude-skills', 'skills', `${label}/.claude/skills`)];
+    if (g.agents) roots.push(prefixedRoot(fsaRoot('codex-skills', g.agents.handle, `${label}/.agents`, g.agents.identity), 'codex-skills', 'skills', `${label}/.agents/skills`));
+    const u = await undoBundle(r.bundleId, roots);
+    set({ undoText: u.status === 'refused' ? `Undo refused: ${u.reason}` : u.files.map((f) => `${f.rel}: ${f.status === 'restored' ? 'restored to the original bytes' : f.status === 'already-original' ? 'already the original' : f.status === 'conflict' ? 'changed since; nothing was overwritten' : `failed (${f.error})`}`).join(' · ') });
+  } catch (e) {
+    if ((e as DOMException).name !== 'AbortError') fail(e);
+  }
+}
+
 function viewImport(): HTMLElement {
   const sel = S.selection;
   // A file input for the same path as the drop (keyboard, touch, and browsers without folder access).
@@ -344,6 +410,7 @@ function viewImport(): HTMLElement {
     [h('h1', {}, 'Your rules file is a deck.'), h('p', { class: 'mt-sub' }, 'Read your recent Claude Code and Codex sessions, review what happened, and write better rules into CLAUDE.md and AGENTS.md. Everything stays in this tab.')],
     [
       h('div', { class: 'mt-row' }, closedBook('CLAUDE.md', '~/.claude/CLAUDE.md', S.books.claude, 'tilt-a', 'not read yet'), closedBook('AGENTS.md', '~/.codex/AGENTS.md', S.books.codex, 'tilt-b', 'read at the mirror or at Apply')),
+      keptSlip(),
       h(
         'div',
         { class: 'mt-row' },

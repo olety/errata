@@ -576,3 +576,9 @@
 .pl-end-phone .pl-end-scorecard .pl-end-sliphead { min-height: 0; padding-right: 0; }
 /* undone (after a successful Undo): the stamp cracks; it never reads as still inked */
 .pl-end-ink-undone .pl-end-inkmark { border: 2px dashed var(--pl-end-soft); color: var(--pl-end-soft); transform: rotate(-8deg); text-decoration: line-through; text-decoration-thickness: 1px; }
+
+/* P3: the kept receipt (second visit) and the export for browsers without folder access. */
+.pl-end-remember { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.pl-end-exported { display: flex; flex-direction: column; gap: 8px; }
+.pl-end-export { border-top: 1px solid var(--pl-end-line, #e4d3ba); padding-top: 6px; }
+.pl-end-exportblock { max-height: 160px; overflow: auto; margin: 4px 0; font-size: 12px; }

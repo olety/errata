@@ -10,7 +10,8 @@ import { caseFor, ineligibility, type Room, type RouteNode } from '../../rooms';
 import type { Card, Case, Disposition as EngineDisposition, Scope, Targets } from '../../deck/types';
 import { draftCards } from '../../deck/templates';
 import { faceCopy } from '../../deck/face';
-import { lineWeight, sanitizeLine, text as utf8 } from '../../deck/file';
+import { BEGIN, END, lineWeight, parseGlobal, sanitizeLine, text as utf8 } from '../../deck/file';
+import { recordOf, type RememberedApply } from '../persist';
 import { acceptImportMapping, deckExportMap, isProse, presentCards, rebaseDeck, renderLanes, suggestMapping, withCards, withEdit, type DeckState } from '../../deck/deck';
 import { applyFuse, conflicts, cutCard, fuseSuggestions, previewChange, previewFuse, previewSettlement, removeCard, resolveConflict, sharpen, type Conflict, type FuseSuggestion, type Preview, type Resolution } from '../../deck/campfire';
 import { cover, coverage, coverPreview } from '../../cover';
@@ -1280,6 +1281,33 @@ export interface ApplyPort {
   ensureWritable(): Promise<boolean>;
   /** Ask for a folder; returns both global files and the Codex override as read under the grants, or null if cancelled. */
   grant(which: 'claude' | 'codex' | 'agents'): Promise<{ claude: Uint8Array | null; codex: Uint8Array | null; override: Uint8Array | null; loaded: { claude: boolean; codex: boolean } } | null>;
+  /** False in a browser without folder access: Apply then exports the blocks to paste ("Exported, not applied"). */
+  canWrite?(): boolean;
+  /** Keep (a record) or forget (null) the written receipt in this browser, on the player's word (spec §7). */
+  remember?(r: RememberedApply | null): void;
+  /** Whether the receipt with this bundle id is kept now. */
+  remembered?(bundleId: string): boolean;
+}
+
+/** The record a kept Apply holds: the receipt and the stable ids of the managed lines now in each file (spec §7). */
+export function applyRecord(s: PlayState, now?: Date): RememberedApply | null {
+  const r = s.apply.result;
+  if (r?.status !== 'written') return null;
+  const L = renderLanes(s.deck, s.raised);
+  const lines = AGENTS.map((a) => ({ file: C.FILE_OF[a], ids: parseGlobal(L[a].next).managed.map((m) => m.id) }));
+  return recordOf(r.receipt, lines, s.sample, now);
+}
+
+/** Each file's managed block as it would be written (from the begin marker to the end marker), for pasting by hand. */
+function exportedBlocks(s: PlayState): NonNullable<C.ApplyView['exported']> {
+  const L = renderLanes(s.deck, s.raised);
+  return AGENTS.map((a) => {
+    const t = utf8(L[a].next);
+    const i = t.indexOf(BEGIN);
+    const j = t.indexOf(END);
+    const text = i >= 0 ? t.slice(i, j >= 0 ? j + END.length : undefined) + '\n' : '';
+    return { file: C.FILE_OF[a], path: L[a].lane.label, text, download: `${C.FILE_OF[a].replace('.md', '')}-errata-block.md` };
+  });
 }
 
 /** A folder grant: the deck is rebased on the files as read now (taken cards, edits, settlements and acceptances carry). */
@@ -1369,9 +1397,11 @@ function bossItemsFor(s: PlayState): { cases: Case[]; source: ('sealed' | 'open'
 }
 
 /** Honesty map: stamps = Reviewed (every selected case has a disposition), Fits (both within allowance), Written (every read-back matched) (§13). */
-export function selectApply(s: PlayState, port?: Pick<ApplyPort, 'needs'>): C.ApplyView {
+export function selectApply(s: PlayState, port?: Pick<ApplyPort, 'needs' | 'canWrite' | 'remembered' | 'remember'>): C.ApplyView {
   const t = s.apply.targets;
-  const needs = port ? port.needs() : { claude: false, codex: false, agents: false };
+  // A browser without folder access exports the blocks instead of asking for folders it cannot open (P3).
+  const exportOnly = !!port?.canWrite && !port.canWrite();
+  const needs = port && !exportOnly ? port.needs() : { claude: false, codex: false, agents: false };
   const diffs: C.ApplyDiffView[] = [];
   if (t) {
     for (const sk of t.skills) diffs.push({ label: sk.slug, path: sk.rel, ops: lineDiff('', sk.text), weight: null, problem: sk.problems.join(' ') || null, blocker: null, kind: 'skill' });
@@ -1438,6 +1468,8 @@ export function selectApply(s: PlayState, port?: Pick<ApplyPort, 'needs'>): C.Ap
         : { status: 'done', files: u.files.map((f) => ({ path: f.rel, text: f.status === 'restored' ? 'restored to the original bytes' : f.status === 'already-original' ? 'already the original' : f.status === 'conflict' ? 'changed after Apply; nothing was overwritten' : `failed: ${f.error}`, conflict: f.status === 'conflict' })), text: null }
       : null,
     footer: verified && !(u && u.status === 'done') ? C.COPY.footer : null,
+    exported: exportOnly ? exportedBlocks(s) : null,
+    remember: { offered: r?.status === 'written' && !!port?.remember, saved: r?.status === 'written' && !!port?.remembered?.(r.receipt.bundleId) },
   };
 }
 
@@ -1495,7 +1527,7 @@ export function selectCovered(s: PlayState): Set<string> {
 // ------------------------------------------------------------------ the screen
 
 /** Which screen the controller shows for the current node. */
-export function selectScreen(s: PlayState, port?: Pick<ApplyPort, 'needs'>): C.Screen {
+export function selectScreen(s: PlayState, port?: Pick<ApplyPort, 'needs' | 'canWrite' | 'remembered' | 'remember'>): C.Screen {
   const n = currentNode(s);
   if (!n) return { kind: 'empty', text: 'No route: not enough evidence for a room yet.' };
   switch (n.kind) {

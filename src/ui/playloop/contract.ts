@@ -578,6 +578,16 @@ export interface ApplyView {
   undo: { status: 'done' | 'refused'; files: { path: string; text: string; conflict: boolean }[]; text: string | null } | null;
   /** COPY.footer only after a verified write (or a verified no-change); null before and after any failure. */
   footer: string | null;
+  /**
+   * A browser without folder access (P3): nothing can be written, so Apply shows each file's managed block to paste,
+   * with a download, under "Exported, not applied". Null when the folders can be written.
+   */
+  exported: { file: FileName; path: string; text: string; download: string }[] | null;
+  /**
+   * After a verified write: keep the receipt (bundle id, files, checksums) and the stable line ids in this browser, only
+   * when the player says so (spec §7, second visit). offered = a written receipt exists; saved = it is kept now.
+   */
+  remember: { offered: boolean; saved: boolean };
 }
 
 // ------------------------------------------------------------------ layout bands (integrator: geometry.ts)
@@ -745,6 +755,8 @@ export interface ControllerApi {
     seal(): Promise<void>;
     undo(): Promise<void>;
     returnToCampfire(select: { lane?: Agent; threadId?: string } | null): void;
+    /** Keep (true) or forget (false) the written receipt in this browser; only on the player's word. */
+    remember(on: boolean): void;
   };
 }
 

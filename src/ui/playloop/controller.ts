@@ -418,6 +418,13 @@ export class Controller {
         seal: () => this.applyAct('sealing', A.actSeal),
         undo: () => this.applyAct('undoing', A.actUndo),
         returnToCampfire: (select) => this.commit(A.actReturnToCampfire(this.state, select)),
+        // Keeping the receipt changes no game state: the view re-reads the port, so the screen is rebuilt here.
+        remember: (on) => {
+          if (!this.port?.remember) return;
+          this.port.remember(on ? A.applyRecord(this.state) : null);
+          this.cached = null;
+          this.emit();
+        },
       },
     };
   }

@@ -167,14 +167,58 @@ function outcome(v: ApplyView, plan: ApplyPlan, p: ScreenProps<ApplyView>): Node
         : el('div', 'pl-end-undo', el('span', 'pl-end-label', 'Undo'), el('ul', 'pl-end-filestat', ...v.undo.files.map((f) => el('li', f.conflict ? 'pl-end-warn' : '', el('span', 'pl-end-path', f.path), ` · ${f.text}`))))
       : null,
     v.footer ? el('p', 'pl-end-footer', v.footer) : null,
+    v.remember.offered ? rememberBox(v, p) : null,
   ];
   return parts.filter((x): x is HTMLElement => x !== null);
+}
+
+/**
+ * The second visit (spec §7): keep the receipt and the line ids in this browser, only on the player's word. Off until
+ * chosen; one click either way.
+ */
+function rememberBox(v: ApplyView, p: ScreenProps<ApplyView>): HTMLElement {
+  const saved = v.remember.saved;
+  return el(
+    'div',
+    'pl-end-remember',
+    el('p', 'pl-end-soft', saved ? 'Kept in this browser: the receipt and the ids of the lines written. No session text is kept.' : 'Keep this receipt in this browser for your next visit? Only the receipt (backup id, files, checksums) and the ids of the lines written; no session text.'),
+    button(saved ? 'Forget it' : 'Keep the receipt', 'pl-end-btn', () => p.api.apply.remember(!saved)),
+  );
+}
+
+/** A browser without folder access: each file's block to paste, with a download; nothing is written (P3). */
+function exportedBox(v: ApplyView): HTMLElement | null {
+  if (!v.exported) return null;
+  const files = v.exported.map((f) => {
+    const dl = button(`Download ${f.file}'s block`, 'pl-end-btn', () => {
+      const url = URL.createObjectURL(new Blob([f.text], { type: 'text/markdown' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = f.download;
+      a.rel = 'noopener';
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+    dl.dataset.download = f.download;
+    return el('section', 'pl-end-export', el('p', '', el('b', '', f.file), ' · ', el('span', 'pl-end-path', f.path)), f.text ? el('pre', 'pl-end-exportblock', f.text) : el('p', 'pl-end-soft', 'No change.'), f.text ? dl : null);
+  });
+  return el(
+    'div',
+    'pl-end-exported',
+    el('h3', 'pl-end-runhead', 'Exported, not applied'),
+    el('p', 'pl-end-soft', 'This browser cannot write files, so nothing was changed on disk. Paste each block at the end of the file named above it, or download it.'),
+    ...files,
+  );
 }
 
 // ------------------------------------------------------------------ blockers and grants
 
 function blockersBox(v: ApplyView, plan: ApplyPlan, p: ScreenProps<ApplyView>): HTMLElement {
   const box = el('div', 'pl-end-blockers');
+  const ex = exportedBox(v);
+  if (ex) box.append(ex);
   box.append(...outcome(v, plan, p));
   if (plan.busyText) box.append(el('p', 'pl-end-busy', plan.busyText));
   const required = plan.grants.filter((g) => !g.optional);

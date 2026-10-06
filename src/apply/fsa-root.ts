@@ -20,9 +20,10 @@ async function walk(dir: DirHandle, segs: string[], create: boolean): Promise<Di
 
 let grants = 0;
 
-export function fsaRoot(id: RootId, handle: DirHandle, label: string): Root {
-  // A grant id: Undo in the same tab refuses a different handle even when names match.
-  const identity = `fsa:${handle.name}:${Date.now().toString(36)}:${++grants}`;
+export function fsaRoot(id: RootId, handle: DirHandle, label: string, kept?: string): Root {
+  // A grant id: Undo in the same tab refuses a different handle even when names match. A later visit passes the id it
+  // kept beside the same handle (restored from this browser's storage, spec §7), so Undo finds the folder it wrote.
+  const identity = kept ?? `fsa:${handle.name}:${Date.now().toString(36)}:${++grants}`;
   function split(rel: string): { dirs: string[]; name: string } {
     const bad = validateRel(rel);
     if (bad) throw new Error(`${rel}: ${bad}`);
