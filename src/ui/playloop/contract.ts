@@ -234,8 +234,10 @@ export interface RoomView {
   kind: 'encounter' | 'event' | 'workshop';
   roomKey: string;
   beast: BeastView;
-  /** Every selected head in the room, the drawn five first. */
+  /** Every selected head in the room: heads[0] is the anchor (it leans in first), then by date. */
   heads: HeadView[];
+  /** Boundary and directive rooms: the line in the player's words, editable while judging (api.wording). */
+  wording: { value: string; editable: boolean } | null;
   /** One complete receipt at a time, with a visible queue (§0a.13). */
   receipts: { current: ReceiptView | null; queue: string[] };
   phase: RoomPhase;

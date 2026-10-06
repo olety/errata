@@ -46,6 +46,7 @@ describe('room 1 on the sample', () => {
     ]);
     expect(v.beast.pips.text).toBe('No confirmed problems · 3 unreviewed');
     expect(v.beast.skin).toBe('suite-wyrm');
+    expect(v.wording).toEqual({ value: "Don't run the whole suite, it takes ten minutes here. Run only the one test file I named, I'll run the rest myself.", editable: true });
   });
 
   test('stamping advances the receipt; dealing locks stamps until the hand is pulled back; only eligible drafts are dealt', () => {

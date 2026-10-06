@@ -490,6 +490,7 @@ export function selectRoom(s: PlayState, roomKey?: string): C.RoomView | null {
     roomKey: r.key,
     beast: beast(s, r, heads),
     heads,
+    wording: (r.family === 'boundary' || r.family === 'directive') && r.kind === 'encounter' ? { value: s.wording[r.key] ?? r.proposedConstraint ?? '', editable: p.phase === 'judge' } : null,
     receipts: { current, queue },
     phase: p.phase,
     hand: p.phase === 'dealt' ? hand.map((c) => cardView(s, c, { room: draftRoom(s, r), heads: ctxHeads })) : [],
