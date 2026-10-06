@@ -40,7 +40,9 @@ function firstRoomLine(s: A.PlayState, v: C.RoomView, redThread: boolean): Tutor
     if (!card) return null;
     // The sample's first room deals one card: say why there is only one (§0a.4), honestly; then the unit (gate fix 1).
     const why = v.hand.length === 1 ? 'One response fits what the logs show. ' : `${v.handDiffers ?? ''} `;
-    return line(`${why}Drag the card onto the beast, or click it and then the beast: it ${COPY.addsTo} for every agent whose head glows. +${card.weight} tok is what the line adds to your file.`, { kind: 'card', cardId: card.id });
+    // P4 item 2: the first line in a file also brings the block's marker lines, once; the coach says so in words.
+    const cost = card.cost ? `${card.cost.text}: the line, plus the marker lines a file gets with its first line.` : `+${card.weight} tok is what the line adds to your file.`;
+    return line(`${why}Drag the card onto the beast, or click it and then the beast: it ${COPY.addsTo} for every agent whose head glows. ${cost}`, { kind: 'card', cardId: card.id });
   }
   // After the play: the new line disagrees with one already in a file (the red thread). Continue leads to the fire.
   if (v.phase === 'done' && v.result?.played && redThread) return line(`A red thread: two lines in your files now disagree. ${fireAhead(s)} settles it. Continue when you are ready.`);

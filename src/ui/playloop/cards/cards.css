@@ -262,6 +262,10 @@
 .pl-cards-ghost-parts { display: block; font-size: 11px; line-height: 13px; color: var(--pl-cards-ink-2); }
 .pl-cards-fig-line + .pl-cards-fig-line { color: var(--pl-cards-ink-2); }
 .pl-cards-fig-line.is-over { color: #9b3b47; font-weight: 600; }
+/* P4: the desk book is 144 px wide; "104 of 1,200 used" and "1,096 left" each keep a line there, with no dangling dot. */
+.pl-cards-fig-part { white-space: nowrap; }
+.pl-cards-book .pl-cards-fig-sep { display: none; }
+.pl-cards-book .pl-cards-fig-part { display: block; }
 .pl-cards-book-note { margin: 0; font-size: 12px; line-height: 15px; color: var(--pl-cards-ink-2); }
 .pl-cards-book-note.is-blocked { color: var(--pl-cards-ink); font-weight: 500; }
 .pl-cards-proposed {

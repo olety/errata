@@ -202,7 +202,10 @@ function Path(path: string): HTMLElement {
 /** The strap's two lines (P4 item 1): "token budget" / "104 of 1,200 used · 1,096 left". Never a bare fraction. */
 function Figures(b: BookView): HTMLElement {
   const t = strapText(b.weight.now, b.weight.allowance);
-  const f = el('p', 'pl-cards-book-fig', el('span', 'pl-cards-fig-line pl-cards-fig-title', t.title), el('span', `pl-cards-fig-line${b.weight.over ? ' is-over' : ''}`, t.used));
+  // Line two is "104 of 1,200 used · 1,096 left"; a narrow desk book breaks it at the separator, never after it.
+  const parts = t.used.split(' · ');
+  const used = el('span', `pl-cards-fig-line${b.weight.over ? ' is-over' : ''}`, ...parts.flatMap((x, i) => [i ? el('span', 'pl-cards-fig-sep', ' · ') : null, el('span', 'pl-cards-fig-part', x)]));
+  const f = el('p', 'pl-cards-book-fig', el('span', 'pl-cards-fig-line pl-cards-fig-title', t.title), used);
   f.title = `${t.title}: ${t.used} (tokens, ${COPY.estimated}: bytes ÷ 3 over the whole file, your own text, the block header and every line)`;
   return f;
 }

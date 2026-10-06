@@ -257,8 +257,8 @@ describe('the tutorial coach on the sample (§11, §0a.16): one line per gesture
     const room = c.screen();
     if (room.kind !== 'room') throw new Error('not a room');
     expect(room.view.hand.length).toBe(1);
-    const w = room.view.hand[0]!.weight;
-    expect(t()).toEqual({ text: `One response fits what the logs show. Drag the card onto the beast, or click it and then the beast: it adds to your proposed files for every agent whose head glows. +${w} tok is what the line adds to your file.`, focus: { kind: 'card', cardId: room.view.hand[0]!.id } });
+    expect(room.view.hand[0]!.cost!.text).toBe('+46 tok · +22–23 once');
+    expect(t()).toEqual({ text: 'One response fits what the logs show. Drag the card onto the beast, or click it and then the beast: it adds to your proposed files for every agent whose head glows. +46 tok · +22–23 once: the line, plus the marker lines a file gets with its first line.', focus: { kind: 'card', cardId: room.view.hand[0]!.id } });
     c.key('Enter');
     // The campfire is named by where it is on the route (P3 gate fix D).
     expect(t()!.text).toBe('A red thread: two lines in your files now disagree. The campfire, two rooms on, settles it. Continue when you are ready.');

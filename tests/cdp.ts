@@ -65,8 +65,12 @@ const KEYS: Record<string, { code: string; keyCode: number; text?: string }> = {
   Escape: { code: 'Escape', keyCode: 27 },
 };
 
-/** Serve `root` (a built site) and open it in an isolated headless Chrome for Testing. */
-export async function withPage<T>(root: string, viewport: { w: number; h: number }, run: (p: Page) => Promise<T>): Promise<T> {
+/**
+ * Serve `root` (a built site) and open it in an isolated headless Chrome for Testing. `opts.scale` renders at that
+ * device pixel ratio (a 2x screenshot of a 1440 × 900 page is 2880 × 1800).
+ */
+export async function withPage<T>(root: string, viewport: { w: number; h: number }, run: (p: Page) => Promise<T>, opts: { scale?: number } = {}): Promise<T> {
+  const scale = opts.scale ?? 1;
   if (!CHROME) throw new Error('no Chrome for Testing');
   const server = Bun.serve({
     port: 0,
@@ -81,7 +85,8 @@ export async function withPage<T>(root: string, viewport: { w: number; h: number
   });
   const dir = mkdtempSync(join(tmpdir(), 'errata-e2e-'));
   const profile = join(dir, 'profile');
-  const proc = Bun.spawn([CHROME, ...CHROME_FLAGS, '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { stdout: 'ignore', stderr: 'ignore' });
+  const flags = CHROME_FLAGS.map((f) => (f.startsWith('--force-device-scale-factor=') ? `--force-device-scale-factor=${scale}` : f));
+  const proc = Bun.spawn([CHROME, ...flags, '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { stdout: 'ignore', stderr: 'ignore' });
   let ws: Socket | null = null;
   try {
     const portFile = join(profile, 'DevToolsActivePort');
@@ -96,7 +101,7 @@ export async function withPage<T>(root: string, viewport: { w: number; h: number
     const { targetId } = await sock.send('Target.createTarget', { url: 'about:blank' });
     const { sessionId } = await sock.send('Target.attachToTarget', { targetId, flatten: true });
     const send = (m: string, p: object = {}) => sock.send(m, p, sessionId);
-    await send('Emulation.setDeviceMetricsOverride', { width: viewport.w, height: viewport.h, deviceScaleFactor: 1, mobile: false });
+    await send('Emulation.setDeviceMetricsOverride', { width: viewport.w, height: viewport.h, deviceScaleFactor: scale, mobile: false });
     await send('Page.enable');
     await send('Runtime.enable');
     await send('DOM.enable');
