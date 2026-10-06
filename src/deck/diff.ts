@@ -25,23 +25,3 @@ export function lineDiff(a: string, b: string): DiffOp[] {
   return out;
 }
 
-/** Unified-style text with up to `context` unchanged lines around each change. */
-export function renderDiff(ops: DiffOp[], context = 2): string {
-  const keep = new Array(ops.length).fill(false);
-  ops.forEach((o, i) => {
-    if (o.op === 'same') return;
-    for (let k = Math.max(0, i - context); k <= Math.min(ops.length - 1, i + context); k++) keep[k] = true;
-  });
-  const out: string[] = [];
-  let skipped = false;
-  ops.forEach((o, i) => {
-    if (!keep[i]) {
-      if (!skipped) out.push('  …');
-      skipped = true;
-      return;
-    }
-    skipped = false;
-    out.push((o.op === 'add' ? '+ ' : o.op === 'del' ? '- ' : '  ') + o.line);
-  });
-  return out.join('\n');
-}

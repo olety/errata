@@ -18,7 +18,7 @@ bun run dev
 
 - `http://localhost:5173/errata/#play-ui` runs the sample through the workers' screens (the mount in `mount.ts`).
 - `http://localhost:5173/errata/#play` runs the plain debug render: every view field as text, every act as a button.
-- Both load the synthetic sample automatically. The slice at `/errata/` stays the default route until P1 lands.
+- Both load the synthetic sample automatically. Since P2, `/errata/` itself is the game: import, reading, the mirror, then these screens.
 
 ## Rules for every worker
 

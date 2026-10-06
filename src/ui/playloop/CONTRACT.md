@@ -1,4 +1,4 @@
-# Play-loop contract (frozen 2026-10-07 for P1)
+# Play-loop contract (frozen 2026-10-07 for P1; P2 additions at the end)
 
 `contract.ts` is the only file the four workers import from the play loop core. It holds view types, the drag intent, stamps, results and pure copy selectors. It never touches the engine.
 
@@ -101,3 +101,20 @@ A room's stamps are final once `actPlay` succeeds, `actSkip` runs, or `actAdvanc
 ## Freeze
 
 Workers may ask for a new field. The integrator adds it to `contract.ts` and `adapter.ts` together, with a test, and notes it here. Nobody else edits these files.
+
+## P2 additions (integrator, 2026-10-07)
+
+Each field below has a test in `tests/playloop-p2.test.ts`.
+
+| Field or act | Asked by | What it is |
+|---|---|---|
+| `CardView.sealed`, `CardView.type` | engine gap | Sealed protected text (the sample's Notes line) keeps type `protected` and `sealed: true`: it weighs, never stacks, settles or burns (`SEALED`). Lines read from your file that are instructions are `rule` cards. |
+| `CardView.art` (`CardArt`) | cards | The art plate from the card's family; null for protected text and traits. |
+| `HeadGlow.tag` | cards | Agent, project and date of each glowing or turned-aside head. |
+| `ChangePreviewView.refs` | campfire | Every case a preview names (opened, addressed, needs acceptance) with its tag. |
+| `BossView.skin` | boss/apply | The run's largest family skin; the boss wears that skin's room plates. |
+| `InkState` `'undone'` | boss/apply | After a successful Undo the three stamps read undone, never still inked. |
+| `BookView.raiseSteps`, `actRaiseAllowance` checks | lead | The buckle's offers (three steps above the allowance and the weight); a raise goes only upward, in whole tokens, on a read file. |
+| `RoomView.scope`, `api.confirmProject`, `actConfirmProject` | engine gap | The scope chip: confirm one project while judging a room whose heads span projects; drafts carry that scope, so check 4 turns other projects' heads aside. |
+| `UiView.tutorial` | integrator | Filled by `tutorial.ts` on the sample: one coach line per gesture, with a card or thread spotlight. |
+| Controller guards | campfire, boss/apply, cards | A card dropped on itself or on sealed text is refused with a notice; Enter at the fire leaves only when no proposal is up; arrow keys select through `api.select`; `boss.next()` clears the selection. |

@@ -3,7 +3,6 @@
 // Every act goes through the adapter. No beat waits on an animation: beats only tell the renderers what to animate,
 // and any input moves on. The keyboard map is a pure function so it can be tested without a DOM.
 
-import type { Agent } from '../../model';
 import * as A from './adapter';
 import type * as C from './contract';
 import { layout, type Viewport } from './geometry';
@@ -327,7 +326,6 @@ export class Controller {
 
   private buildApi(): C.ControllerApi {
     const run = (f: (s: A.PlayState) => A.PlayState) => () => this.commit(f(this.state));
-    const port = () => this.port;
     return {
       stamp: (caseId, stamp) => this.commit(A.actStamp(this.state, caseId, stamp), { beat: 'judge' }, 'stamp'),
       focusReceipt: (caseId) => this.commit(A.actFocusReceipt(this.state, caseId)),

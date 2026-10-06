@@ -6,12 +6,12 @@
 import type { Agent } from '../../model';
 import type { Analysis } from '../../pipeline';
 import type { Episode } from '../../episodes';
-import { buildRoute, caseFor, ineligibility, type Room, type RouteNode } from '../../rooms';
+import { caseFor, ineligibility, type Room, type RouteNode } from '../../rooms';
 import type { Card, Case, Disposition as EngineDisposition, Scope, Targets } from '../../deck/types';
 import { draftCards } from '../../deck/templates';
 import { faceCopy } from '../../deck/face';
 import { lineWeight, sanitizeLine, text as utf8 } from '../../deck/file';
-import { acceptImportMapping, acceptOnCase, deckExportMap, isProse, presentCards, rebaseDeck, renderLanes, suggestMapping, withCards, withEdit, type DeckState } from '../../deck/deck';
+import { acceptImportMapping, deckExportMap, isProse, presentCards, rebaseDeck, renderLanes, suggestMapping, withCards, withEdit, type DeckState } from '../../deck/deck';
 import { applyFuse, conflicts, cutCard, fuseSuggestions, previewChange, previewFuse, previewSettlement, removeCard, resolveConflict, sharpen, type Conflict, type FuseSuggestion, type Preview, type Resolution } from '../../deck/campfire';
 import { cover, coverage, coverPreview } from '../../cover';
 import { acceptOnHead, answerBoss, bossTally, headResults, openPile, playCard, previewDrop, retarget, tallyCurrent, weightPreview, withProposed, type BossTally, type DropTarget, type WeightLane, type WeightPreview } from '../../play';
@@ -738,11 +738,6 @@ export function actAdvance(s: PlayState): PlayState {
   }
   if (n.kind === 'boss' || n.kind === 'audit') s = actLockScore(s);
   return upd(s, { node: Math.min(s.node + 1, s.route.length - 1), sub: 0 });
-}
-
-/** Re-split a room by a confirmed project and rebuild the route (kept from the slice; §1 confirmed project). */
-export function actRebuildRoute(s: PlayState, rooms: Room[]): PlayState {
-  return upd(s, { rooms, route: buildRoute(rooms, { importedCards: s.deck.imported.length }).nodes });
 }
 
 // ------------------------------------------------------------------ drag previews
