@@ -306,6 +306,10 @@ export class Controller {
         next: run(A.actBossNext),
       },
       apply: {
+        grant: async (which) => {
+          const p = port();
+          if (p) this.commit(await A.actGrant(this.state, p, which));
+        },
         prepare: async () => {
           const p = port();
           if (p) this.commit(await A.actPrepareApply(this.state, p));

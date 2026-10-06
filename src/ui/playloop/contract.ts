@@ -391,6 +391,9 @@ export interface BossCandidateView {
 export interface BossView {
   kind: 'boss' | 'audit';
   heads: BossHeadView[];
+  /** The final deck's cards (the answer drag picks one) and the books they lie in. No new cards, no edits here. */
+  cards: CardView[];
+  books: BookView[];
   /** The head being revealed or answered, oldest first; null after the last. */
   current: string | null;
   /** For the current head once stamped a problem. */
@@ -561,6 +564,8 @@ export interface ControllerApi {
     next(): void;
   };
   apply: {
+    /** Ask for a folder (~/.claude, ~/.codex or ~/.agents); the deck is re-read under it and the diff rebuilt. */
+    grant(which: 'claude' | 'codex' | 'agents'): Promise<void>;
     prepare(): Promise<void>;
     seal(): Promise<void>;
     undo(): Promise<void>;

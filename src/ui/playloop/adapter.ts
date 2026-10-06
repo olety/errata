@@ -11,7 +11,7 @@ import type { Card, Case, Disposition as EngineDisposition, Targets } from '../.
 import { draftCards } from '../../deck/templates';
 import { faceCopy } from '../../deck/face';
 import { lineWeight, sanitizeLine, text as utf8 } from '../../deck/file';
-import { acceptImportMapping, acceptOnCase, deckExportMap, isProse, presentCards, renderLanes, suggestMapping, withCards, withEdit, type DeckState } from '../../deck/deck';
+import { acceptImportMapping, acceptOnCase, deckExportMap, isProse, presentCards, rebaseDeck, renderLanes, suggestMapping, withCards, withEdit, type DeckState } from '../../deck/deck';
 import { applyFuse, conflicts, cutCard, fuseSuggestions, previewChange, previewFuse, previewSettlement, removeCard, resolveConflict, sharpen, type Conflict, type FuseSuggestion, type Preview, type Resolution } from '../../deck/campfire';
 import { cover, coverage, coverPreview } from '../../cover';
 import { acceptOnHead, answerBoss, bossTally, headResults, openPile, playCard, previewDrop, retarget, tallyCurrent, weightPreview, withProposed, type BossTally, type DropTarget, type WeightLane, type WeightPreview } from '../../play';
@@ -959,6 +959,8 @@ export function selectBoss(s: PlayState): C.BossView {
   return {
     kind: n?.kind === 'audit' ? 'audit' : 'boss',
     heads: headsV,
+    cards: cards.filter((c) => c.type !== 'trait').map((c) => cardView(s, c)),
+    books: selectBooks(s),
     current: cur?.id ?? null,
     candidates,
     noEligibleCard: noEligible,
@@ -1012,6 +1014,19 @@ export interface ApplyPort {
   readSkill(root: 'claude-skills' | 'codex-skills' | 'codex-legacy-skills', rel: string): Promise<Uint8Array | null>;
   /** Ask for write access at the seal; false when refused. */
   ensureWritable(): Promise<boolean>;
+  /** Ask for a folder; returns both global files and the Codex override as read under the grants, or null if cancelled. */
+  grant(which: 'claude' | 'codex' | 'agents'): Promise<{ claude: Uint8Array | null; codex: Uint8Array | null; override: Uint8Array | null; loaded: { claude: boolean; codex: boolean } } | null>;
+}
+
+/** A folder grant: the deck is rebased on the files as read now (taken cards, edits, settlements and acceptances carry). */
+export async function actGrant(s: PlayState, port: ApplyPort, which: 'claude' | 'codex' | 'agents'): Promise<PlayState> {
+  const f = await port.grant(which);
+  const next = f ? upd(s, { deck: rebaseDeck(s.deck, f.claude, f.codex, f.override), loaded: f.loaded }) : s;
+  return prepareIfApply(next, port);
+}
+
+async function prepareIfApply(s: PlayState, port: ApplyPort): Promise<PlayState> {
+  return currentNode(s)?.kind === 'apply' ? actPrepareApply(s, port) : s;
 }
 
 export async function actPrepareApply(s: PlayState, port: ApplyPort): Promise<PlayState> {

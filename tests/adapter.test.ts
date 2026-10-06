@@ -135,10 +135,26 @@ describe('room 1 on the sample', () => {
   });
 });
 
+describe('folder grants (real logs read the files at Apply)', () => {
+  test('a grant rebases the deck on the files as read now; taken cards and the boss view keep their cards', async () => {
+    let s = judgeAndDeal(fresh());
+    s = A.actPlay(s, A.selectRoom(s)!.hand[0]!.id, 'beast').state;
+    const grown = new TextEncoder().encode(new TextDecoder().decode(sampleClaudeMd()) + '- Keep diffs small.\n');
+    const port: A.ApplyPort = { roots: () => null, needs: () => ({ claude: false, codex: false, agents: true }), readSkill: async () => null, ensureWritable: async () => true, grant: async () => ({ claude: grown, codex: sampleAgentsMd(), override: null, loaded: { claude: true, codex: true } }) };
+    const g = await A.actGrant(s, port, 'claude');
+    const books = A.selectBooks(g);
+    expect(books[0]!.weight.now).toBeGreaterThan(A.selectBooks(s)[0]!.weight.now);
+    expect(g.deck.cards.map((c) => c.id)).toEqual(s.deck.cards.map((c) => c.id));
+    expect(A.selectRoom(g)!.result!.bound.length).toBe(3);
+    const cancelled = await A.actGrant(s, { ...port, grant: async () => null }, 'claude');
+    expect(cancelled).toBe(s);
+  });
+});
+
 describe('the tutorial route to Apply and Undo', () => {
   let tmp: string;
   let roots: Root[];
-  const port = (): A.ApplyPort => ({ roots: () => roots, needs: () => ({ claude: false, codex: false, agents: false }), readSkill: async (root, rel) => (root === 'codex-legacy-skills' ? null : roots.find((r) => r.id === root)!.read(rel)), ensureWritable: async () => true });
+  const port = (): A.ApplyPort => ({ roots: () => roots, needs: () => ({ claude: false, codex: false, agents: false }), readSkill: async (root, rel) => (root === "codex-legacy-skills" ? null : roots.find((r) => r.id === root)!.read(rel)), ensureWritable: async () => true, grant: async () => null });
 
   beforeAll(async () => {
     tmp = await mkdtemp(join(tmpdir(), 'errata-adapter-'));
@@ -188,6 +204,8 @@ describe('the tutorial route to Apply and Undo', () => {
     expect(A.selectScreen(s).kind).toBe('campfire');
     s = A.actAdvance(s);
     const boss = A.selectBoss(s);
+    expect(boss.cards.length).toBeGreaterThan(0);
+    expect(boss.books.map((b) => b.file)).toEqual(['CLAUDE.md', 'AGENTS.md']);
     expect(boss.heads.map((h) => [h.source, label(h.caseId)])).toEqual([
       ['sealed', 'S11'],
       ['sealed', 'S12'],

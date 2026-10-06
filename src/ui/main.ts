@@ -446,6 +446,23 @@ function playPort(): ApplyPort {
       return byId.get(root)?.read(rel) ?? Promise.resolve(null);
     },
     ensureWritable: async () => S.mode !== 'real' || ((await ensureWritable(S.dirs.claude!)) && (await ensureWritable(S.dirs.codex!)) && (!S.dirs.agents || (await ensureWritable(S.dirs.agents)))),
+    grant: async (which) => {
+      try {
+        const dir = await pick({ id: `${which}-home`, mode: 'readwrite' });
+        S.dirs[which] = dir;
+        S.roots = null;
+        if (which === 'claude') S.dirs.claudeLoaded = true;
+        if (which === 'codex') S.dirs.codexLoaded = true;
+        return {
+          claude: S.dirs.claude ? await readIn(S.dirs.claude, 'CLAUDE.md') : null,
+          codex: S.dirs.codex ? await readIn(S.dirs.codex, 'AGENTS.md') : null,
+          override: S.dirs.codex ? await readIn(S.dirs.codex, CODEX_OVERRIDE) : null,
+          loaded: { claude: S.dirs.claudeLoaded, codex: S.dirs.codexLoaded },
+        };
+      } catch {
+        return null;
+      }
+    },
   };
 }
 
