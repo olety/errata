@@ -2,6 +2,10 @@
    The page's <main> is the slice's centred column; the Table fills the viewport above it and scrolls only when the
    bands ask for it (Bands.scroll). */
 
+/* Own box model: these components never rely on the page's global reset. */
+:where([class^="pl-layout-"], [class*=" pl-layout-"]), :where([class^="pl-layout-"], [class*=" pl-layout-"])::before, :where([class^="pl-layout-"], [class*=" pl-layout-"])::after,
+:where([class^="pl-layout-"], [class*=" pl-layout-"]) :where(*) { box-sizing: border-box; }
+
 .pl-layout-table {
   position: fixed;
   inset: 0;

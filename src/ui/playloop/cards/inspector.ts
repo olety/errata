@@ -88,7 +88,9 @@ function CardBody(c: CardView, v: Extract<InspectorView, { kind: 'card' }> | nul
 
   // Mapping approval: one row per case, Accept when eligible and not yet accepted (check 8).
   if (i.needsAcceptance) body.append(el('div', 'pl-cards-insp-act', button('pl-cards-btn pl-cards-btn-ink', 'Accept this reading', () => api.campfire.acceptImport(c.id)), el('span', 'pl-cards-insp-note', 'This text changed or came from your file: its cases count only once you accept it.')));
-  if (v && v.mappings[0] !== undefined) body.append(Section('Cases this line can answer', ...v.mappings.map((m) => MappingRow(m, api))));
+  // A draft's mappings are accepted by playing it; only a card already in the proposal offers Accept here.
+  const inProposal = c.inFiles[0] !== undefined;
+  if (v && v.mappings[0] !== undefined) body.append(Section('Cases this line can answer', ...v.mappings.map((m) => MappingRow(m, api, inProposal))));
 
   // Evidence: each session with its receipt.
   const ev = v
@@ -106,9 +108,15 @@ function CardBody(c: CardView, v: Extract<InspectorView, { kind: 'card' }> | nul
   return body;
 }
 
-function MappingRow(m: MappingReviewView, api: ControllerApi): HTMLElement {
+function MappingRow(m: MappingReviewView, api: ControllerApi, inProposal: boolean): HTMLElement {
   const r = m.receipt;
-  const state = m.accepted ? el('span', 'pl-cards-map-ok', 'Accepted') : m.eligible ? button('pl-cards-btn pl-cards-btn-ink', 'Accept', () => api.campfire.acceptMapping(m.cardId, m.caseId), `Accept this line for the case of ${r.date ?? 'no date'}`) : el('span', 'pl-cards-map-no', m.reason ?? 'not eligible');
+  const state = m.accepted
+    ? el('span', 'pl-cards-map-ok', 'Accepted')
+    : m.eligible && inProposal
+      ? button('pl-cards-btn pl-cards-btn-ink', 'Accept', () => api.campfire.acceptMapping(m.cardId, m.caseId), `Accept this line for the case of ${r.date ?? 'no date'}`)
+      : m.eligible
+        ? el('span', 'pl-cards-map-no', `Eligible · ${COPY.ifAccepted}`)
+        : el('span', 'pl-cards-map-no', m.reason ?? 'not eligible');
   return el(
     'div',
     `pl-cards-map${m.accepted ? ' is-accepted' : ''}`,

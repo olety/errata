@@ -2,6 +2,10 @@
    Every class is prefixed pl-cards-. Paper #FFF9EE, ink #41291F, rose #B86A74 at most once per view. No gradients,
    no glass, no glow, never pure white or black. Mono figures render literally (no ligatures). */
 
+/* Own box model: these components never rely on the page's global reset. */
+:where([class^="pl-cards-"], [class*=" pl-cards-"]), :where([class^="pl-cards-"], [class*=" pl-cards-"])::before, :where([class^="pl-cards-"], [class*=" pl-cards-"])::after,
+:where([class^="pl-cards-"], [class*=" pl-cards-"]) :where(*) { box-sizing: border-box; }
+
 :root {
   --pl-cards-paper: #fff9ee;
   --pl-cards-paper-2: #f6ebd8;
@@ -266,7 +270,7 @@
 .pl-cards-booktab .pl-cards-clasp { width: 12px; height: 12px; }
 .pl-cards-booktab .pl-cards-book-fig { flex: 1; min-width: 0; font-size: 12px; line-height: 14px; white-space: nowrap; }
 .pl-cards-booktab .pl-cards-book-fig .pl-cards-mono { font-size: 11.5px; }
-.pl-cards-proposed-tag { flex: none; font-size: 10.5px; line-height: 12px; padding: 0 4px; border: 1px solid var(--pl-cards-line-2); border-radius: 2px; color: var(--pl-cards-ink-2); text-transform: uppercase; letter-spacing: 0.04em; }
+.pl-cards-proposed-tag { position: absolute; right: 6px; bottom: 4px; rotate: -5deg; font-weight: 700; background: var(--pl-cards-paper); font-size: 10.5px; line-height: 12px; padding: 0 4px; border: 1px solid var(--pl-cards-line-2); border-radius: 2px; color: var(--pl-cards-ink-2); text-transform: uppercase; letter-spacing: 0.04em; }
 
 /* the open page: the exact line at reading size before release */
 .pl-cards-page {
@@ -285,7 +289,7 @@
 .pl-cards-page.is-refused { border-color: var(--pl-cards-ink-2); }
 
 /* ================================================================ the piles */
-.pl-cards-piles { position: relative; flex: none; display: flex; align-items: center; gap: var(--pl-layout-piles-gap, 12px); }
+.pl-cards-piles { position: relative; flex: none; display: flex; align-items: flex-start; gap: var(--pl-layout-piles-gap, 12px); }
 .pl-cards-pilewrap { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 6px; width: var(--pl-layout-piles-w, 96px); }
 .pl-cards-pile {
   position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px;

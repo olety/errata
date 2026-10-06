@@ -146,12 +146,8 @@ function Tab(b: BookView, ghost: GhostDelta | null, dest: boolean): HTMLElement 
     'div',
     `pl-cards-booktab${dest ? ' is-dest' : ''}${b.weight.over ? ' is-over' : ''}`,
     el('div', 'pl-cards-booktab-row', el('b', 'pl-cards-book-name', b.file), Strap(b, ghost)),
-    el(
-      'div',
-      'pl-cards-booktab-row',
-      ghost ? el('p', 'pl-cards-book-fig', el('span', 'pl-cards-mono', signedDelta(ghost)), ` ${COPY.estimated}`) : Figures(b),
-      b.proposed ? el('span', 'pl-cards-proposed-tag', COPY.proposed) : null,
-    ),
+    ghost ? el('p', 'pl-cards-book-fig', el('span', 'pl-cards-mono', signedDelta(ghost)), ghost.delta !== 0 ? ` ${COPY.estimated}` : '') : Figures(b),
+    b.proposed ? el('span', 'pl-cards-proposed-tag', COPY.proposed) : null,
   );
   tab.dataset.lane = b.lane;
   tab.setAttribute('aria-label', `${b.file}: ${b.weight.now} of ${b.weight.allowance} ${COPY.estimated}`);
