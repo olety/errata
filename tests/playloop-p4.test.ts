@@ -329,3 +329,23 @@ describe('item 6: the README', () => {
     expect(md).not.toContain('\u2014');
   });
 });
+
+describe('item 7: the submission assets', () => {
+  const png = (rel: string) => {
+    const b = readFileSync(join(ROOT, rel));
+    expect(b.subarray(1, 4).toString('latin1')).toBe('PNG');
+    return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+  };
+
+  test('the blurb fits 500 characters; the card is 1440 × 900 with a 2x copy; the demo script names every beat', () => {
+    const blurb = readFileSync(join(ROOT, 'docs/submission/blurb.txt'), 'utf8').trimEnd();
+    expect(blurb.length).toBeLessThanOrEqual(500);
+    expect(blurb).toStartWith('Errata turns your Claude Code and Codex session logs into a card run.');
+    expect(png('docs/submission/card-1440x900.png')).toEqual({ w: 1440, h: 900 });
+    expect(png('docs/submission/card-1440x900@2x.png')).toEqual({ w: 2880, h: 1800 });
+    expect(png('docs/submission/card-selected-1440x900.png')).toEqual({ w: 1440, h: 900 });
+    const script = readFileSync(join(ROOT, 'docs/demo/SCRIPT.md'), 'utf8');
+    for (const t of ['0:00–0:03', '0:03–0:08', '0:08–0:13', '0:13–0:19', '0:19–0:24', '0:24–0:28', '0:28–0:30']) expect(script).toContain(t);
+    expect(script).not.toContain('\u2014');
+  });
+});
