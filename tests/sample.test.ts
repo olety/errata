@@ -196,6 +196,9 @@ describe('manifest: per-session expected outcomes', () => {
     expect(r.proposedConstraint).toContain(x.new_directory);
     const a = draftCards(r)[0]!;
     expect(a.scope).toMatchObject({ kind: 'project', projectKey: projectKey(x.project_scope) });
+    // The person's words already name the project ("in pyramid never touch …"): the card says it once.
+    expect(a.text).toStartWith('In pyramid, never touch `pyramid/tests/`');
+    expect(a.text.match(/in pyramid/gi)!.length).toBe(1);
     const c = issue(caseFor(e, r));
     const card = take(a, [c]);
     expect(coversIn(deckWith([card]), card, c).covers).toBe(true);

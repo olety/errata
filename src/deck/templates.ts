@@ -41,10 +41,14 @@ function projectClause(scope: Scope): string {
   return scope.kind === 'project' ? `In ${scope.label}, ` : '';
 }
 
-/** Join a project clause and a sentence: "In api, when …" or "When …". */
+/**
+ * Join a project clause and a sentence: "In api, when …" or "When …". The person's own words may already name the
+ * project ("in pyramid never touch …"); the clause is then said once, in the canonical "In api, " form.
+ */
 function sentence(scope: Scope, body: string): string {
   const pc = projectClause(scope);
-  const b = body.trim();
+  let b = body.trim();
+  if (scope.kind === 'project') b = b.replace(new RegExp(`^in\\s+${scope.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b[,:]?\\s*`, 'i'), '');
   return pc ? pc + b.charAt(0).toLowerCase() + b.slice(1) : b.charAt(0).toUpperCase() + b.slice(1);
 }
 
