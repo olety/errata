@@ -155,7 +155,7 @@ export function clampExcerpt(text: string, max = SUMMARY_MAX): string {
 }
 
 export function faceTitle(card: Card): string {
-  if (card.type === 'protected') return 'Your rule';
+  if (card.type === 'protected') return card.sealed ? 'Protected text' : 'Your rule';
   if (card.family === 'imported') return 'Earlier rule';
   const t = FACE_TITLES[card.responseKey];
   return t.length <= TITLE_MAX ? t : t.slice(0, TITLE_MAX);

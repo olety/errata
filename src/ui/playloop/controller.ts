@@ -48,7 +48,7 @@ const STAMP_KEYS: Record<string, C.Stamp> = { a: 'issue', c: 'pivot', n: 'not-a-
  * AGENTS.md, S shelves, F flips and Space opens the inspector, Tab walks the heads, A / C / N / U stamp, Backspace
  * pulls the hand back, Escape cancels. Enter also deals when judging and moves on when a room is done.
  */
-export function keyIntent(key: string, shift: boolean, screen: C.Screen): KeyIntent | null {
+export function keyIntent(key: string, shift: boolean, screen: C.Screen, pending: C.UiView['pending'] = null): KeyIntent | null {
   const k = key.length === 1 ? key.toLowerCase() : key;
   if (k === 'Escape') return { kind: 'cancel' };
   if (screen.kind === 'room' || screen.kind === 'event') {
@@ -80,7 +80,8 @@ export function keyIntent(key: string, shift: boolean, screen: C.Screen): KeyInt
     if (k === 'Enter') return screen.view.current ? { kind: 'boss-next' } : { kind: 'advance' };
     return null;
   }
-  if (screen.kind === 'campfire') return k === 'Enter' ? { kind: 'advance' } : null;
+  // At the campfire Enter has one owner at a time: with a proposal up, the campfire's seal takes it; otherwise it leaves.
+  if (screen.kind === 'campfire') return k === 'Enter' && !pending ? { kind: 'advance' } : null;
   if (screen.kind === 'apply') return k === 'Enter' && screen.view.canSeal ? { kind: 'seal' } : null;
   return k === 'Enter' ? { kind: 'advance' } : null;
 }
@@ -147,7 +148,7 @@ export class Controller {
   /** Handle a key; returns true when it was used (the caller then prevents the default). */
   key(key: string, shift = false): boolean {
     const screen = this.screen();
-    const intent = keyIntent(key, shift, screen);
+    const intent = keyIntent(key, shift, screen, this.ui.pending);
     if (!intent) return false;
     const room = screen.kind === 'room' || screen.kind === 'event' ? screen.view : null;
     switch (intent.kind) {
@@ -171,8 +172,9 @@ export class Controller {
         const ids = room ? room.hand.map((c) => c.id) : screen.kind === 'boss' ? screen.view.candidates.filter((c) => c.glow).map((c) => c.cardId) : [];
         if (ids.length === 0) return false;
         const i = (this.ui.cardIndex + intent.delta + ids.length) % ids.length;
-        this.ui = { ...this.ui, cardIndex: i, selected: ids[i]! };
-        this.emit();
+        this.ui = { ...this.ui, cardIndex: i };
+        // Through select, so the drag preview (the reading on the beast) and the open page refresh with the selection.
+        this.api.select(ids[i]!);
         break;
       }
       case 'drop': {
@@ -285,6 +287,9 @@ export class Controller {
     }
     if (screen.kind === 'campfire') {
       const v = screen.view;
+      const sealed = (id: string) => Object.values(v.lanes).some((l) => l.some((c) => c.id === id && c.sealed));
+      if (target.kind === 'card' && target.cardId === cardId) return this.notice('A card cannot stack on itself.');
+      if (sealed(cardId) || (target.kind === 'card' && sealed(target.cardId))) return this.notice(A.SEALED);
       if (target.kind === 'card') {
         const onShelf = v.piles.shelf.some((c) => c.id === cardId);
         if (onShelf) return this.commit(this.state, { pending: { kind: 'swap', shelfId: cardId, deckId: target.cardId } });
@@ -337,6 +342,7 @@ export class Controller {
       advance: run(A.actAdvance),
       answerExisting: (cardId, caseId, yes) => this.commit(A.actAnswerExisting(this.state, cardId, caseId, yes)),
       wording: (roomKey, text) => this.commit(A.actWording(this.state, roomKey, text)),
+      confirmProject: (roomKey, projectKey) => this.commit(A.actConfirmProject(this.state, roomKey, projectKey), { selected: null }),
       select: (cardId) => {
         // Selecting a dealt card shows its reading on the beast at once, so tap–tap never accepts an unseen line.
         const screen = this.screen();
@@ -383,7 +389,8 @@ export class Controller {
       boss: {
         stamp: (caseId, stamp) => this.commit(A.actBossStamp(this.state, caseId, stamp)),
         answer: (cardId, caseId) => this.drop(cardId, { kind: 'head', caseId }),
-        next: run(A.actBossNext),
+        // A new head clears the selection: the next head's candidates are not this one's.
+        next: () => this.commit(A.actBossNext(this.state), { selected: null, cardIndex: 0 }),
       },
       apply: {
         grant: (which) => this.applyAct('granting', (s, p) => A.actGrant(s, p, which)),

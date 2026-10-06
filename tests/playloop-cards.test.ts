@@ -160,7 +160,8 @@ describe('pure layout helpers', () => {
   test('the comparison aligns two previews head by head', () => {
     const g = { before: 0, after: 0, delta: 0, line: 0, blockHeader: 0, other: 0, text: 'no change' };
     const pv = (heads: DragPreview['heads']): DragPreview => ({ verb: 'play', heads, ghost: { claude: g, codex: g }, line: null, accepts: [], refused: null });
-    const rows = compareRows(pv([{ caseId: 'x', glow: true, word: null }, { caseId: 'y', glow: false, word: 'Codex' }]), pv([{ caseId: 'y', glow: true, word: null }]));
+    const tag = { agent: 'claude' as const, project: null, date: null };
+    const rows = compareRows(pv([{ caseId: 'x', tag, glow: true, word: null }, { caseId: 'y', tag, glow: false, word: 'Codex' }]), pv([{ caseId: 'y', tag, glow: true, word: null }]));
     expect(rows).toEqual([
       { caseId: 'x', a: { glow: true, word: null }, b: null },
       { caseId: 'y', a: { glow: false, word: 'Codex' }, b: { glow: true, word: null } },

@@ -87,6 +87,33 @@ export function suggestMapping(text: string): { trigger: Trigger; responseKey: R
   return { trigger: { event: [] }, responseKey: 'unmapped' };
 }
 
+/** First words that make a prose line an instruction. Imperatives and their usual openers; nothing model-decided. */
+const IMPERATIVE = new Set(
+  ('use prefer never always do dont don\'t run report keep avoid ask write make check add remove delete test follow only must should ' +
+    'ensure read commit push install call create update put store stop start try include exclude document verify review favor ' +
+    'favour mention explain say tell list open close wait skip apply build deploy lint format name return handle treat log print ' +
+    'set give show leave no not limit pin prefix suffix quote cite answer reply respond summarise summarize describe confirm ' +
+    'look search find fix rerun retry rebase merge split squash stage tag release bump').split(' '),
+);
+const CONDITIONAL = new Set('when if before after unless once while whenever for in on'.split(' '));
+
+/**
+ * Instructions become cards; other text stays protected (play-loop §0a.1). A prose line is an instruction when its
+ * first word is an imperative, when a leading condition ("When testing, …") is followed by one, or when it carries a
+ * structured claim the cover rule reads. Anything else (notes, descriptions, context) is sealed protected text.
+ */
+export function isInstruction(text: string): boolean {
+  const t = text.replace(/[*_`]/g, '').replace(/^[\s>#-]+/, '').replace(/^\d+[.)]\s*/, '').replace(/^(?:important|note|rule|tip)\s*:\s*/i, '').trim();
+  const word = (s: string) => (s.match(/^[A-Za-z']+/)?.[0] ?? '').toLowerCase();
+  const first = word(t);
+  if (IMPERATIVE.has(first)) return true;
+  if (CONDITIONAL.has(first)) {
+    const comma = t.indexOf(',');
+    if (comma > 0 && IMPERATIVE.has(word(t.slice(comma + 1).trim()))) return true;
+  }
+  return suggestClaims(text).length > 0;
+}
+
 /** Read the rule-like prose lines (outside the managed block, headings, fences and comments) and the managed lines. */
 export function importFile(file: 'claude' | 'codex', bytes: Uint8Array | null): Card[] {
   if (!bytes || bytes.length === 0) return [];
@@ -109,6 +136,7 @@ export function importFile(file: 'claude' | 'codex', bytes: Uint8Array | null): 
     const n = (seen.get(text) ?? 0) + 1;
     seen.set(text, n);
     const mapping = suggestMapping(text);
+    const sealed = !isInstruction(text);
     out.push(
       Object.freeze({
         id: `p_${shortHash(`${file}|${text}|${n}`)}`,
@@ -129,6 +157,7 @@ export function importFile(file: 'claude' | 'codex', bytes: Uint8Array | null): 
         claims: Object.freeze(suggestClaims(text)),
         source: { file, start: l.start, end: l.end, prefix, eol: l.eol },
         mappingSuggested: true,
+        ...(sealed ? { sealed: true } : {}),
       } as Card),
     );
   }

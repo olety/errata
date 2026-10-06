@@ -54,7 +54,7 @@ const thread = (over: Partial<ThreadView> = {}): ThreadView => ({ id: 'a+b', col
 
 const preview = (over: Partial<ChangePreviewView> = {}): ChangePreviewView => {
   const g = { before: 10, after: 8, delta: -2, line: -2, blockHeader: 0, other: 0, text: '−2' };
-  return { before: [], after: null, resultId: null, refused: null, lines: [], ghost: { claude: g, codex: { ...g, before: 5, after: 5, delta: 0, line: 0, text: 'no change' } }, cases: { affected: 0, deckBefore: 1, deckAfter: 1, opened: [], addressed: [], text: 'Affected cases: 0 · deck total: 1 → 1' }, needsAcceptance: [], ...over };
+  return { before: [], after: null, resultId: null, refused: null, lines: [], ghost: { claude: g, codex: { ...g, before: 5, after: 5, delta: 0, line: 0, text: 'no change' } }, cases: { affected: 0, deckBefore: 1, deckAfter: 1, opened: [], addressed: [], text: 'Affected cases: 0 · deck total: 1 → 1' }, needsAcceptance: [], refs: [], ...over };
 };
 
 describe('the seal: a 0.6 s hold or Enter', () => {
@@ -338,7 +338,8 @@ describe('on the sample, through the controller', () => {
 
   test('a book drop proposes writing to both files; the seal re-targets as previewed', () => {
     const c = toCampfire('claude');
-    const card = fire(c).lanes.claude.find((k) => k.type === 'rule')!;
+    // A game card (a line read from your file stays in that file).
+    const card = fire(c).lanes.claude.find((k) => k.type === 'rule' && k.provenance !== 'From your file')!;
     c.api.drop(card.id, { kind: 'book-retarget', lane: 'codex' });
     const { p, preview: pv, seal } = pipeline(c);
     expect(p).toEqual({ kind: 'retarget', cardId: card.id, targets: 'both', from: 'book' });
@@ -384,7 +385,7 @@ describe('on the sample, through the controller', () => {
     expect(v.piles.shelfCount).toBeGreaterThan(0);
     const shelf = v.piles.shelf.find((k) => k.face.title === 'Report the result')!;
     const deck = [...v.lanes.claude, ...v.lanes.both, ...v.lanes.codex].find((k) => k.face.title === 'Verification gate')!;
-    const wrong = [...v.lanes.claude, ...v.lanes.both, ...v.lanes.codex].find((k) => k.type === 'protected')!;
+    const wrong = [...v.lanes.claude, ...v.lanes.both, ...v.lanes.codex].find((k) => k.provenance === 'From your file' && !k.sealed)!;
     c.api.drop(shelf.id, { kind: 'card', cardId: wrong.id });
     expect(pipeline(c).seal).toEqual({ call: null, why: 'Swap only with a deck card of the same family.' });
     c.api.cancel();

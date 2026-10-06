@@ -147,9 +147,17 @@ export interface CardInspectorView {
   unavailable: string[];
 }
 
+/** Which painted plate fills a card's art window (decoration only; it encodes nothing). Null: no art (protected text). */
+export type CardArt = 'retry' | 'scope' | 'verify';
+
 export interface CardView {
   id: string;
+  /** protected = sealed protected text (a wax lock): it weighs, and it can be neither stacked nor cut. */
   type: 'rule' | 'skill' | 'protected' | 'trait';
+  /** Sealed protected text (the Notes block): kept byte-for-byte, never a stack, fire or settle target. */
+  sealed: boolean;
+  /** The art plate for the art window, from the card's family; null for protected text and traits. */
+  art: CardArt | null;
   face: CardFaceView;
   /** The weight orb: the card's own line weight, estimated tokens. */
   weight: number;
@@ -192,6 +200,11 @@ export interface BookView {
   proposed: boolean;
   loaded: boolean;
   weight: { now: number; allowance: number; over: boolean; noGrowth: boolean; raisedBy: number | null };
+  /**
+   * The explicit allowance raise (§5): the values the buckle offers, each above the current allowance. The player picks
+   * one and confirms; the end screen then prints "allowance raised to N by you". Empty when no raise is offered.
+   */
+  raiseSteps: number[];
   /** Why this lane cannot be written (an active Codex override), or null. */
   blocked: string | null;
   cardIds: string[];
@@ -250,6 +263,12 @@ export interface RoomView {
   beast: BeastView;
   /** Every selected head in the room: heads[0] is the anchor (it leans in first), then by date. */
   heads: HeadView[];
+  /**
+   * The room's scope chip (check 4): "all projects" or one project. A room whose heads span several projects lets the
+   * player confirm one while judging (api.confirmProject); the drafts then carry that project's scope, so heads from
+   * other projects fail check 4 and say so.
+   */
+  scope: { chip: string; confirmed: { key: string; label: string } | null; projects: { key: string; label: string }[]; confirmable: boolean };
   /** Boundary and directive rooms: the line in the player's words, editable while judging (api.wording). */
   wording: { value: string; editable: boolean } | null;
   /** One complete receipt at a time, with a visible queue (§0a.13). position is 1-based, 0 when none is current. */
@@ -296,6 +315,8 @@ export type DragTarget =
 
 export interface HeadGlow {
   caseId: string;
+  /** The head's tag, so a comparison can name heads (agent, project, date) instead of numbering them. */
+  tag: { agent: Agent; project: string | null; date: string | null };
   /** Checks 1 and 3–7 hold against the prospective export for this target: conditional eligibility, never coverage. */
   glow: boolean;
   /** One word for the first failing check ("read first", "Codex", "not in AGENTS.md", "datalad", "not eligible", "exception"). */
@@ -377,6 +398,8 @@ export interface ChangePreviewView {
   cases: { affected: number; deckBefore: number; deckAfter: number; opened: string[]; addressed: string[]; text: string };
   /** Cases a new text must be accepted for before it counts (check 8). */
   needsAcceptance: string[];
+  /** Every case id named above (opened, addressed, needsAcceptance), with its tag, so a preview can name each case. */
+  refs: { caseId: string; agent: Agent; project: string | null; date: string | null }[];
 }
 
 /** A settlement the player picks for a red thread (mirrors the engine's resolution; the adapter maps it). */
@@ -429,6 +452,8 @@ export interface BossCandidateView {
 
 export interface BossView {
   kind: 'boss' | 'audit';
+  /** The run's largest family skin, grown huge (§4, §9). Decoration only. */
+  skin: Skin;
   /**
    * stamp = the current sealed head is readable and waits for its blind stamp (no candidate, no answer hint) ·
    * answer = stamped a problem (or an Open page): candidates glow, or "No eligible card" · set-aside = stamped
@@ -465,7 +490,8 @@ export interface BossView {
 
 // ------------------------------------------------------------------ Apply (boss/apply worker, presentation only)
 
-export type InkState = 'pending' | 'inked' | 'failed';
+/** undone = it inked, then Undo restored the original bytes (the stamp shows cracked, never still inked). */
+export type InkState = 'pending' | 'inked' | 'failed' | 'undone';
 
 export interface ApplyDiffView {
   label: string;
@@ -638,6 +664,8 @@ export interface ControllerApi {
   advance(): void;
   answerExisting(cardId: string, caseId: string, yes: boolean): void;
   wording(roomKey: string, text: string): void;
+  /** Confirm the room's line for one project (null: all projects again). Only while judging. */
+  confirmProject(roomKey: string, projectKey: string | null): void;
   /** Tap–tap: select a card (null clears), then tap a target. */
   select(cardId: string | null): void;
   tapTarget(target: DragTarget): void;

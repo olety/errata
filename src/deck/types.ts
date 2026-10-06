@@ -123,6 +123,11 @@ export interface Card {
   /** Imported prose only: where the line lives, and whether the player accepted the suggested mapping. */
   readonly source?: { file: 'claude' | 'codex'; start: number; end: number; prefix: string; eol: string };
   readonly mappingSuggested?: boolean;
+  /**
+   * Imported prose that is not an instruction (the sample's "## Notes" text): protected text, sealed. It is kept
+   * byte-for-byte and weighs in its file, but it can be neither merged, settled, sharpened nor cut.
+   */
+  readonly sealed?: boolean;
   /** Skill cards: the rendered skill's slug. */
   readonly skillSlug?: string;
 }

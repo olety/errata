@@ -94,7 +94,8 @@ function autoText(cards: Card[]): string | null {
 
 /** Exact, near-duplicate, subsumed and same-instruction stacks among the cards present now. */
 export function fuseSuggestions(d: DeckState): FuseSuggestion[] {
-  const cards = presentCards(d).filter((c) => c.type !== 'trait');
+  // Sealed protected text never stacks (play-loop §7).
+  const cards = presentCards(d).filter((c) => c.type !== 'trait' && !c.sealed);
   const parent = cards.map((_, i) => i);
   const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i]!)));
   const why = new Map<number, { kind: FuseKind; why: string }[]>();
@@ -166,6 +167,7 @@ export function applyFuse(d: DeckState, s: FuseSuggestion, text: string): DeckSt
   const present = presentCards(d);
   const members = s.members.map((id) => present.find((c) => c.id === id)).filter((c): c is Card => !!c);
   if (members.length !== s.members.length) throw new Error('The stack changed; rebuild the suggestion.');
+  if (members.some((c) => c.sealed)) throw new Error('Protected text is sealed: it cannot be merged.');
   if (members.some((a, x) => members.some((b, y) => x < y && !compatible(a, b)))) throw new Error('These cards no longer fit together (scope, trigger or claims changed); rebuild the suggestion.');
   let next = d;
   const games = members.filter((c) => !isProse(c));
@@ -281,7 +283,8 @@ export function settlementKey(a: Card, b: Card): string {
 
 /** Red links: opposed actions under overlapping conditions, for the same agent, in overlapping scopes. */
 export function conflicts(d: DeckState): Conflict[] {
-  const cards = presentCards(d).filter((c) => c.type !== 'trait');
+  // Sealed protected text is never half of a red thread: it could not be settled at the fire.
+  const cards = presentCards(d).filter((c) => c.type !== 'trait' && !c.sealed);
   const out: Conflict[] = [];
   for (let i = 0; i < cards.length; i++) {
     for (let j = i + 1; j < cards.length; j++) {
@@ -324,7 +327,7 @@ function withText(d: DeckState, c: Card, text: string, patch: { scope?: Scope; e
 /** Remove a card from the deck. Prose and managed lines are cut from their file; game cards leave the proposal. */
 export function removeCard(d: DeckState, id: string): DeckState {
   const c = presentCards(d).find((x) => x.id === id);
-  if (!c) return d;
+  if (!c || c.sealed) return d;
   if (isProse(c)) return withEdit(d, id, { kind: 'cut' });
   if (d.cards.some((g) => g.id === id)) return withCards(d, d.cards.filter((g) => g.id !== id));
   return Object.freeze({ ...d, removedManaged: Object.freeze([...d.removedManaged, id]) });
@@ -405,7 +408,7 @@ export function cutCard(d: DeckState, id: string, cases: readonly Case[]): { dec
 /** Sharpen: tighten the text. A game card's digest changes, so every mapping must be accepted again. */
 export function sharpen(d: DeckState, id: string, text: string): DeckState {
   const c = presentCards(d).find((x) => x.id === id);
-  if (!c) return d;
+  if (!c || c.sealed) return d;
   return withText(d, c, text, {});
 }
 

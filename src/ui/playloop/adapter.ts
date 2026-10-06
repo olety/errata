@@ -7,7 +7,7 @@ import type { Agent } from '../../model';
 import type { Analysis } from '../../pipeline';
 import type { Episode } from '../../episodes';
 import { buildRoute, caseFor, ineligibility, type Room, type RouteNode } from '../../rooms';
-import type { Card, Case, Disposition as EngineDisposition, Targets } from '../../deck/types';
+import type { Card, Case, Disposition as EngineDisposition, Scope, Targets } from '../../deck/types';
 import { draftCards } from '../../deck/templates';
 import { faceCopy } from '../../deck/face';
 import { lineWeight, sanitizeLine, text as utf8 } from '../../deck/file';
@@ -59,6 +59,8 @@ export interface PlayState {
   readonly boss: { index: number; locked: { revision: string; tally: BossTally } | null };
   readonly apply: ApplyState;
   readonly wording: Readonly<Record<string, string>>;
+  /** The project the player confirmed for a room's line (check 4), by room key. Absent: the room's own scope. */
+  readonly scopes: Readonly<Record<string, { key: string; label: string }>>;
   readonly sample: boolean;
   readonly loaded: { claude: boolean; codex: boolean };
   /** Explicit allowance raises by the player, per lane (printed on the end screen). */
@@ -85,6 +87,7 @@ export function createPlayState(o: { analysis: Analysis; deck: DeckState; sample
     boss: { index: 0, locked: null },
     apply: { busy: 'idle' as const, targets: null, plan: null, result: null, undo: null, error: null },
     wording: Object.freeze({}),
+    scopes: Object.freeze({}),
     sample: o.sample,
     loaded: o.loaded ?? { claude: true, codex: true },
     raised: {},
@@ -170,6 +173,19 @@ function reviewedCases(s: PlayState): Case[] {
   return out;
 }
 
+/** The drafting options for a room: the player's wording and the project they confirmed (check 4). */
+function draftOpts(s: PlayState, r: Room): { wording?: string; scope?: Scope } {
+  const w = s.wording[r.key];
+  const p = s.scopes[r.key];
+  return { ...(w !== undefined ? { wording: w } : {}), ...(p ? { scope: { kind: 'project' as const, projectKey: p.key, label: p.label } } : {}) };
+}
+
+/** A case's tag (agent, project, date) for heads, glows and previews. */
+function tagOf(s: PlayState, caseId: string): { agent: Agent; project: string | null; date: string | null } {
+  const e = episodeOf(s, caseId);
+  return { agent: e?.agent ?? 'claude', project: e?.projectLabel ?? null, date: day(e?.ts ?? null) };
+}
+
 function exportOf(d: DeckState) {
   return deckExportMap(d, renderLanes(d, {}));
 }
@@ -246,8 +262,9 @@ function sessionLabel(s: PlayState, sessionId: string): { agent: Agent; date: st
  */
 function cardView(s: PlayState, c: Card, ctx?: { room: Room; heads: Case[]; unavailable?: string[]; hand?: boolean }): C.CardView {
   const f = faceCopy(c);
-  const weight = lineWeight(c.text, c.id);
-  const bytes = new TextEncoder().encode(`- ${sanitizeLine(c.text)} <!-- deck:${c.id} -->\n`).length;
+  // A prose line weighs what it takes in the file as written; a managed line, its rendered bullet and marker comment.
+  const bytes = c.source ? new TextEncoder().encode(`${c.source.prefix}${c.text}${c.source.eol}`).length : new TextEncoder().encode(`- ${sanitizeLine(c.text)} <!-- deck:${c.id} -->\n`).length;
+  const weight = c.source ? Math.ceil(bytes / 3) : lineWeight(c.text, c.id);
   const ex = exportOf(s.deck);
   let footer: C.CardView['footer'] = null;
   if (ctx) {
@@ -266,7 +283,10 @@ function cardView(s: PlayState, c: Card, ctx?: { room: Room; heads: Case[]; unav
   }
   return {
     id: c.id,
-    type: c.type,
+    // A line read from your file is a rule card unless it is sealed protected text (the wax lock).
+    type: c.type === 'protected' && !c.sealed ? 'rule' : c.type,
+    sealed: !!c.sealed,
+    art: artOf(c),
     face: f.mode === 'excerpt' ? { title: f.title, summary: f.summary, mode: 'excerpt', mark: f.mark ?? C.COPY.excerpt } : { title: f.title, summary: f.summary, mode: f.mode, mark: null },
     weight,
     targets: c.targets,
@@ -294,6 +314,14 @@ function cardView(s: PlayState, c: Card, ctx?: { room: Room; heads: Case[]; unav
     },
     playPreview: ctx?.hand ? dropPreview(s, c, ctx.heads, { kind: 'beast' }) : null,
   };
+}
+
+/** The art plate by family (decoration only, §13 "not data"). */
+function artOf(c: Card): C.CardArt | null {
+  if (c.sealed || c.type === 'trait') return null;
+  if (c.type === 'skill' || c.family === 'workflow') return 'verify';
+  if (c.family === 'repeated-command') return 'retry';
+  return 'scope';
 }
 
 // ------------------------------------------------------------------ heads and beasts
@@ -370,10 +398,17 @@ export function selectBooks(s: PlayState): C.BookView[] {
       proposed: !applied,
       loaded: s.loaded[a],
       weight: { now: l.after.total, allowance: l.allowance, over: l.after.total > l.allowance, noGrowth: l.noGrowth, raisedBy: s.raised[a] ?? null },
+      raiseSteps: s.loaded[a] && !l.blocker ? raiseSteps(l.allowance, l.after.total) : [],
       blocked: l.blocker,
       cardIds: presentCards(s.deck).filter((c) => ex[a].has(c.id)).map((c) => c.id),
     };
   });
+}
+
+/** The buckle's offers: the next three 200-token steps above both the allowance and the file's weight (§5). */
+function raiseSteps(allowance: number, now: number): number[] {
+  const start = Math.floor(Math.max(allowance, now) / 200) * 200 + 200;
+  return [start, start + 200, start + 600];
 }
 
 /** Honesty map: Open pile = confirmed issues, run-wide, with no covering card; a set keyed by case id (§13, §0a.7). */
@@ -450,8 +485,7 @@ export function selectStatus(s: PlayState): C.StatusView {
 
 function dealtCards(s: PlayState, r: Room): { hand: Card[]; unavailable: { card: Card; reasons: string[] }[] } {
   const dr = draftRoom(s, r);
-  const w = s.wording[r.key];
-  const drafts = draftCards(dr, w !== undefined ? { wording: w } : {});
+  const drafts = draftCards(dr, draftOpts(s, r));
   if (dr.kind === 'workshop') return { hand: drafts, unavailable: [] };
   const heads = roomCases(s, dr).filter((c) => c.disposition === 'issue');
   const hand: Card[] = [];
@@ -481,6 +515,18 @@ function existingAsks(s: PlayState, heads: Case[]): C.RoomView['existingAsks'] {
   return out;
 }
 
+/**
+ * The room's scope chip (check 4). Honesty map: the projects are the room's cases' project identities (rooms.ts);
+ * "all projects" until the player confirms one, or the room's own project when every case shares it.
+ */
+function scopeView(s: PlayState, r: Room, phase: C.RoomPhase): C.RoomView['scope'] {
+  const projects = r.projects.filter((p): p is { key: string; label: string | null } => !!p.key).map((p) => ({ key: p.key, label: p.label ?? 'this project' }));
+  const confirmed = s.scopes[r.key] ?? null;
+  const own = r.projectKey ? { key: r.projectKey, label: r.projectLabel ?? 'this project' } : null;
+  const confirmable = phase === 'judge' && r.kind === 'encounter' && !own && projects.length > 1;
+  return { chip: confirmed?.label ?? own?.label ?? 'all projects', confirmed, projects: confirmable || confirmed ? projects : [], confirmable };
+}
+
 export function selectRoom(s: PlayState, roomKey?: string): C.RoomView | null {
   const r = roomKey ? roomByKey(s, roomKey) : currentRoom(s);
   if (!r) return null;
@@ -504,6 +550,7 @@ export function selectRoom(s: PlayState, roomKey?: string): C.RoomView | null {
     roomKey: r.key,
     beast: beast(s, r, heads),
     heads,
+    scope: scopeView(s, r, p.phase),
     wording: (r.family === 'boundary' || r.family === 'directive') && r.kind === 'encounter' ? { value: s.wording[r.key] ?? r.proposedConstraint ?? '', editable: p.phase === 'judge' } : null,
     receipts: { current, queue, progress: { position: currentId ? heads.findIndex((h) => h.caseId === currentId) + 1 : 0, total: heads.length } },
     review: { remaining, canFinalize: remaining === 0 },
@@ -653,6 +700,25 @@ export function actAcceptOnHead(s: PlayState, cardId: string, caseId: string): P
   return res.preview?.eligible ? upd(s, { deck: res.deck }) : s;
 }
 
+/**
+ * Confirm the room's line for one project (null: all projects again). Only while judging, on a room whose cases span
+ * projects. The drafts then carry that project's scope, so check 4 fails for heads from other projects (§13).
+ */
+export function actConfirmProject(s: PlayState, roomKey: string, projectKey: string | null): PlayState {
+  const r = roomByKey(s, roomKey);
+  if (!r) return s;
+  const v = scopeView(s, r, progressOf(s, r.key).phase);
+  if (!v.confirmable) return s;
+  const next = { ...s.scopes };
+  if (projectKey === null) delete next[r.key];
+  else {
+    const p = v.projects.find((x) => x.key === projectKey);
+    if (!p) return s;
+    next[r.key] = p;
+  }
+  return upd(s, { scopes: Object.freeze(next) });
+}
+
 /** The player's wording of the line (boundary and directive rooms), before dealing. */
 export function actWording(s: PlayState, roomKey: string, text: string): PlayState {
   return upd(s, { wording: Object.freeze({ ...s.wording, [roomKey]: text }) });
@@ -698,7 +764,7 @@ function dropPreview(s: PlayState, card: Card, hs: Case[], target: C.DragTarget)
     const targets = target.kind === 'book' ? target.lane : card.targets;
     const after = withProposed(s.deck, card, targets);
     const ex = exportOf(after);
-    return { verb: 'forge', heads: hs.map((h) => ({ caseId: h.id, glow: false, word: null })), ghost: ghosts(weightPreview(s.deck, after)), line: lineOf(card, AGENTS.filter((a) => ex[a].has(card.id))), accepts: [], refused: null };
+    return { verb: 'forge', heads: hs.map((h) => ({ caseId: h.id, tag: tagOf(s, h.id), glow: false, word: null })), ghost: ghosts(weightPreview(s.deck, after)), line: lineOf(card, AGENTS.filter((a) => ex[a].has(card.id))), accepts: [], refused: null };
   }
   const t: DropTarget = target.kind === 'book' ? target.lane : 'beast';
   const pv = previewDrop(s.deck, card, hs.filter((h) => true), t);
@@ -706,7 +772,7 @@ function dropPreview(s: PlayState, card: Card, hs: Case[], target: C.DragTarget)
     verb: target.kind === 'book' ? 'add' : 'play',
     heads: pv.heads.map((h) => {
       const c = hs.find((x) => x.id === h.caseId)!;
-      return { caseId: h.caseId, glow: h.preview.eligible, word: h.preview.failing ? C.failWord(h.preview.failing.check, h.preview.failing.tri, { agent: c.agent, project: c.projectLabel }, target.kind === 'book' ? target.lane : undefined) : null };
+      return { caseId: h.caseId, tag: tagOf(s, h.caseId), glow: h.preview.eligible, word: h.preview.failing ? C.failWord(h.preview.failing.check, h.preview.failing.tri, { agent: c.agent, project: c.projectLabel }, target.kind === 'book' ? target.lane : undefined) : null };
     }),
     ghost: ghosts(pv.weight),
     line: lineOf(card, pv.destinations.length ? pv.destinations : AGENTS.filter((a) => (pv.targets === 'both' || pv.targets === a))),
@@ -725,7 +791,7 @@ export function selectDrag(s: PlayState, cardId: string, target: C.DragTarget): 
     const hand = dealtCards(s, r).hand;
     const card = hand.find((c) => c.id === cardId);
     const hs = heads(s);
-    if (target.kind === 'shelf') return { ...none, verb: 'skip', heads: hs.map((h) => ({ caseId: h.id, glow: false, word: null })) };
+    if (target.kind === 'shelf') return { ...none, verb: 'skip', heads: hs.map((h) => ({ caseId: h.id, tag: tagOf(s, h.id), glow: false, word: null })) };
     // A hand card over the beast's body or any head is a play on the beast (§3); at the Workshop, a forge.
     if (card && (target.kind === 'beast' || target.kind === 'book' || target.kind === 'head')) return dropPreview(s, card, hs, target);
     const inDeck = present.find((c) => c.id === cardId);
@@ -733,7 +799,7 @@ export function selectDrag(s: PlayState, cardId: string, target: C.DragTarget): 
       const c = [...hs, ...withheldCases(s, r)].find((x) => x.id === target.caseId);
       if (!c) return none;
       const pv = coverPreview(inDeck, c, exportOf(s.deck), inDeck.targets);
-      return { ...none, verb: 'accept', heads: [{ caseId: c.id, glow: pv.eligible, word: pv.failing ? C.failWord(pv.failing.check, pv.failing.tri, { agent: c.agent, project: c.projectLabel }) : null }], line: lineOf(inDeck, AGENTS.filter((a) => exportOf(s.deck)[a].has(inDeck.id))), accepts: pv.eligible ? [c.id] : [] };
+      return { ...none, verb: 'accept', heads: [{ caseId: c.id, tag: tagOf(s, c.id), glow: pv.eligible, word: pv.failing ? C.failWord(pv.failing.check, pv.failing.tri, { agent: c.agent, project: c.projectLabel }) : null }], line: lineOf(inDeck, AGENTS.filter((a) => exportOf(s.deck)[a].has(inDeck.id))), accepts: pv.eligible ? [c.id] : [] };
     }
     return none;
   }
@@ -744,7 +810,7 @@ export function selectDrag(s: PlayState, cardId: string, target: C.DragTarget): 
     const cand = b.current === target.caseId ? b.candidates.find((c) => c.cardId === cardId) : undefined;
     const card = present.find((c) => c.id === cardId);
     if (!cand || !card) return none;
-    return { ...none, verb: 'answer', heads: [{ caseId: target.caseId, glow: cand.glow, word: cand.reason }], line: lineOf(card, AGENTS.filter((a) => exportOf(s.deck)[a].has(card.id))), accepts: cand.glow ? [target.caseId] : [] };
+    return { ...none, verb: 'answer', heads: [{ caseId: target.caseId, tag: tagOf(s, target.caseId), glow: cand.glow, word: cand.reason }], line: lineOf(card, AGENTS.filter((a) => exportOf(s.deck)[a].has(card.id))), accepts: cand.glow ? [target.caseId] : [] };
   }
   return none;
 }
@@ -812,6 +878,7 @@ function changeView(s: PlayState, after: DeckState, p: Preview, lines: C.ChangeP
     ghost: ghosts(weightPreview(s.deck, after)),
     cases: { affected, deckBefore: p.cases.before, deckAfter: p.cases.after, opened: p.cases.opened, addressed: p.cases.addressed, text: C.casesText(affected, p.cases.before, p.cases.after) },
     needsAcceptance,
+    refs: [...new Set([...p.cases.opened, ...p.cases.addressed, ...needsAcceptance])].map((caseId) => ({ caseId, ...tagOf(s, caseId) })),
   };
 }
 
@@ -829,7 +896,7 @@ export function selectChangePreview(
   const reviewed = reviewedCases(s);
   if ('cutId' in q) {
     const r = cutCard(s.deck, q.cutId, reviewed);
-    return changeView(s, r.deck, r.preview);
+    return changeView(s, r.deck, r.preview, [], null, presentCards(s.deck).find((c) => c.id === q.cutId)?.sealed ? SEALED : null);
   }
   if ('swap' in q) {
     const after = actSwap(s, q.swap.shelfId, q.swap.deckId);
@@ -860,10 +927,15 @@ export function selectChangePreview(
   return null;
 }
 
+/** Why a sealed line refuses every campfire change. */
+export const SEALED = 'Protected text stays as it is: it weighs, and it can be neither merged nor cut.';
+
 function campfireDrag(s: PlayState, cardId: string, target: C.DragTarget, none: C.DragPreview): C.DragPreview {
   const present = presentCards(s.deck);
   const card = present.find((c) => c.id === cardId) ?? s.shelf.find((c) => c.id === cardId);
   if (!card) return none;
+  if (cardId === (target as { cardId?: string }).cardId) return { ...none, refused: 'A card cannot stack on itself.' };
+  if (card.sealed || (target.kind === 'card' && present.find((c) => c.id === target.cardId)?.sealed)) return { ...none, refused: SEALED };
   if (target.kind === 'card') {
     const { gold, red } = threadsOf(s);
     const pair = (ids: string[]) => ids.includes(cardId) && ids.includes(target.cardId);
@@ -924,7 +996,7 @@ export function actSettle(s: PlayState, threadId: string, resolution: Resolution
 /** Cut a card into the fire; it goes to the ash list, restorable until Apply. */
 export function actCut(s: PlayState, cardId: string): PlayState {
   const card = presentCards(s.deck).find((c) => c.id === cardId);
-  if (!card) return s;
+  if (!card || card.sealed) return s;
   return upd(s, { deck: removeCard(s.deck, cardId), ash: Object.freeze([...s.ash, card]), ops: counted(s, 'cut') });
 }
 
@@ -981,6 +1053,9 @@ export function actAcceptImport(s: PlayState, cardId: string): PlayState {
 
 /** Raise a lane's allowance explicitly; printed on the end screen as "allowance raised to N by you". */
 export function actRaiseAllowance(s: PlayState, lane: Agent, to: number): PlayState {
+  // Only upward, only to a whole number of tokens, and only on a file the game read.
+  const now = renderLanes(s.deck, s.raised)[lane].allowance;
+  if (!s.loaded[lane] || !Number.isInteger(to) || to <= now || to > 100_000) return s;
   return upd(s, { raised: { ...s.raised, [lane]: to } });
 }
 
@@ -1045,6 +1120,7 @@ export function selectBoss(s: PlayState): C.BossView {
   const validity: C.BossView['score']['validity'] = !s.boss.locked ? 'live' : tallyCurrent(s.boss.locked, s.deck) ? 'locked' : 'stale';
   return {
     kind: n?.kind === 'audit' ? 'audit' : 'boss',
+    skin: bossSkin(s),
     turn,
     heads: headsV,
     remaining: Math.max(0, sealedCases.length - Math.min(s.boss.index + 1, sealedCases.length)),
@@ -1058,6 +1134,13 @@ export function selectBoss(s: PlayState): C.BossView {
     score: { later: t.later, setAside: t.setAside, unreviewed: t.unreviewed, earlier: { addressed: t.earlier.addressed, confirmed: t.earlier.confirmed }, original: t.original, lines: scoreLines(t, sealedCases.length), validity },
     canContinue: true,
   };
+}
+
+/** The boss is the run's largest family skin grown huge (§4): the placed room with the most heads, held-back ones included. */
+function bossSkin(s: PlayState): C.Skin {
+  const rooms = placedRooms(s).filter((r) => r.kind === 'encounter' && r.family !== 'workflow');
+  const big = [...rooms].sort((a, b) => b.episodes.length + b.withheld.length - (a.episodes.length + a.withheld.length))[0];
+  return big ? SKINS[big.family] : 'suite-wyrm';
 }
 
 /** The blind stamp at the boss: one click, locked (a stamped head is never re-stamped). */
@@ -1215,7 +1298,8 @@ export function selectApply(s: PlayState, port?: Pick<ApplyPort, 'needs'>): C.Ap
   const selected = placedRooms(s).filter((x) => x.kind !== 'workshop').flatMap((x) => x.episodes);
   const reviewedAll = selected.every((e) => dispOf(s, e.id) !== 'unreviewed');
   const fits = AGENTS.every((a) => L[a].after.total <= L[a].allowance);
-  const ink = (ok: boolean): C.InkState => (r ? (ok ? 'inked' : 'failed') : 'pending');
+  const undone = s.apply.undo?.status === 'done';
+  const ink = (ok: boolean): C.InkState => (r ? (ok ? (undone ? 'undone' : 'inked') : 'failed') : 'pending');
   const verified = r?.status === 'written' || r?.status === 'unchanged';
   const fileStatus = (): NonNullable<C.ApplyView['result']>['files'] => {
     if (!r) return [];
@@ -1286,7 +1370,7 @@ export function selectInspector(s: PlayState, ref: { cardId: string } | { caseId
   }
   const card = presentCards(s.deck).find((c) => c.id === ref.cardId) ?? s.shelf.find((c) => c.id === ref.cardId) ?? s.ash.find((c) => c.id === ref.cardId) ?? (() => {
     const r = currentRoom(s);
-    return r ? draftCards(draftRoom(s, r), s.wording[r.key] !== undefined ? { wording: s.wording[r.key]! } : {}).find((c) => c.id === ref.cardId) : undefined;
+    return r ? draftCards(draftRoom(s, r), draftOpts(s, r)).find((c) => c.id === ref.cardId) : undefined;
   })();
   if (!card) return null;
   const ex = exportOf(s.deck);
