@@ -61,7 +61,7 @@ export function Books(p: BooksProps): HTMLElement {
   for (const b of p.books) {
     const ghost = p.preview ? p.preview.ghost[b.lane] : null;
     const dest = !!line && line.files.includes(b.file);
-    const node = p.layout === 'tabs' ? Tab(b, ghost, dest) : Book(b, ghost, dest, p, renderPanel, togglesHost);
+    const node = p.layout === 'tabs' ? Tab(b, ghost, dest, p, renderPanel, togglesHost) : Book(b, ghost, dest, p, renderPanel, togglesHost);
     p.drag.bindTarget(`book:${b.lane}:${p.mode}`, p.mode === 'play' ? { kind: 'book', lane: b.lane } : { kind: 'book-retarget', lane: b.lane }, node);
     root.append(node);
   }
@@ -260,7 +260,7 @@ export function signedDelta(g: Pick<GhostDelta, 'delta'>): string {
   return g.delta > 0 ? `+${fig(g.delta)}` : g.delta < 0 ? fig(g.delta) : 'no change';
 }
 
-function Tab(b: BookView, ghost: GhostDelta | null, dest: boolean): HTMLElement {
+function Tab(b: BookView, ghost: GhostDelta | null, dest: boolean, p: BooksProps, onBuckle: () => void, toggles: (() => void)[]): HTMLElement {
   const tab = el(
     'div',
     `pl-cards-booktab${dest ? ' is-dest' : ''}${b.weight.over ? ' is-over' : ''}`,
@@ -268,6 +268,9 @@ function Tab(b: BookView, ghost: GhostDelta | null, dest: boolean): HTMLElement 
     ghost ? el('p', 'pl-cards-book-fig', el('span', 'pl-cards-mono', signedDelta(ghost)), ghost.delta !== 0 ? ` tok, ${COPY.estimated}` : '') : Figures(b),
     b.proposed ? el('span', 'pl-cards-proposed-tag', COPY.proposed) : null,
   );
+  // Phones get the same buckle as the desk books (P2 leftover): the clasp on the tab's strap opens the raise panel.
+  const sync = BuckleToggle(tab, b, p, onBuckle);
+  if (sync) toggles.push(sync);
   tab.dataset.lane = b.lane;
   tab.setAttribute('aria-label', `${b.file}: ${strapText(b.weight.now, b.weight.allowance).weight}, ${strapText(b.weight.now, b.weight.allowance).left}, ${COPY.estimated}`);
   if (b.blocked) tab.title = b.blocked;

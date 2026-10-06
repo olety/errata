@@ -442,3 +442,7 @@
 .pl-cards-buckle-step.is-picked { border-color: var(--pl-cards-ink); box-shadow: inset 0 0 0 1px var(--pl-cards-ink); }
 .pl-cards-buckle-go { width: 100%; font-family: var(--pl-cards-f-body); background: var(--pl-cards-ink); color: var(--pl-cards-paper); border-color: var(--pl-cards-ink); }
 .pl-cards-buckle-panel .pl-cards-buckle-go, .pl-cards-buckle-panel .pl-cards-buckle-go:hover { background: var(--pl-cards-ink); color: var(--pl-cards-paper); border-color: var(--pl-cards-ink); opacity: 1; }
+
+/* Phones: the buckle on a book tab is a full 44 px control, and its panel opens above the tabs, inside the screen. */
+.pl-cards-booktab .pl-cards-buckle-btn { margin: -12px -6px -12px 0; }
+.pl-cards-books-tabs .pl-cards-buckle-panel { left: 0; right: 0; width: auto; }
