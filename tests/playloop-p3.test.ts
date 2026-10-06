@@ -304,3 +304,30 @@ describe('a seal ends the gesture', () => {
     expect(c.ui.pending).toMatchObject({ kind: 'stack', threadId: uv.id });
   });
 });
+
+describe('numbers the second cold run could not trace', () => {
+  test('the first Skill card adds its line and the workflows heading; the heading counts as block header, never an unnamed other', () => {
+    let s = judgeAndDeal(fresh());
+    s = A.actPlay(s, A.selectRoom(s)!.hand[0]!.id, 'beast').state;
+    for (let i = 0; i < 12 && !(A.selectScreen(s).kind === 'room' && A.selectRoom(s)!.kind === 'workshop'); i++) {
+      const sc = A.selectScreen(s);
+      if (sc.kind === 'room' || sc.kind === 'event') for (const h of sc.view.heads) s = A.actStamp(s, h.caseId, 'not-a-problem');
+      s = A.actAdvance(s);
+    }
+    s = A.actDeal(s);
+    const mint = A.selectRoom(s)!.hand.find((c) => c.type === 'skill')!;
+    const g = mint.playPreview!.ghost.claude;
+    expect(g.line).toBe(mint.weight);
+    expect(g.other).toBe(0);
+    expect(g.blockHeader).toBeGreaterThan(0);
+    expect(g.delta).toBe(g.line + g.blockHeader);
+    expect(g.text).toContain('block header');
+  });
+
+  test('the boss tally says what its unknown count counts', () => {
+    const b = A.selectBoss(A.actAdvance(A.actAdvance(toFirstFire())));
+    const line = A.selectApply(toApply(toFirstFire())).summary.lines.find((l) => l.includes('suggested mapping'));
+    expect(line).toMatch(/\d+ lines? from your files ha(s|ve) (a )?suggested mappings? you never judged/);
+    expect(b).toBeDefined();
+  });
+});

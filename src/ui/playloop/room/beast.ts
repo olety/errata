@@ -227,6 +227,8 @@ export function Beast(p: BeastProps): HTMLElement {
     : { x: 0, y: 0, w: place.w, h: place.h };
   Object.assign(bodyHit.style, { left: `${bb.x}px`, top: `${bb.y}px`, width: `${Math.max(44, bb.w)}px`, height: `${Math.max(44, bb.h)}px` });
   inner.append(bodyHit);
+  // The Workshop's target is the owl's bench (the coach names it so); every other skin's is the beast.
+  bodyHit.setAttribute('aria-label', p.beast.skin === 'owl' ? "The owl's bench: write the selected card here, with its Skill" : 'The beast: play the selected card here');
   p.drag.bindTarget(`beast:${p.beast.roomKey}`, { kind: 'beast' }, bodyHit);
 
   const bySocket = new Map(heads.map((h) => [h.socket!, h]));

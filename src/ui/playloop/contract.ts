@@ -406,7 +406,7 @@ export interface ThreadView {
    * Gold only, when a member pair's content words overlap: the shared words and the share, for the preview (never on the
    * thread itself, P3 gate fix 12). Null otherwise.
    */
-  shared: { words: string[]; percent: number } | null;
+  shared: { words: string[]; of: number } | null;
   /** Red only: the member played most recently (a card from this act over a line read from your file); Keep one starts on it. */
   newer: string | null;
 }

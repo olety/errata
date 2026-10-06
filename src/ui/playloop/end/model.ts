@@ -74,7 +74,7 @@ export function scoreNote(validity: BossView['score']['validity']): ScoreNote {
     case 'live':
       return { note: 'Live tally · not final', final: false };
     case 'locked':
-      return { note: 'Locked to the final deck', final: true };
+      return { note: 'Tally fixed to the final deck', final: true };
     case 'stale':
       return { note: 'Stale · the deck changed after the lock. Not final until it locks again.', final: false };
   }
@@ -130,7 +130,7 @@ export function bossPlan(v: BossView): BossPlan {
       break;
     case 'answer':
       if (current?.addressed) {
-        coach = 'Addressed: a card in your final deck now covers this case.';
+        coach = 'Answered: a line in your final deck answers this case. It stays a proposed line until Apply.';
         controls = [{ act: 'next', label: 'Continue', primary: true }];
       } else if (v.noEligibleCard) {
         coach = `${COPY.noEligibleCard} · this case stays open.`;

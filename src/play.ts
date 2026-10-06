@@ -86,7 +86,11 @@ function weightLane(b: LaneResult, a: LaneResult): WeightLane {
   const firstManaged = !pb.block && !!pa.block;
   const lastManaged = !!pb.block && !pa.block;
   const delta = after - before;
-  const blockHeader = firstManaged || lastManaged ? delta - line : 0;
+  // A section heading the block gains or loses (the first Skill card brings "## Reusable workflows") is header text
+  // too: the remainder is attributed to the block header, never left as an unnamed "other" (P3 cold-player flag).
+  const headings = (b: Uint8Array) => (new TextDecoder().decode(b).match(/^## (?:Reviewed working rules|Reusable workflows)\s*$/gm) ?? []).length;
+  const headingChange = !firstManaged && !lastManaged && headings(b.next) !== headings(a.next);
+  const blockHeader = firstManaged || lastManaged || headingChange ? delta - line : 0;
   return { before, after, delta, line, blockHeader, other: delta - line - blockHeader, firstManaged, allowance: a.allowance, over: after > a.allowance };
 }
 

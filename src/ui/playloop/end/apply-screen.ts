@@ -119,7 +119,7 @@ function runBody(v: ApplyView): HTMLElement {
   return el(
     'div',
     'pl-end-run',
-    section('The score', el('ol', 'pl-end-lines', ...s.lines.map((l) => el('li', '', l)))),
+    section('The tally', el('ol', 'pl-end-lines', ...s.lines.map((l) => el('li', '', l)))),
     section(
       'Your files',
       el('ul', 'pl-end-files', ...s.files.map((f) => el('li', '', el('b', '', f.file), ' ', el('span', 'pl-end-fig', f.text), f.raised ? el('span', 'pl-end-raised', ` · ${f.raised}`) : null))),

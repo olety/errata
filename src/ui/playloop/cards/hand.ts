@@ -82,7 +82,7 @@ export function Hand(p: HandProps): HTMLElement {
   const a = pair.prev ? p.cards.find((c) => c.id === pair.prev) : undefined;
   const z = pair.cur ? p.cards.find((c) => c.id === pair.cur) : undefined;
   const key = a && z ? `${a.id}|${z.id}` : null;
-  if (a && z && a.playPreview && z.playPreview && !p.ui.inspect && key !== dismissed) {
+  if (a && z && a.playPreview && z.playPreview && !p.ui.inspect && key !== dismissed && !b.flow) {
     root.append(
       Comparison({
         a,

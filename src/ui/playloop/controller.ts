@@ -363,7 +363,11 @@ export class Controller {
       skip: () => this.drop(this.ui.selected ?? '', { kind: 'shelf' }),
       advance: run(A.actAdvance),
       answerExisting: (cardId, caseId, yes) => this.commit(A.actAnswerExisting(this.state, cardId, caseId, yes)),
-      wording: (roomKey, text) => this.commit(A.actWording(this.state, roomKey, text)),
+      // The player's wording changes no view on the stage; repainting on its change (a blur) replaced the button the
+      // same click was landing on (cold run 2: a lost Deal click). The next commit paints with it.
+      wording: (roomKey, text) => {
+        this.state = A.actWording(this.state, roomKey, text);
+      },
       confirmProject: (roomKey, projectKey) => this.commit(A.actConfirmProject(this.state, roomKey, projectKey), { selected: null }),
       select: (cardId) => {
         // Selecting a dealt card shows its reading on the beast at once, so tap–tap never accepts an unseen line.

@@ -919,8 +919,8 @@ function newerOf(s: PlayState, ids: string[]): string | null {
 }
 
 /**
- * Honesty map: a gold thread's shared content words and their share of all its members' content words (the Jaccard
- * overlap the engine's near-duplicate rule uses), for the preview only; null when the members share none.
+ * Honesty map: the content words every member of a gold thread shares, and how many content words they have in all,
+ * for the preview only; null when the members share none.
  */
 function sharedWords(s: PlayState, ids: string[]): C.ThreadView['shared'] {
   const cards = ids.map((id) => presentCards(s.deck).find((c) => c.id === id)).filter((c): c is Card => !!c);
@@ -928,7 +928,7 @@ function sharedWords(s: PlayState, ids: string[]): C.ThreadView['shared'] {
   const sets = cards.map((c) => new Set(contentTokens(c.text)));
   const all = new Set(sets.flatMap((x) => [...x]));
   const words = [...sets[0]!].filter((w) => sets.every((x) => x.has(w)));
-  return words.length && all.size ? { words, percent: Math.round((words.length / all.size) * 100) } : null;
+  return words.length && all.size ? { words, of: all.size } : null;
 }
 
 /** Honesty map: fuse / cut / sharpen preview = real per-file deltas; cases = coverage() before and after (§13, §0a.9). */
@@ -1167,6 +1167,11 @@ function earlierUnreviewed(s: PlayState): number {
   return placedRooms(s).filter((r) => r.kind !== 'workshop').flatMap((r) => r.episodes).filter((e) => ['unreviewed', 'unclear'].includes(dispOf(s, e.id))).length;
 }
 
+/** "1 line from your files has a suggested mapping you never judged" (cold run 2: a bare "1 unknown" did not trace). */
+function unknownText(n: number): string {
+  return `${n} ${n === 1 ? 'line from your files has a suggested mapping' : 'lines from your files have suggested mappings'} you never judged`;
+}
+
 function scoreLines(t: BossTally, sealed: number, earlierWrapped: number): string[] {
   const aside = t.setAside.notAProblem + t.setAside.changeOfPlan + t.setAside.unclear;
   const asideText = `${aside} set aside (${t.setAside.notAProblem} not a problem, ${t.setAside.changeOfPlan} a change of plan, ${t.setAside.unclear} unclear)`;
@@ -1179,7 +1184,7 @@ function scoreLines(t: BossTally, sealed: number, earlierWrapped: number): strin
         ? `Later cases: ${t.later.addressed} of ${t.later.confirmed} addressed · ${asideText}${waiting}`
         : `Later cases: none confirmed a problem · ${asideText}${waiting}`,
     `Earlier confirmed cases: ${t.earlier.addressed} of ${t.earlier.confirmed} addressed by the final deck · ${earlierWrapped} unreviewed`,
-    t.original.established ? `Your current files, same cases: ${t.original.addressed} of ${t.original.confirmed} · ${t.original.unknown} unknown` : `${C.COPY.applicabilityUnknown} · ${t.original.unknown} unknown`,
+    t.original.established ? `Your current files, same cases: ${t.original.addressed} of ${t.original.confirmed} · ${unknownText(t.original.unknown)}` : `${C.COPY.applicabilityUnknown} · ${unknownText(t.original.unknown)}`,
   ];
 }
 

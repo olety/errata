@@ -69,9 +69,11 @@ export function ReceiptStage(p: { room: RoomView; api: ControllerApi }): HTMLEle
   const act = el('div', 'pl-room-act');
   if (r.action) act.append(el('div', 'pl-room-act-line', el('span', 'pl-room-act-k', 'did'), el('span', 'pl-room-mono', codeText(r.action))));
   if (r.result) act.append(el('div', 'pl-room-act-line', el('span', 'pl-room-act-k', '→'), el('span', 'pl-room-mono', codeText(r.result))));
-  if (r.then) act.append(el('div', 'pl-room-act-line', el('span', 'pl-room-act-k', 'then'), el('span', 'pl-room-mono', codeText(r.then))));
+  // What came after the repeats (it broke the loop), never between them: say so (cold run 2: read as "changed").
+  if (r.then) act.append(el('div', 'pl-room-act-line', el('span', 'pl-room-act-k', head?.rings ? 'after the repeats' : 'then'), el('span', 'pl-room-mono', codeText(r.then))));
   if (act.childNodes.length) root.append(act);
-  if (head?.rings) root.append(el('p', 'pl-room-rings-line', `Neck rings: ${ringsText(head.rings)} in this session`));
+  // The rings are evidence, never the beast's health: say what they count first (cold run 2: read as HP).
+  if (head?.rings) root.append(el('p', 'pl-room-rings-line', head.rings.counts === 'failed runs' ? `In this session the same command ran ${head.rings.count} times unchanged and failed each time (one ring on the neck per failed run).` : `In this session the same file was edited ${head.rings.count} times (one ring on the neck per edit).`));
 
   if (workshop || head?.state === 'lantern') {
     root.append(el('p', 'pl-room-slip-note', 'A verified session. Lanterns are not stamped and count nowhere.'));

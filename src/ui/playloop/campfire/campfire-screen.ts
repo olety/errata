@@ -581,7 +581,7 @@ function proposalPanel(L: Live, p: M.Proposal): HTMLElement {
 /** The shared content words of a gold thread, with their share (the thread itself shows the kind only). */
 function sharedLine(t: ThreadView): HTMLElement | null {
   if (!t.shared) return null;
-  return el('p', 'pl-campfire-shared', el('span', 'pl-campfire-label', 'Shared content words'), ' ', ...t.shared.words.flatMap((w, i) => [i ? ' · ' : '', el('mark', 'pl-campfire-word', w)]), ` (${t.shared.percent}% of all their content words)`);
+  return el('p', 'pl-campfire-shared', el('span', 'pl-campfire-label', t.members.length > 2 ? `Words all ${t.members.length} lines share` : 'Words both lines share'), ' ', ...t.shared.words.flatMap((w, i) => [i ? ' · ' : '', el('mark', 'pl-campfire-word', w)]), ` (${t.shared.words.length} of their ${t.shared.of} content words)`);
 }
 
 function fuseControls(L: Live, p: Extract<M.Proposal, { kind: 'fuse' }>): Kid[] {

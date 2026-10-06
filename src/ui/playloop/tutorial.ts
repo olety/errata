@@ -99,7 +99,7 @@ function bossLine(v: C.BossView): Tutorial | null {
     case 'set-aside':
       return line('Set aside. Continue to the next head.');
     case 'summary':
-      return line('The score is locked to your final deck. Continue to Apply.');
+      return line('The tally is fixed to your final deck: how many later cases its lines answer. Continue to Apply.');
   }
 }
 

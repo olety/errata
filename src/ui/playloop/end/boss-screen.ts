@@ -124,7 +124,7 @@ function facedRow(plan: BossPlan, p: ScreenProps<BossView>, tearing: ReadonlySet
 function belowMarks(n: number): HTMLElement {
   const marks = el('span', 'pl-end-seals');
   for (let i = 0; i < Math.min(n, 12); i++) marks.append(el('i', ''));
-  return el('div', 'pl-end-below', marks, `${fmt(n)} sealed ${n === 1 ? 'head' : 'heads'} still under the water`);
+  return el('div', 'pl-end-below', marks, `${fmt(n)} more sealed ${n === 1 ? 'head' : 'heads'} under the water, after this one`);
 }
 
 /** The slip: the receipt and the blind stamp, then the answer, the reasons and Continue; at the end, the score. */

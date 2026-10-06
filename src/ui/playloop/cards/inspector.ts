@@ -119,7 +119,7 @@ function WeightSums(c: CardView): HTMLElement[] {
   return LANES.filter((a) => g[a].delta !== 0).map((a) => {
     const x = g[a];
     const parts = [`${fig(x.line)} line`, x.blockHeader ? `${fig(x.blockHeader)} block header (the one-time marker lines)` : null, x.other ? `${fig(x.other)} ${Math.abs(x.other) <= 2 ? 'rounding' : 'other text'}` : null].filter((t): t is string => !!t);
-    return el('p', 'pl-cards-weightmath', el('b', '', FILE_OF[a]), ' ', el('span', 'pl-cards-mono', `${parts.join(' + ')} = ${x.delta > 0 ? '+' : ''}${fig(x.delta)} tok`), ` (${fig(x.before)} → ${fig(x.after)}, ${COPY.estimated})`);
+    return el('p', 'pl-cards-weightmath', el('b', '', FILE_OF[a]), ' ', el('span', 'pl-cards-mono', `${parts.join(' + ')} = ${x.delta > 0 ? '+' : ''}${fig(x.delta)} tok`), ` (${fig(x.before)} → ${fig(x.after)}, ${COPY.estimated})`, x.other && Math.abs(x.other) <= 2 ? el('span', 'pl-cards-insp-note', ' Rounding: each block of the file is rounded up to whole tokens on its own, so the parts can differ from the sum by a token.') : null);
   });
 }
 

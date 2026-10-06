@@ -203,7 +203,7 @@ function Path(path: string): HTMLElement {
 function Figures(b: BookView): HTMLElement {
   const t = strapText(b.weight.now, b.weight.allowance);
   const f = el('p', 'pl-cards-book-fig', el('span', 'pl-cards-fig-line', t.weight), el('span', `pl-cards-fig-line${b.weight.over ? ' is-over' : ''}`, t.left));
-  f.title = `${t.weight}, ${t.left} (tokens, ${COPY.estimated}: bytes ÷ 3)`;
+  f.title = `${t.weight}, ${t.left} (tokens, ${COPY.estimated}: bytes ÷ 3, the whole file: your own text, the block header and every line)`;
   return f;
 }
 
