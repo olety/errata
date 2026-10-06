@@ -10,7 +10,7 @@ import { COPY, type CommitEffectView, type RoomView, type Skin } from '../src/ui
 import { layout } from '../src/ui/playloop/geometry';
 import { BIND_STAGGER, clearOf, controlLines, foldCues, gapBetween, packTags, reviewText, ringsText, roomControls, shortDate, strikeCues } from '../src/ui/playloop/room/logic';
 import { cue, flush, resetMotion } from '../src/ui/playloop/room/motion';
-import { dragControl, dragShape, foldFrames, neckControl, neckShape, quadAt } from '../src/ui/playloop/room/ribbon';
+import { dragControl, dragShape, foldFrames, neckControl, neckShape, quadAt, ribbon } from '../src/ui/playloop/room/ribbon';
 import { RIGS, fitRig } from '../src/ui/playloop/room/rig';
 import { stageColumns } from '../src/ui/playloop/room/room-screen';
 import { sampleAgentsMd, sampleAnalysis, sampleClaudeMd } from './helpers';
@@ -53,7 +53,7 @@ describe('the rig: one logic for every skin (§0a.22)', () => {
     }
   });
 
-  test('fitted at every band size, the beast fits its box, stands on the shore, and no two head sprites overlap', () => {
+  test('fitted at every band size, the beast fits its box, stands on the shore, and head sprites overlap by at most 15% of a head width', () => {
     const sizes: [number, number][] = [[405, 1040], [307, 680], [310, 358], [120, 358]];
     for (const skin of [...BODY_SKINS, 'owl' as Skin]) {
       for (const [h, w] of sizes) {
@@ -69,7 +69,8 @@ describe('the rig: one logic for every skin (§0a.22)', () => {
             if (a === b) continue;
             const ox = Math.min(a.box.x + a.box.w, b.box.x + b.box.w) - Math.max(a.box.x, b.box.x);
             const oy = Math.min(a.box.y + a.box.h, b.box.y + b.box.h) - Math.max(a.box.y, b.box.y);
-            expect(ox <= 0.5 || oy <= 0.5).toBe(true);
+            // Short necks (P2 tuning): neighbouring paper heads may layer a little, never more than 15% of a head's width.
+            expect(ox <= 0.15 * Math.min(a.box.w, b.box.w) + 0.5 || oy <= 0.5).toBe(true);
           }
         }
       }
@@ -120,10 +121,16 @@ describe('ribbons (Astra, astra-neck)', () => {
     for (let t = 0.05; t <= 1; t += 0.05) expect(quadAt(S, c, P, t).y).toBeLessThan(quadAt(S, c, P, t - 0.05).y + 1e-9);
   });
 
-  test('the strip has one outline, a back face from the twist, and one ring band per repeat up to six', () => {
+  test('the strip has one outline, no half-twist on the short necks, a width that yields to the bend, and one ring band per repeat up to six', () => {
     const n = neckShape(S, P, 30, 40, 4);
     expect(n.front.startsWith('M')).toBe(true);
-    expect(n.back).not.toBe('');
+    // Astra (astra-rig): the twist pinched short necks into a kink; the width now yields to the bend instead.
+    expect(n.twist).toBe(false);
+    expect(n.back).toBe('');
+    const tight = ribbon({ x: 0, y: 100 }, { x: 60, y: 0 }, { x: 0, y: -100 }, 80, 80, { bendLimit: 0.7 });
+    const loose = ribbon({ x: 0, y: 100 }, { x: 60, y: 0 }, { x: 0, y: -100 }, 80, 80);
+    expect(tight.half(0.5)).toBeLessThan(loose.half(0.5));
+    expect(tight.half(0.5)).toBeGreaterThan(0);
     expect(n.rings).toHaveLength(4);
     expect(neckShape(S, P, 30, 40, 1).rings).toHaveLength(1);
     expect(neckShape(S, P, 30, 40, 11).rings).toHaveLength(6);

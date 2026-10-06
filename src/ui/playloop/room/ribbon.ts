@@ -60,10 +60,20 @@ function twistFactor(t: number): number {
   return Math.max(0.08, Math.abs(Math.cos(Math.PI * z)));
 }
 
-export function ribbon(s: P, c: P, p: P, w0: number, w1: number, o: { twist?: boolean; N?: number; cap?: number } = {}): Ribbon {
+export function ribbon(s: P, c: P, p: P, w0: number, w1: number, o: { twist?: boolean; N?: number; cap?: number; bendLimit?: number } = {}): Ribbon {
   const N = Math.max(8, Math.round(o.N ?? 32));
   const cap = o.cap ?? 0;
-  const half = (t: number) => 0.5 * mix(w0, w1, t) * (o.twist ? twistFactor(t) : 1);
+  const acc = { x: 2 * (s.x - 2 * c.x + p.x), y: 2 * (s.y - 2 * c.y + p.y) };
+  // Astra (astra-rig, 2026-10-07): with a bend limit, the half-width stays below bendLimit × the local bend radius,
+  // smoothly, so a short curved neck's inner edge never folds back into a cusp (the "kink").
+  const half = (t: number) => {
+    const wanted = 0.5 * mix(w0, w1, t) * (o.twist ? twistFactor(t) : 1);
+    if (o.bendLimit === undefined) return wanted;
+    const v = velocity(s, c, p, t);
+    const speed = len(v);
+    const curvature = speed > 1e-6 ? Math.abs(v.x * acc.y - v.y * acc.x) / (speed * speed * speed) : 0;
+    return wanted / Math.hypot(1, (wanted * curvature) / o.bendLimit);
+  };
   const edge = (t: number, side: number, k: number): P => {
     const v = velocity(s, c, p, t);
     const l = len(v) || 1;
@@ -108,8 +118,9 @@ export interface NeckShape {
  */
 export function neckShape(s: P, p: P, w0: number, w1: number, rings = 0, o: { anchor?: boolean; band?: number } = {}): NeckShape {
   const c = neckControl(s, p, o.anchor);
-  const twist = len(sub(p, s)) > 40;
-  const rib = ribbon(s, c, p, w0, w1, { twist, cap: 2 });
+  // Short necks (P2 rig tuning): no half-twist, and the width yields to the bend so the strip never kinks.
+  const twist = false;
+  const rib = ribbon(s, c, p, w0, w1, { twist, cap: 2, N: 48, bendLimit: 0.7 });
   // One band per repeat up to six; past six the tag's text carries the exact count.
   const m = rings > 0 ? Math.max(1, Math.min(6, Math.round(rings))) : 0;
   const band = o.band ?? 3;

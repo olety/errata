@@ -34,6 +34,8 @@ export interface BeastProps {
   reducedMotion: boolean;
   /** The creature band's height; the feet stand on its bottom edge (bands.shoreY). */
   height: number;
+  /** Optional: the arena's width, so a wide beast (the moth) never overflows a narrow screen. */
+  width?: number;
   drag: DropBinder;
   onHead(caseId: string): void;
   /** Optional animation cues from the room screen (results and effects, once per id). */
@@ -179,7 +181,7 @@ function foldKeyframes(n: NeckShape, headH: number, anchorY: number, side: numbe
 export function Beast(p: BeastProps): HTMLElement {
   const rig: Rig = RIGS[p.beast.skin];
   const heads = p.beast.heads.filter((h) => h.socket !== null);
-  const place = fitRig(rig, heads.map((h) => h.socket!), p.height);
+  const place = fitRig(rig, heads.map((h) => h.socket!), p.height, p.width);
   const cues = p.cues;
   const still = p.reducedMotion;
   const root = el('div', `pl-room-beast is-${p.beast.skin}`);
