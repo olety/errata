@@ -5,7 +5,7 @@ import { mkdtemp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { applyFuse, conflicts, cutCard, fuseSuggestions, preservedTokens, previewFuse, resolveConflict, sharpen } from '../src/deck/campfire';
-import { deckExportMap, newDeck, presentCards, rebaseDeck, renderLanes, withCards } from '../src/deck/deck';
+import { acceptImportMapping, deckExportMap, newDeck, presentCards, rebaseDeck, renderLanes, withCards, withEdit } from '../src/deck/deck';
 import { acceptMapping, cardDigest, setTaken } from '../src/deck/card';
 import { bytes, text } from '../src/deck/file';
 import type { Card, Case } from '../src/deck/types';
@@ -149,11 +149,20 @@ describe('cut and sharpen', () => {
     expect(coverage(presentCards(d), [kase], deckExportMap(d, renderLanes(d))).addressed).toBe(0);
   });
 
-  test('imported prose needs its suggested mapping accepted before it can cover anything', () => {
+  test('imported prose needs its suggested mapping accepted before it can cover anything; an edit needs it again', () => {
     const d = newDeck(bytes('- Report what you changed and the test result.\n'), null);
     const p = presentCards(d)[0]!;
     expect(p.responseKey).toBe('result_summary');
     expect(p.mappingSuggested).toBe(true);
+    const k: Case = { id: 'w1', agent: 'claude', projectKey: null, projectLabel: null, facts: { event: 'workflow_completed', workflowKey: 'focused-test>diff-review>report' }, eligibleResponseKeys: ['verification_gate', 'result_summary', 'mint_skill'], disposition: 'issue', evidenceRefs: [] };
+    const cov = (x: ReturnType<typeof newDeck>) => coverage(presentCards(x).map((c) => acceptMapping(c, 'w1')), [k], deckExportMap(x, renderLanes(x))).addressed;
+    expect(cov(d)).toBe(0);
+    const a = acceptImportMapping(d, p.id);
+    expect(presentCards(a)[0]!.mappingSuggested).toBe(false);
+    expect(cov(a)).toBe(1);
+    const edited = withEdit(a, p.id, { kind: 'replace', text: 'Report what you changed, the test result and its pass count.' });
+    expect(presentCards(edited)[0]!.mappingSuggested).toBe(true);
+    expect(cov(edited)).toBe(0);
   });
 });
 

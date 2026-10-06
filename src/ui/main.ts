@@ -14,7 +14,7 @@ import { CODEX_OVERRIDE, type LaneResult } from '../deck/lanes';
 import { sanitizeLine, text as utf8, weigh } from '../deck/file';
 import { lineDiff, renderDiff } from '../deck/diff';
 import { cover, coverage, CHECKS } from '../cover';
-import { deckExportMap, newDeck, presentCards, rebaseDeck, renderLanes, withCards, type DeckState } from '../deck/deck';
+import { acceptImportMapping, deckExportMap, newDeck, presentCards, rebaseDeck, renderLanes, withCards, type DeckState } from '../deck/deck';
 import { applyFuse, conflicts, cutCard, fuseSuggestions, previewChange, previewFuse, resolveConflict, sharpen, sharpenSuggestions, type Conflict, type FuseSuggestion } from '../deck/campfire';
 import { applyTargets, type ApplyTargets } from '../deck/skill-plan';
 import { applyPlan, makePlan, restoreOriginalSeen, undoBundle } from '../apply/engine';
@@ -868,7 +868,12 @@ function viewCampfire(): HTMLElement {
           h('td', {}, rich(c.text)),
           h('td', { class: 'num sub' }, `${targetsName(c.targets)} · ${c.family === 'imported' ? 'your rule' : c.type}`),
           h('td', { class: 'num sub' }, p.cases.opened.length ? `cut loses ${p.cases.opened.length}` : ''),
-          h('td', {}, h('button', { onclick: cut }, 'Cut')),
+          h(
+            'td',
+            {},
+            c.family === 'imported' && c.mappingSuggested && c.responseKey !== 'unmapped' && h('button', { onclick: () => set({ deck: acceptImportMapping(S.deck, c.id) }) }, `Accept: maps to ${c.responseKey.replace(/_/g, ' ')}`),
+            h('button', { onclick: cut }, 'Cut'),
+          ),
         );
       }),
     ),

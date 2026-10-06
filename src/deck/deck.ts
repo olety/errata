@@ -24,6 +24,8 @@ export interface DeckState {
   readonly cards: readonly Card[];
   /** Red links the player resolved by writing an explicit exception (pair ids "a×b", sorted). */
   readonly resolvedPairs?: readonly string[];
+  /** Imported lines whose suggested mapping the player accepted (for the text as it is now). */
+  readonly acceptedImports?: Readonly<Record<string, string>>;
 }
 
 const dec = new TextDecoder();
@@ -158,7 +160,13 @@ export function presentCards(d: DeckState): Card[] {
     if (isProse(c)) {
       const e = d.edits[c.id];
       if (e?.kind === 'cut') continue;
-      out.push(e?.kind === 'replace' ? Object.freeze({ ...c, text: e.text, claims: Object.freeze(suggestClaims(e.text)), ...(e.scope ? { scope: e.scope } : {}), ...(e.exceptions ? { exceptions: e.exceptions } : {}) }) : c);
+      let x: Card = e?.kind === 'replace' ? Object.freeze({ ...c, text: e.text, claims: Object.freeze(suggestClaims(e.text)), ...(e.scope ? { scope: e.scope } : {}), ...(e.exceptions ? { exceptions: e.exceptions } : {}) }) : c;
+      // An accepted mapping holds only for the exact text the player accepted; any later change needs it again.
+      if (d.acceptedImports?.[c.id] === x.text) {
+        const mapped = suggestMapping(x.text);
+        x = Object.freeze({ ...x, mappingSuggested: false, trigger: Object.freeze(mapped.trigger), responseKey: mapped.responseKey });
+      }
+      out.push(x);
     } else {
       if (d.removedManaged.includes(c.id) || d.cards.some((g) => g.id === c.id)) continue;
       out.push(c);
@@ -229,3 +237,10 @@ export function withEdit(d: DeckState, id: string, e: LineEdit | null): DeckStat
 }
 
 export const bytesOf = (s: string) => enc.encode(s);
+
+/** The player accepts the suggested mapping of an imported line, for its current text. */
+export function acceptImportMapping(d: DeckState, id: string): DeckState {
+  const c = presentCards(d).find((x) => x.id === id);
+  if (!c || !isProse(c)) return d;
+  return Object.freeze({ ...d, acceptedImports: Object.freeze({ ...(d.acceptedImports ?? {}), [id]: c.text }) });
+}
