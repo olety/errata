@@ -282,7 +282,7 @@
 .pl-campfire-flag {
   position: absolute;
   left: 6px;
-  bottom: -10px;
+  top: -9px;
   background: var(--pl-campfire-paper);
   border: 1px solid var(--pl-campfire-gold);
   border-radius: 99px;
@@ -862,4 +862,35 @@
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* desktop: the preview card rises beside the stack */
+.pl-campfire-proposalrow {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.pl-campfire-proposalrow > .pl-campfire-stackwrap {
+  flex: 0 0 auto;
+}
+.pl-campfire-resultcard {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-height: 100%;
+  align-self: stretch;
+}
+.pl-campfire-resultcard .pl-campfire-sect:first-child .pl-campfire-sect-h,
+.pl-campfire-resultcard .pl-campfire-refused:first-child {
+  margin-top: 0;
+}
+.pl-campfire-weights td.pl-campfire-delta {
+  white-space: normal;
+}
+.pl-campfire-ashrow .pl-campfire-btn,
+.pl-campfire-after > .pl-campfire-btn,
+.pl-campfire-reopened .pl-campfire-btn:last-child {
+  align-self: flex-start;
 }

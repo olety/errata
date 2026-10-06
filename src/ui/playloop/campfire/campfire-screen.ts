@@ -58,6 +58,8 @@ interface AfterSeal {
   /** Cases a later accept effect bound (ui.effect.bound), so the row says so. */
   bound: Set<string>;
   seen: number;
+  /** Tags seen while a case was on the Open pile, kept once it leaves it. */
+  labels: Record<string, string>;
 }
 
 const local: {
@@ -154,7 +156,7 @@ function doSeal(): void {
   const p = L.proposal;
   const fxId = L.p.ui.effect?.id ?? 0;
   // A new text binds nothing until accepted: remember its cases so the panel can offer acceptMapping after the seal.
-  local.after = (call.kind === 'fuse' || call.kind === 'sharpen') && pv?.resultId && pv.needsAcceptance.length > 0 ? { resultId: pv.resultId, text: pv.after?.text ?? '', cases: [...pv.needsAcceptance], bound: new Set(), seen: fxId } : null;
+  local.after = (call.kind === 'fuse' || call.kind === 'sharpen') && pv?.resultId && pv.needsAcceptance.length > 0 ? { resultId: pv.resultId, text: pv.after?.text ?? '', cases: [...pv.needsAcceptance], bound: new Set(), seen: fxId, labels: {} } : null;
   local.reopened = null;
   const cardId = call.kind === 'fuse' || call.kind === 'sharpen' ? (pv?.resultId ?? null) : call.kind === 'swap' ? call.shelfId : call.kind === 'settle' ? null : call.cardId;
   local.lastSeal = { kind: call.kind, cardId, before: fxId };
@@ -258,6 +260,8 @@ export function CampfireScreen(p: ScreenProps<CampfireView>): { stage: HTMLEleme
   let anim: Live['anim'] = null;
   if (fx && !local.animated.has(fx.id)) {
     local.animated.add(fx.id);
+    // Any later committed change (a restore, an accept, another seal) retires the "the cut reopened" note.
+    if (local.reopened && fx.id > local.reopened.id) local.reopened = null;
     if (local.lastSeal && fx.id > local.lastSeal.before) {
       if (!p.ui.reducedMotion) anim = { kind: fx.kind, cardId: local.lastSeal.cardId };
       if (fx.kind === 'cut' && fx.unbound.length > 0) local.reopened = { id: fx.id, cases: [...fx.unbound] };
@@ -380,7 +384,13 @@ function threadsPanel(L: Live): HTMLElement {
 
 function centre(L: Live): HTMLElement {
   const hover = M.hoverLine(L.p.ui.drag);
-  const body = L.proposal ? proposalVisual(L, L.proposal) : pairVisual(L);
+  let body: HTMLElement = L.proposal ? proposalVisual(L, L.proposal) : pairVisual(L);
+  if (L.proposal && L.geo.mode === 'desktop') {
+    // A preview card rises beside the stack (§7): what the seal leaves, the weight per file, the cases.
+    const card = el('div', 'pl-campfire-panel pl-campfire-resultcard', resultHost(L));
+    card.dataset.sk = 'y:result';
+    body = el('div', 'pl-campfire-proposalrow', body, card);
+  }
   return el('section', 'pl-campfire-centre', hover ? el('p', `pl-campfire-hover${L.p.ui.drag?.preview?.refused ? ' is-refused' : ''}`, hover) : null, body);
 }
 
@@ -434,14 +444,18 @@ function stackVisual(L: Live, order: string[], top: string, caption: Kid[], cls:
     s.style.setProperty('--pl-campfire-dy', px(i * off));
     box.append(s);
   });
-  return el('div', 'pl-campfire-stackwrap', el('p', 'pl-campfire-reason', ...caption), box, button('Pull apart', 'pl-campfire-cancel', cancelProposal, { fk: 'pull-apart' }));
+  const wrap = el('div', 'pl-campfire-stackwrap', el('p', 'pl-campfire-reason', ...caption), box, button('Pull apart', 'pl-campfire-cancel', cancelProposal, { fk: 'pull-apart' }));
+  wrap.style.maxWidth = px(Math.max(L.geo.pairCard.w + off * (order.length - 1), 200) + 40);
+  return wrap;
 }
 
 function proposalVisual(L: Live, p: M.Proposal): HTMLElement {
   const size = L.geo.pairCard.size;
   const one = (id: string, caption: Kid, cls: string) => {
     const c = L.cards.get(id);
-    return el('div', 'pl-campfire-stackwrap', el('p', 'pl-campfire-reason', caption), c ? el('div', `pl-campfire-single ${cls}${L.snap ? ' is-snapping' : ''}`, cardSlot(L, c, 'single', { size, source: true, target: false })) : null, button('Pull back', 'pl-campfire-cancel', cancelProposal, { fk: 'pull-apart' }));
+    const w = el('div', 'pl-campfire-stackwrap', el('p', 'pl-campfire-reason', caption), c ? el('div', `pl-campfire-single ${cls}${L.snap ? ' is-snapping' : ''}`, cardSlot(L, c, 'single', { size, source: true, target: false })) : null, button('Pull back', 'pl-campfire-cancel', cancelProposal, { fk: 'pull-apart' }));
+    w.style.maxWidth = px(L.geo.pairCard.w + 60);
+    return w;
   };
   switch (p.kind) {
     case 'fuse':
@@ -496,12 +510,12 @@ function proposalPanel(L: Live, p: M.Proposal): HTMLElement {
     );
   }
   if (p.kind === 'retarget' && p.from === 'chips') controls.push(el('p', 'pl-campfire-muted', 'Narrowing removes the line from one file.'));
-  // The result (exported lines or the new text) sits right under the choice; weight and cases follow the controls.
-  const result = el('div', 'pl-campfire-resulthost', previewPart(L, 'result'));
+  if (p.kind === 'cut') controls.push(el('p', 'pl-campfire-muted', 'A burned card waits in the ash until Apply, and you can restore it. Cutting a Skill pointer never deletes a skill folder.'));
+  // The result (exported lines or the new text, weight, cases) sits right under the choice, or beside the stack on
+  // desktop; the lines as they stand and the cases to accept follow the controls.
   const detail = el('div', 'pl-campfire-detailhost', previewPart(L, 'detail'));
-  L.resultHost = result;
   L.detailHost = detail;
-  const kids: Kid[] = [el('h2', 'pl-campfire-h', title), ...head, result, ...controls, detail];
+  const kids: Kid[] = [el('h2', 'pl-campfire-h', title), ...head, L.geo.mode === 'desktop' ? null : resultHost(L), ...controls, detail];
   if (L.geo.mode !== 'phone') {
     const bar = el('div', 'pl-campfire-sealbar', ...sealBarKids(L));
     L.sealHosts.push(bar);
@@ -571,7 +585,7 @@ function settleSlots(L: Live, p: Extract<M.Proposal, { kind: 'settle' }>): { slo
     }, { fk: 'slot:cancel' }),
   );
   const pick = (ids: string[], current: string, onPick: (id: string) => void, prefix: string, verb: string) =>
-    el('div', 'pl-campfire-choices', ...ids.map((id) => button([`${verb} `, el('span', 'pl-campfire-quoted', summaryOf(L, id))], 'pl-campfire-choice', () => onPick(id), { pressed: current === id, fk: `${prefix}:${id}` })));
+    el('div', 'pl-campfire-choices', ...ids.map((id) => button([`${verb}: `, el('span', 'pl-campfire-quoted', summaryOf(L, id))], 'pl-campfire-choice', () => onPick(id), { pressed: current === id, fk: `${prefix}:${id}` })));
   let detail: Kid = null;
   if (d.slot === 'keep') detail = el('div', 'pl-campfire-detail', el('span', 'pl-campfire-label', 'Keep which line? The other is cut.'), pick(t.members, d.keep, (id) => set({ keep: id }), 'keep', 'Keep'));
   if (d.slot === 'separate') {
@@ -579,7 +593,7 @@ function settleSlots(L: Live, p: Extract<M.Proposal, { kind: 'settle' }>): { slo
       'div',
       'pl-campfire-detail',
       el('span', 'pl-campfire-label', 'Which line applies only in one project? The other gains an exception for it.'),
-      pick(t.members, d.bind, (id) => set({ bind: id }), 'bind', 'Only in a project:'),
+      pick(t.members, d.bind, (id) => set({ bind: id }), 'bind', 'Only in a project'),
       el('span', 'pl-campfire-label', 'Which project?'),
       el('div', 'pl-campfire-choices', ...v.projects.map((pr) => button(pr.label, 'pl-campfire-choice', () => set({ projectKey: pr.key }), { pressed: d.projectKey === pr.key, fk: `project:${pr.key}` }))),
     );
@@ -617,6 +631,12 @@ function settleSlots(L: Live, p: Extract<M.Proposal, { kind: 'settle' }>): { slo
     );
   }
   return { slots, detail };
+}
+
+function resultHost(L: Live): HTMLElement {
+  const host = el('div', 'pl-campfire-resulthost', previewPart(L, 'result'));
+  L.resultHost = host;
+  return host;
 }
 
 /** The preview with the campfire's words: card titles, case tags, a Read control per case. */
@@ -677,28 +697,32 @@ function resultPart(pv: ChangePreviewView | null, ctx: PreviewCtx): HTMLElement 
     );
   }
   if (pv.lines.length) root.append(sect('Exported after the seal', el('ul', 'pl-campfire-lines', ...pv.lines.map((l) => lineRow(l.text, ctx.title(l.id), l.text === null, l.files)))));
+  root.append(
+    sect(
+      'Weight',
+      el('table', 'pl-campfire-weights', el('tbody', '', ...M.weightRows(pv.ghost).map((r) => el('tr', '', el('th', '', r.file), el('td', 'pl-campfire-mono', r.span), el('td', 'pl-campfire-delta', el('span', 'pl-campfire-mono', r.delta), ' ', el('span', 'pl-campfire-est', r.estimated)))))),
+    ),
+    sect(
+      'Cases',
+      el('p', 'pl-campfire-cases', pv.cases.text),
+      pv.cases.opened.length ? el('div', '', el('span', 'pl-campfire-label', 'Reopens'), el('ul', 'pl-campfire-caselist', ...pv.cases.opened.map((id) => caseRow(id, ctx)))) : null,
+      pv.cases.addressed.length ? el('div', '', el('span', 'pl-campfire-label', 'Newly addressed'), el('ul', 'pl-campfire-caselist', ...pv.cases.addressed.map((id) => caseRow(id, ctx)))) : null,
+    ),
+  );
   return root;
+}
+
+function caseRow(id: string, ctx: PreviewCtx): HTMLElement {
+  return el('li', 'pl-campfire-case', el('span', '', ctx.caseLabel(id) ?? 'A reviewed case'), ctx.onCase ? button('Read', 'pl-campfire-small', () => ctx.onCase!(id), { fk: `read:${id}` }) : null);
 }
 
 /** The lines as they stand, the weight per file (estimated), the cases, and the cases a new text must be accepted for. */
 function detailPart(pv: ChangePreviewView | null, ctx: PreviewCtx): HTMLElement {
   const root = el('div', 'pl-campfire-seal pl-campfire-detail-part');
   if (!pv) return root;
-  const caseChip = (id: string) => el('li', 'pl-campfire-case', el('span', '', ctx.caseLabel(id) ?? 'A reviewed case'), ctx.onCase ? button('Read', 'pl-campfire-small', () => ctx.onCase!(id), { fk: `read:${id}` }) : null);
+  const caseChip = (id: string) => caseRow(id, ctx);
   const cut = pv.after === null && pv.lines.length === 0;
   if (!cut) root.append(sect('Now', el('ul', 'pl-campfire-lines', ...pv.before.map((b) => lineRow(b.text, ctx.title(b.id), false)))));
-  root.append(
-    sect(
-      'Weight',
-      el('table', 'pl-campfire-weights', el('tbody', '', ...M.weightRows(pv.ghost).map((r) => el('tr', '', el('th', '', r.file), el('td', 'pl-campfire-mono', r.span), el('td', 'pl-campfire-mono', r.delta), el('td', 'pl-campfire-est', r.estimated))))),
-    ),
-    sect(
-      'Cases',
-      el('p', 'pl-campfire-cases', pv.cases.text),
-      pv.cases.opened.length ? el('div', '', el('span', 'pl-campfire-label', 'Reopens'), el('ul', 'pl-campfire-caselist', ...pv.cases.opened.map(caseChip))) : null,
-      pv.cases.addressed.length ? el('div', '', el('span', 'pl-campfire-label', 'Newly addressed'), el('ul', 'pl-campfire-caselist', ...pv.cases.addressed.map(caseChip))) : null,
-    ),
-  );
   if (pv.needsAcceptance.length) {
     root.append(sect('Accept the new text', el('p', 'pl-campfire-muted', 'A new text binds nothing until you accept it for each case. After the seal, accept it here:'), el('ul', 'pl-campfire-caselist', ...pv.needsAcceptance.map(caseChip))));
   }
@@ -756,7 +780,7 @@ function afterPanel(L: Live, a: AfterSeal): HTMLElement {
     el(
       'li',
       'pl-campfire-case',
-      el('span', '', M.caseTag(id, L.p.view) ?? 'A reviewed case'),
+      el('span', '', (a.labels[id] = M.caseTag(id, L.p.view) ?? a.labels[id] ?? 'A reviewed case')),
       button('Read', 'pl-campfire-small', () => api.inspect({ caseId: id }), { fk: `after-read:${id}` }),
       a.bound.has(id) ? el('span', 'pl-campfire-done', 'Now addressed') : button('Accept for this case', 'pl-campfire-small is-primary', () => api.campfire.acceptMapping(a.resultId, id), { fk: `accept:${id}` }),
     ),
@@ -861,13 +885,13 @@ function openPanel(L: Live): HTMLElement {
       'div',
       'pl-campfire-pinned',
       el('p', 'pl-campfire-tag', M.tagText(v.pinned.tag)),
-      r.quote ? el('p', 'pl-campfire-quote', `“${r.quote}”`) : el('p', 'pl-campfire-muted', 'Tool evidence only'),
-      r.action || r.result ? el('p', 'pl-campfire-mono', [r.action, r.result].filter(Boolean).join(' → ')) : null,
+      r.quote ? el('p', 'pl-campfire-quote', '“', inline(r.quote), '”') : el('p', 'pl-campfire-muted', 'Tool evidence only'),
+      r.action || r.result ? el('p', 'pl-campfire-mono', inline([r.action, r.result].filter(Boolean).join(' → '))) : null,
       el('p', 'pl-campfire-muted', 'Pinned as a puzzle. Each deck card shows whether it is eligible for this case: eligibility, never coverage. It is not a drop target.'),
       el(
         'ul',
         'pl-campfire-cands',
-        ...v.pinnedCandidates.map((c) => el('li', `pl-campfire-cand${c.glow ? ' is-glow' : ''}`, el('span', '', summaryOf(L, c.cardId)), el('span', 'pl-campfire-cand-why', c.glow ? 'eligible · not accepted' : (c.reason ?? COPY.noEligibleCard)))),
+        ...[...v.pinnedCandidates.filter((c) => c.glow), ...v.pinnedCandidates.filter((c) => !c.glow)].map((c) => el('li', `pl-campfire-cand${c.glow ? ' is-glow' : ''}`, el('span', '', summaryOf(L, c.cardId)), el('span', 'pl-campfire-cand-why', c.glow ? 'eligible · not accepted' : (c.reason ?? COPY.noEligibleCard)))),
       ),
       el('div', 'pl-campfire-actions', button('Read the case', 'pl-campfire-small', () => api.inspect({ caseId: v.pinned!.caseId }), { fk: 'pin-read' }), button('Unpin', 'pl-campfire-small', () => api.campfire.pin(null), { fk: 'unpin' })),
     );
@@ -885,7 +909,7 @@ function openPanel(L: Live): HTMLElement {
           'li',
           'pl-campfire-openrow',
           el('span', 'pl-campfire-tag', M.tagText(o.tag)),
-          o.receipt.quote ? el('span', 'pl-campfire-quote is-short', `“${o.receipt.quote}”`) : el('span', 'pl-campfire-muted', 'Tool evidence only'),
+          o.receipt.quote ? el('span', 'pl-campfire-quote is-short', '“', inline(o.receipt.quote), '”') : el('span', 'pl-campfire-muted', 'Tool evidence only'),
           el('span', 'pl-campfire-actions', button('Pin', 'pl-campfire-small', () => api.campfire.pin(o.caseId), { fk: `pin:${o.caseId}` }), button('Read', 'pl-campfire-small', () => api.inspect({ caseId: o.caseId }), { fk: `open-read:${o.caseId}` })),
         ),
       ),
