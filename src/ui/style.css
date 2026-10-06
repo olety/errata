@@ -68,3 +68,5 @@ footer { margin-top: 28px; font-size: 13px; color: var(--ink-soft); }
 ol.route { padding-left: 22px; }
 ol.route li { margin: 3px 0; }
 @media (max-width: 560px) { .deck { grid-template-columns: 1fr; } }
+button.on { border-color: var(--ink); font-weight: 700; }
+.stamps .row { margin: 4px 0; }

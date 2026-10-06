@@ -8,7 +8,8 @@ import type { Episode } from '../episodes';
 import { analyse, type Analysis } from '../pipeline';
 import { caseFor, Dispositions, splitByProject, buildRoute, type Room, type RouteNode } from '../rooms';
 import { draftCards, proposedScope } from '../deck/templates';
-import { acceptMapping, setTaken, updateCard } from '../deck/card';
+import { acceptMapping, updateCard } from '../deck/card';
+import { playCard, withProposed } from '../play';
 import type { Card, Case, Disposition, Targets } from '../deck/types';
 import { CODEX_OVERRIDE, type LaneResult } from '../deck/lanes';
 import { sanitizeLine, text as utf8, weigh } from '../deck/file';
@@ -56,8 +57,6 @@ interface State {
   remember: boolean;
   /** Player-confirmed wording per room key (boundary and directive families). */
   wording: Map<string, string>;
-  /** Cases the player marked as a different line when taking a card (unchecked in the room). */
-  excluded: Set<string>;
   deck: DeckState;
   /** Edited drafts until taken, keyed by draft id. */
   edited: Map<string, Card>;
@@ -89,7 +88,6 @@ const S: State = {
   disp: new Dispositions(),
   remember: false,
   wording: new Map(),
-  excluded: new Set(),
   deck: newDeck(null, null),
   edited: new Map(),
   editing: null,
@@ -307,18 +305,24 @@ function roomCases(r: Room, withWithheld = false): Case[] {
   return eps.map((e) => ({ ...caseFor(e, r), disposition: S.disp.get(e.id) }));
 }
 
+/**
+ * Taking a card never stamps a case (play-loop §14.3): dispositions come only from the per-case stamps. The play goes
+ * through the engine, which accepts the mapping only for stamped heads the card is eligible for and reports the true
+ * cover results. A verified workflow is a success, not an issue: its card joins the proposal with no case accepted.
+ */
 function takeCard(r: Room, card: Card): void {
-  const included = r.episodes.filter((e) => e === r.anchor || !S.excluded.has(e.id));
-  // Taking a card says these cases are issues and this card answers them. A verified workflow is a success, not an
-  // issue: its cases stay out of the coverage denominator and are counted as workflows preserved.
-  if (r.family !== 'workflow')
-    dispose(
-      included.map((e) => e.id),
-      'issue',
-    );
-  let c = setTaken(card, true);
-  for (const e of included) c = acceptMapping(c, e.id);
-  S.deck = withCards(S.deck, [...S.deck.cards.filter((x) => x.id !== c.id), c]);
+  if (r.family === 'workflow') {
+    S.deck = withProposed(S.deck, card, card.targets);
+    nextNode();
+    return;
+  }
+  const res = playCard(S.deck, card, roomCases(r), 'beast');
+  if (res.refused) {
+    set({ error: res.refused });
+    return;
+  }
+  S.deck = res.deck;
+  S.error = null;
   nextNode();
 }
 
@@ -713,27 +717,26 @@ function viewRoom(r: Room): HTMLElement {
     h('h1', {}, r.name),
     h('p', { class: 'sub' }, rich(r.subtitle)),
     receipt(e, r),
-    others.length > 0 &&
-      h(
-        'details',
-        {},
-        h('summary', {}, `${others.length} more case${others.length === 1 ? '' : 's'} in this room (checked = the same line)`),
-        ...others.map((o) =>
-          h(
-            'label',
-            { class: 'row' },
-            h('input', {
-              type: 'checkbox',
-              checked: !S.excluded.has(o.id),
-              onchange: (ev: Event) => {
-                if ((ev.target as HTMLInputElement).checked) S.excluded.delete(o.id);
-                else S.excluded.add(o.id);
-              },
-            }),
-            `${agentName(o.agent)} · ${o.ts?.slice(0, 10) ?? ''} · ${o.receipt.quote ? `“${o.receipt.quote.slice(0, 120)}”` : o.receipt.action ?? ''}`,
-          ),
+    h(
+      'div',
+      { class: 'stamps' },
+      h('p', { class: 'sub' }, 'Stamp each case. Only a case stamped a problem can be addressed by a card.'),
+      ...[e, ...others].map((o) =>
+        h(
+          'div',
+          { class: 'row' },
+          h('span', { class: 'mono sub' }, `${agentName(o.agent)} · ${o.ts?.slice(0, 10) ?? ''} · ${o.receipt.quote ? `“${o.receipt.quote.slice(0, 120)}”` : o.receipt.action ?? ''}`),
+          ...(
+            [
+              ['issue', 'A problem'],
+              ...(o.type === 'interrupt' ? [['pivot', 'A change of plan'] as const] : []),
+              ['not-a-problem', 'Not a problem'],
+              ['unclear', 'Unclear'],
+            ] as const
+          ).map(([d, label]) => h('button', { class: S.disp.get(o.id) === d ? 'on' : '', onclick: () => (dispose([o.id], d), render()) }, label)),
         ),
       ),
+    ),
     r.projects.length > 1 &&
       h(
         'div',
@@ -747,9 +750,6 @@ function viewRoom(r: Room): HTMLElement {
       'div',
       { class: 'row' },
       h('button', { onclick: () => nextNode() }, 'Skip'),
-      h('button', { onclick: () => (dispose([e.id], 'not-a-problem'), nextNode()) }, 'Not a problem'),
-      h('button', { onclick: () => (dispose([e.id], 'unclear'), nextNode()) }, 'Unclear'),
-      e.type === 'interrupt' && h('button', { onclick: () => (dispose([e.id], 'pivot'), nextNode()) }, 'A change of plan'),
       h('button', { onclick: () => set({ inspect: !S.inspect }) }, S.inspect ? 'Hide source' : 'Inspect source'),
     ),
     h('p', { class: 'sub' }, scope.kind === 'project' ? `Cards here are scoped to ${scope.label}; the text says so.` : 'Cards here apply to all projects. Taking one approves that.'),
