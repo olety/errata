@@ -333,7 +333,10 @@ export function hoverLine(d: UiView['drag']): string | null {
 }
 
 /** A case's tag in words when the view carries it (an Open page or the pinned page), else null. */
-export function caseTag(caseId: string, v: CampfireView): string | null {
+export function caseTag(caseId: string, v: CampfireView, refs: readonly { caseId: string; agent: Agent; project: string | null; date: string | null }[] = []): string | null {
+  // A preview names its own cases (ChangePreviewView.refs); otherwise an Open page or the pinned receipt does.
+  const ref = refs.find((r) => r.caseId === caseId);
+  if (ref) return tagText(ref);
   const page: OpenPageView | undefined = v.piles.open.find((p) => p.caseId === caseId) ?? (v.pinned?.caseId === caseId ? v.pinned : undefined);
   if (!page) return null;
   return tagText(page.tag);

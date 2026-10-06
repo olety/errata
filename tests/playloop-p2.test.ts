@@ -12,6 +12,7 @@ import { nodeRoot } from '../src/apply/node-root';
 import type { Root } from '../src/apply/types';
 import * as A from '../src/ui/playloop/adapter';
 import { Controller, keyIntent } from '../src/ui/playloop/controller';
+import type * as C from '../src/ui/playloop/contract';
 import { TUTORIAL } from '../src/ui/sample';
 import { SAMPLE_ROOT, sampleAgentsMd, sampleAnalysis, sampleClaudeMd } from './helpers';
 
@@ -234,5 +235,51 @@ describe('Apply and Undo: the three stamps read undone after a successful Undo',
     expect(A.selectApply(s, port()).stamps).toEqual({ reviewed: 'inked', fits: 'inked', written: 'inked' });
     s = await A.actUndo(s, port());
     expect(A.selectApply(s, port()).stamps).toEqual({ reviewed: 'undone', fits: 'undone', written: 'undone' });
+  });
+});
+
+describe('the tutorial coach on the sample (§11, §0a.16): one line per gesture, gone when done', () => {
+  test('room 1, the event, the first fire in order (uv spotlit first, then the exception merge, then the red pair), the boss', () => {
+    const c = new Controller(fresh(), null, { viewport: { w: 1440, h: 900 } });
+    const t = () => c.uiView().tutorial;
+    expect(t()!.text).toContain('Instructions become cards; other text stays protected.');
+    c.key('a');
+    expect(t()!.text).toBe('Stamp each head from its own words: 2 still to stamp.');
+    c.key('a');
+    c.key('a');
+    expect(t()!.text).toBe('Every head is stamped. Deal the hand.');
+    c.key('Enter');
+    const room = c.screen();
+    if (room.kind !== 'room') throw new Error('not a room');
+    expect(room.view.hand.length).toBe(1);
+    expect(t()).toEqual({ text: 'One response fits what the logs show. Drag the card onto the beast: it adds to your proposed files for every agent whose head glows.', focus: { kind: 'card', cardId: room.view.hand[0]!.id } });
+    c.key('Enter');
+    expect(t()).toBeNull();
+    c.key('Enter');
+    expect(c.screen().kind).toBe('event');
+    expect(t()!.text).toContain('A change of plan flies off');
+    c.key('c');
+    c.key('Enter');
+    const fire = c.screen();
+    if (fire.kind !== 'campfire') throw new Error('not at the fire');
+    const uv = fire.view.threads.find((x) => x.color === 'gold' && x.members.length === 3)!;
+    expect(t()!.focus).toEqual({ kind: 'thread', threadId: uv.id });
+    expect(t()!.text).toContain(uv.reason);
+    c.api.drop(uv.members[0]!, { kind: 'card', cardId: uv.members[1]! });
+    expect(t()!.text).toContain('hold the seal or press Enter');
+    c.api.campfire.fuse(uv.id, uv.autoText!);
+    const fp = (c.screen() as { view: C.CampfireView }).view.threads.find((x) => x.color === 'gold')!;
+    expect(t()).toEqual({ text: 'Exceptions survive a merge: stack the force-push pair and the longer line keeps its exception.', focus: { kind: 'thread', threadId: fp.id } });
+    c.api.campfire.fuse(fp.id, fp.autoText!);
+    const red = (c.screen() as { view: C.CampfireView }).view.threads.find((x) => x.color === 'red')!;
+    expect(t()!.focus).toEqual({ kind: 'thread', threadId: red.id });
+    const full = (c.screen() as { view: C.CampfireView }).view.lanes.codex.find((k) => k.inspector.exact === TUTORIAL.redLink.onLine)!;
+    c.api.campfire.settle(red.id, { kind: 'exception', on: full.id, text: TUTORIAL.redLink.text, when: {} });
+    expect(t()!.text).toBe('The fire is quiet. Leaving is free.');
+  });
+
+  test('real logs get no coach', () => {
+    const c = new Controller({ ...fresh(), sample: false }, null, { viewport: { w: 1440, h: 900 } });
+    expect(c.uiView().tutorial).toBeNull();
   });
 });

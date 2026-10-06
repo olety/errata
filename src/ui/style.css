@@ -1,4 +1,5 @@
-/* Slice UI only. The real skin is co-designed elsewhere; these are the ruled tokens, nothing more. */
+/* The import, reading and mirror pages, and the shared tokens. The play loop styles itself (one CSS file per folder,
+   classes prefixed pl-<folder>-); the few rules at the end are the mount's own: the coach line and the play body. */
 :root {
   --paper: #fff9ee;
   --ink: #41291f;
@@ -13,7 +14,9 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--paper); color: var(--ink); }
 body { font: 16px/1.55 var(--body); }
-main { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+/* The import pages sit in a centred column; the play loop's Table fills the viewport (no page container). */
+.page { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+body.is-play { overflow: hidden; }
 h1, h2, h3 { font-family: var(--title); font-weight: 800; line-height: 1.2; margin: 0 0 8px; }
 h1 { font-size: 30px; }
 h2 { font-size: 22px; margin-top: 24px; }
@@ -70,3 +73,22 @@ ol.route li { margin: 3px 0; }
 @media (max-width: 560px) { .deck { grid-template-columns: 1fr; } }
 button.on { border-color: var(--ink); font-weight: 700; }
 .stamps .row { margin: 4px 0; }
+
+/* The mount's coach line (play-loop §11): one line per gesture, never a modal, gone when done. It is written along the
+   table's front edge (the status strip) so it never covers a card, a book or a head; long lines grow upward. */
+.pl-coach {
+  position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); z-index: 6;
+  width: max-content; max-width: min(820px, calc(100vw - 480px));
+  margin: 0; padding: 6px 16px; border-radius: 6px; pointer-events: none;
+  background: #fff9ee; color: var(--ink); border: 1px solid rgba(65, 41, 31, 0.4);
+  font: 500 14px/1.35 var(--body); text-align: center; box-shadow: 0 -2px 12px rgba(30, 18, 10, 0.25);
+}
+.pl-layout-tablet .pl-coach { max-width: min(600px, calc(100vw - 360px)); font-size: 13px; }
+.pl-layout-phone .pl-coach { bottom: calc(100% + 4px); max-width: calc(100vw - 24px); font-size: 13px; }
+@media (prefers-reduced-motion: no-preference) { .pl-coach { animation: pl-coach-in 220ms cubic-bezier(0.23, 1, 0.32, 1); } }
+@keyframes pl-coach-in { from { opacity: 0; transform: translate(-50%, 4px); } }
+/* The tutorial's spotlight on one card: a gold halo, no motion under reduced motion. */
+.pl-spot { outline: 3px solid #d9b25a; outline-offset: 4px; border-radius: 8px; }
+@media (prefers-reduced-motion: no-preference) { .pl-spot { animation: pl-spot 1.6s ease-in-out infinite; } }
+@keyframes pl-spot { 50% { outline-color: rgba(217, 178, 90, 0.35); } }
+.pl-layout-statusbar { position: relative; }

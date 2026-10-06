@@ -141,7 +141,7 @@ function sealBox(v: ApplyView, plan: ApplyPlan, p: ScreenProps<ApplyView>, fresh
   const stamps = el('div', `pl-end-inkrow${v.undo?.status === 'done' ? ' pl-end-undone' : ''}`);
   for (const s of plan.stamps) {
     const order = fresh.indexOf(s.key);
-    const slot = el('div', `pl-end-inkslot pl-end-ink-${s.state}${order >= 0 ? ' pl-end-inking' : ''}`, el('span', 'pl-end-inkmark', s.label), el('small', '', s.state === 'failed' ? `did not verify · ${s.meaning}` : s.meaning));
+    const slot = el('div', `pl-end-inkslot pl-end-ink-${s.state}${order >= 0 ? ' pl-end-inking' : ''}`, el('span', 'pl-end-inkmark', s.label), el('small', '', s.state === 'failed' ? `did not verify · ${s.meaning}` : s.state === 'undone' ? `undone · the original bytes are back` : s.meaning));
     if (order >= 0) slot.style.setProperty('--i', String(order));
     slot.setAttribute('aria-label', `${s.label}: ${s.state}`);
     stamps.append(slot);

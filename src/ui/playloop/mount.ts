@@ -1,6 +1,6 @@
 // The integrator's mount: composes the four workers' components inside the Table for each screen, owns the one drag
-// core and the inspector and ribbon overlays, and repaints on every controller change. Workers never mount
-// themselves; this file is where their exports are wired (WORKERS.md, "integration points").
+// core, the inspector overlay, the paper drag ribbon and the tutorial's coach line, and repaints on every controller
+// change. Workers never mount themselves; this file is where their exports are wired (WORKERS.md, "integration points").
 
 import type * as C from './contract';
 import type { Controller } from './controller';
@@ -8,6 +8,7 @@ import { DragCore } from './drag';
 import { Books, Hand, Inspector, Piles } from './cards';
 import { RouteHeader, StatusBar, Table } from './layout';
 import { EventScreen, RoomScreen } from './room/room-screen';
+import { RibbonLayer } from './room/ribbon';
 import { CampfireScreen } from './campfire/campfire-screen';
 import { BossScreen } from './end/boss-screen';
 import { ApplyScreen } from './end/apply-screen';
@@ -19,30 +20,33 @@ function div(cls: string, ...kids: (Node | null)[]): HTMLDivElement {
   return e;
 }
 
-/** The plain ribbon overlay; the room/rig worker replaces it with the paper ribbon (reduced motion: none). */
-function ribbonLayer(): { el: SVGSVGElement; draw(from: { x: number; y: number }, to: { x: number; y: number } | null): void } {
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('style', 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:50');
-  const line = document.createElementNS(ns, 'line');
-  line.setAttribute('stroke', '#b08a3e');
-  line.setAttribute('stroke-width', '3');
-  svg.append(line);
-  return {
-    el: svg,
-    draw(from, to) {
-      line.setAttribute('visibility', to ? 'visible' : 'hidden');
-      if (!to) return;
-      line.setAttribute('x1', String(from.x));
-      line.setAttribute('y1', String(from.y));
-      line.setAttribute('x2', String(to.x));
-      line.setAttribute('y2', String(to.y));
-    },
-  };
+/** The tutorial's coach line on the table's front edge: one per gesture, gone when done, never a modal (§11, §0a.16). */
+function coach(ui: C.UiView): HTMLElement | null {
+  if (!ui.tutorial) return null;
+  const p = document.createElement('p');
+  p.className = 'pl-coach';
+  p.setAttribute('role', 'status');
+  p.textContent = ui.tutorial.text;
+  return p;
+}
+
+/** Every card a screen shows, for resolving the inspector's card when the adapter's view has none. */
+function cardsOf(screen: C.Screen): C.CardView[] {
+  switch (screen.kind) {
+    case 'room':
+    case 'event':
+      return [...screen.view.hand, ...screen.view.unavailable, ...screen.view.deck, ...screen.view.piles.shelf];
+    case 'campfire':
+      return [...Object.values(screen.view.lanes).flat(), ...screen.view.piles.shelf, ...screen.view.ash];
+    case 'boss':
+      return screen.view.cards;
+    default:
+      return [];
+  }
 }
 
 export function mountScreens(root: HTMLElement, ctl: Controller): () => void {
-  const ribbon = ribbonLayer();
+  const ribbon = RibbonLayer();
   const api = ctl.api;
   const core = new DragCore({
     onStart: () => undefined,
@@ -55,6 +59,7 @@ export function mountScreens(root: HTMLElement, ctl: Controller): () => void {
     ribbon: (from, to) => (ctl.ui.reducedMotion ? undefined : ribbon.draw(from, to)),
   });
   const drag: C.DropBinder = { bindCard: (id, el) => core.bindCard(id, el), bindTarget: (id, t, el) => core.bindTarget(id, t, el) };
+  const inspectHead = { inspect: (ref: { caseId: string } | null) => api.inspect(ref) };
 
   const paint = () => {
     core.resetTargets();
@@ -65,48 +70,59 @@ export function mountScreens(root: HTMLElement, ctl: Controller): () => void {
     let stage: HTMLElement;
     let wood: HTMLElement;
     let status: HTMLElement;
-    let inspectCard: C.CardView | null = null;
     switch (screen.kind) {
       case 'room':
       case 'event': {
         const v = screen.view;
         const props: C.ScreenProps<C.RoomView> = { view: v, ui, api, drag };
-        header = RouteHeader({ route: v.route, title: v.beast.name, subtitle: v.beast.subtitle });
+        header = RouteHeader({ route: v.route, title: v.beast.name, subtitle: v.beast.subtitle, api: inspectHead });
         stage = screen.kind === 'event' ? EventScreen(props) : RoomScreen(props);
         wood = div(
           'pl-wood',
-          Books({ books: v.books, preview: ui.drag?.preview ?? null, mode: 'play', layout: b.books.mode, drag }),
+          Books({
+            books: v.books,
+            preview: ui.drag?.preview ?? null,
+            mode: 'play',
+            layout: b.books.mode,
+            drag,
+            cards: v.deck,
+            onInspect: (id) => api.inspect({ cardId: id }),
+            ink: v.result,
+            onRaise: (lane, to) => api.campfire.raiseAllowance(lane, to),
+          }),
           Hand({ cards: v.hand, bands: b, ui, api, drag }),
           Piles({ piles: v.piles, layout: b.piles.mode, shelfTarget: v.phase === 'dealt', api, drag }),
         );
         status = StatusBar({ status: v.status, notice: ui.notice });
-        if (ui.inspect && 'cardId' in ui.inspect) inspectCard = [...v.hand, ...v.unavailable].find((c) => c.id === (ui.inspect as { cardId: string }).cardId) ?? null;
         break;
       }
       case 'campfire': {
         const v = screen.view;
         const parts = CampfireScreen({ view: v, ui, api, drag });
-        header = RouteHeader({ route: v.route, title: 'Campfire', subtitle: 'Make room: merge, shorten, cut, or move a procedure into a Skill.' });
+        header = RouteHeader({ route: v.route, title: 'Campfire', subtitle: 'Make room: merge, shorten, cut, or move a procedure into a Skill.', api: inspectHead });
         stage = parts.stage;
         wood = parts.wood;
         status = StatusBar({ status: v.status, notice: ui.notice });
-        if (ui.inspect && 'cardId' in ui.inspect) inspectCard = Object.values(v.lanes).flat().find((c) => c.id === (ui.inspect as { cardId: string }).cardId) ?? null;
         break;
       }
       case 'boss': {
-        const parts = BossScreen({ view: screen.view, ui, api, drag });
-        header = div('pl-header');
+        const v = screen.view;
+        const parts = BossScreen({ view: v, ui, api, drag });
+        const title = v.kind === 'audit' ? 'Final audit' : 'Later cases';
+        const subtitle = v.kind === 'audit' ? 'Your open pages face the final deck.' : 'The cases held back rise one at a time: read, stamp blind, then answer with your own cards.';
+        header = RouteHeader({ route: v.route, title, subtitle, api: inspectHead });
         stage = parts.stage;
         wood = parts.wood;
-        status = StatusBar({ status: { sample: false, text: '' }, notice: ui.notice });
+        status = StatusBar({ status: v.status, notice: ui.notice });
         break;
       }
       case 'apply': {
-        const parts = ApplyScreen({ view: screen.view, ui, api, drag });
-        header = div('pl-header');
+        const v = screen.view;
+        const parts = ApplyScreen({ view: v, ui, api, drag });
+        header = RouteHeader({ route: v.route, title: 'Apply', subtitle: 'Both diffs, then the seal: backups first, every write read back, Undo after.', api: inspectHead });
         stage = parts.stage;
         wood = parts.wood;
-        status = StatusBar({ status: { sample: false, text: '' }, notice: ui.notice });
+        status = StatusBar({ status: v.status, notice: ui.notice });
         break;
       }
       default: {
@@ -116,14 +132,28 @@ export function mountScreens(root: HTMLElement, ctl: Controller): () => void {
         status = StatusBar({ status: { sample: false, text: '' }, notice: ui.notice });
       }
     }
+    // The coach line is written along the table's front edge, where it never covers a card or a target; the campfire
+    // prints its own beside the threads it points at.
+    const line = screen.kind === 'campfire' ? null : coach(ui);
+    if (line) status.append(line);
     const table = Table({ bands: b, header, stage, wood, status });
-    const inspector = ui.inspect ? Inspector({ card: inspectCard, receipt: null, layout: b.mode === 'phone' ? 'sheet' : 'side', api }) : null;
+    // The tutorial's spotlight on a card (the campfire spotlights its own threads).
+    const f = ui.tutorial?.focus;
+    if (f?.kind === 'card') for (const n of table.querySelectorAll<HTMLElement>(`[data-card="${CSS.escape(f.cardId)}"]`)) n.classList.add('pl-spot');
+    let inspector: HTMLElement | null = null;
+    if (ui.inspect) {
+      const id = 'cardId' in ui.inspect ? ui.inspect.cardId : null;
+      const card = id ? cardsOf(screen).find((c) => c.id === id) ?? null : null;
+      inspector = Inspector({ card, receipt: null, layout: b.mode === 'phone' ? 'sheet' : 'side', api, view: ui.inspector });
+    }
     root.replaceChildren(table, ...(inspector ? [inspector] : []), ribbon.el);
   };
 
   const onKey = (e: KeyboardEvent) => {
+    // A component that owned the key (the campfire's seal, a field) already handled it.
+    if (e.defaultPrevented) return;
     const tag = (e.target as HTMLElement)?.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     if (ctl.key(e.key, e.shiftKey)) e.preventDefault();
   };
   const onResize = () => ctl.resize({ w: window.innerWidth, h: window.innerHeight });

@@ -174,7 +174,7 @@ function doSeal(): void {
   const p = L.proposal;
   const fxId = L.p.ui.effect?.id ?? 0;
   // A new text binds nothing until accepted: remember its cases so the panel can offer acceptMapping after the seal.
-  local.after = (call.kind === 'fuse' || call.kind === 'sharpen') && pv?.resultId && pv.needsAcceptance.length > 0 ? { resultId: pv.resultId, text: pv.after?.text ?? '', cases: [...pv.needsAcceptance], bound: new Set(), seen: fxId, labels: {}, accepted: new Set(), sent: null } : null;
+  local.after = (call.kind === 'fuse' || call.kind === 'sharpen') && pv?.resultId && pv.needsAcceptance.length > 0 ? { resultId: pv.resultId, text: pv.after?.text ?? '', cases: [...pv.needsAcceptance], bound: new Set(), seen: fxId, labels: Object.fromEntries(pv.refs.map((r) => [r.caseId, M.tagText(r)])), accepted: new Set(), sent: null } : null;
   local.reopened = null;
   const cardId = call.kind === 'fuse' || call.kind === 'sharpen' ? (pv?.resultId ?? null) : call.kind === 'swap' ? call.shelfId : call.kind === 'settle' ? null : call.cardId;
   local.lastSeal = { kind: call.kind, cardId, before: fxId };
@@ -690,7 +690,7 @@ function previewPart(L: Live, part: 'result' | 'detail'): HTMLElement {
   const v = L.p.view;
   const ctx: PreviewCtx = {
     title: (id) => (L.cards.has(id) ? cardTitle(L, id) : null),
-    caseLabel: (id) => M.caseTag(id, v),
+    caseLabel: (id) => M.caseTag(id, v, L.preview?.refs ?? []),
     onCase: (id) => L.p.api.inspect({ caseId: id }),
     empty:
       L.proposal?.kind === 'settle' ? 'Pick a slot: the lines as they would be exported show here before you seal. Cancel leaves the red thread.' : 'The preview shows here: the lines as they would be exported, the weight per file and the cases.',

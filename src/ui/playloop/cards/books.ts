@@ -2,7 +2,7 @@
 // Proposed watermark, the leather strap meter with its clasp, the per-lane ghost while dragging, and the exact line
 // typeset on the open page at reading size before release. Drop targets: play (rooms) or re-target (campfire).
 // Import from ../contract only. Never the adapter or the engine.
-import type { BookView, CardView, DragPreview, DropBinder, GhostDelta } from '../contract';
+import type { Agent, BookView, CardView, DragPreview, DropBinder, GhostDelta, PlayResultView } from '../contract';
 import { COPY } from '../contract';
 import { el, fig, inline, svg } from './dom';
 import './cards.css';
@@ -25,6 +25,13 @@ export interface BooksProps {
   glow?: readonly string[];
   /** Optional: open a slip's card in the inspector. */
   onInspect?(cardId: string): void;
+  /** Optional: the room's play result. Its lines ink onto the destination books' pages once per result id (§12.7). */
+  ink?: PlayResultView | null;
+  /**
+   * Optional: the explicit allowance raise (§5). The buckle on each strap offers the view's raiseSteps; the player picks
+   * one and confirms. Absent: no buckle control.
+   */
+  onRaise?(lane: Agent, to: number): void;
 }
 
 /** The strap in percent of its length: the fill, the allowance notch, and the ghost segment of a drag. */
@@ -51,7 +58,85 @@ export function Books(p: BooksProps): HTMLElement {
   }
   // The open page: the exact line at reading size, its scope, exceptions and destination files, before release (§0a.5).
   if (p.preview && (line || p.preview.refused)) root.append(Page(p.preview, p));
+  else {
+    const inked = Ink(p.ink ?? null);
+    if (inked) root.append(inked);
+  }
   return root;
+}
+
+/** When each play result first painted: its ink shows for a moment after the play, typed once, never replayed. */
+const inkSeen = new Map<number, number>();
+const INK_MS = 2600;
+
+/** The line a play just wrote, typed onto the open page of the books it landed in (proposed, never written yet). */
+function Ink(r: PlayResultView | null): HTMLElement | null {
+  if (!r || !r.played || r.ink.length === 0) return null;
+  const now = Date.now();
+  const first = inkSeen.get(r.id);
+  if (first === undefined) inkSeen.set(r.id, now);
+  if (first !== undefined && now - first > INK_MS) return null;
+  const page = el(
+    'div',
+    `pl-cards-page pl-cards-ink${first === undefined && !still() ? ' is-typing' : ''}`,
+    el('p', 'pl-cards-page-files', 'Added to the proposed ', ...r.ink.flatMap((x, i) => [i ? ' and ' : '', el('b', '', x.file)])),
+    el('p', 'pl-cards-page-line', ...inline(r.ink[0]!.line)),
+  );
+  page.setAttribute('role', 'status');
+  return page;
+}
+
+/** The buckle: which lane's raise panel is open, and the step picked (presentation memory across repaints). */
+const buckle = new Map<Agent, number | null>();
+
+function Buckle(b: BookView, p: BooksProps): HTMLElement | null {
+  if (!p.onRaise || b.raiseSteps.length === 0) return null;
+  const wrap = el('div', 'pl-cards-buckle');
+  const toggle = el('button', 'pl-cards-buckle-btn', 'Raise the allowance');
+  toggle.type = 'button';
+  toggle.addEventListener('pointerdown', (e) => e.stopPropagation());
+  wrap.append(toggle);
+  const panel = el('div', 'pl-cards-buckle-panel');
+  const refresh = () => {
+    const isOpen = buckle.has(b.lane);
+    const pick = buckle.get(b.lane) ?? null;
+    panel.hidden = !isOpen;
+    wrap.classList.toggle('is-open', isOpen);
+    toggle.textContent = isOpen ? 'Keep the allowance' : 'Raise the allowance';
+    const kids: HTMLElement[] = [
+      el('p', 'pl-cards-buckle-q', `Raise ${b.file}'s allowance from ${fig(b.weight.allowance)} to:`),
+      el(
+        'div',
+        'pl-cards-buckle-steps',
+        ...b.raiseSteps.map((n) => {
+          const s = el('button', `pl-cards-buckle-step${pick === n ? ' is-picked' : ''}`, fig(n));
+          s.type = 'button';
+          s.setAttribute('aria-pressed', String(pick === n));
+          s.addEventListener('click', () => (buckle.set(b.lane, n), refresh()));
+          return s;
+        }),
+      ),
+    ];
+    if (pick !== null) {
+      const go = el('button', 'pl-cards-buckle-go', `Raise to ${fig(pick)}`);
+      go.type = 'button';
+      go.addEventListener('click', () => {
+        buckle.delete(b.lane);
+        p.onRaise!(b.lane, pick);
+      });
+      kids.push(el('p', 'pl-cards-buckle-note', `Apply then lets ${b.file} weigh up to ${fig(pick)} tokens (${COPY.estimated}). The end screen says you raised it.`), go);
+    }
+    panel.replaceChildren(...kids);
+  };
+  toggle.addEventListener('click', () => {
+    if (buckle.has(b.lane)) buckle.delete(b.lane);
+    else buckle.set(b.lane, null);
+    refresh();
+  });
+  panel.addEventListener('pointerdown', (e) => e.stopPropagation());
+  refresh();
+  wrap.append(panel);
+  return wrap;
 }
 
 function Strap(b: BookView, ghost: GhostDelta | null): HTMLElement {
@@ -95,7 +180,7 @@ function Figures(b: BookView): HTMLElement {
 function Notes(b: BookView): (HTMLElement | null)[] {
   return [
     b.weight.noGrowth ? el('p', 'pl-cards-book-note', 'No growth: this file arrived over the line.') : null,
-    b.weight.raisedBy !== null ? el('p', 'pl-cards-book-note', 'Allowance raised by you.') : null,
+    b.weight.raisedBy !== null ? el('p', 'pl-cards-book-note', `Allowance raised to ${fig(b.weight.raisedBy)} by you.`) : null,
     b.blocked ? el('p', 'pl-cards-book-note is-blocked', b.blocked) : null,
     !b.loaded ? el('p', 'pl-cards-book-note', 'File not read.') : null,
   ];
@@ -110,6 +195,7 @@ function Book(b: BookView, ghost: GhostDelta | null, dest: boolean, p: BooksProp
     Figures(b),
     ghost && p.preview ? el('p', 'pl-cards-book-ghost', el('span', 'pl-cards-mono', ghost.text), ` ${COPY.estimated}`) : null,
     ...Notes(b),
+    Buckle(b, p),
   );
   book.dataset.lane = b.lane;
   book.setAttribute('aria-label', `${b.file}: ${b.weight.now} of ${b.weight.allowance} ${COPY.estimated}${b.proposed ? `, ${COPY.proposed}` : ''}`);

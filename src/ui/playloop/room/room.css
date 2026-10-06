@@ -398,3 +398,10 @@
 .pl-room.is-phone .pl-room-stamps { grid-template-columns: 1fr 1fr; }
 .pl-room.is-phone .pl-room-quote, .pl-room.is-tablet .pl-room-quote { font-size: 15px; line-height: 1.35; }
 .pl-room.is-tablet .pl-room-slip { padding: 10px 12px; gap: 6px; }
+
+/* the scope chip (check 4): confirmable while judging when the heads span projects */
+.pl-room-scopebox { display: flex; flex-direction: column; gap: 6px; background: var(--pl-room-paper); border: 1px solid var(--pl-room-line); border-radius: 4px; padding: 8px 12px; }
+.pl-room-scope { margin: 0; display: flex; align-items: center; gap: 8px; font: 500 12px var(--pl-room-body); color: var(--pl-room-soft); }
+.pl-room-scope-chip { font: 600 13px var(--pl-room-body); color: var(--pl-room-ink); border: 1px solid var(--pl-room-ink); border-radius: 999px; padding: 1px 10px; }
+.pl-room-scope-row .pl-room-btn { padding: 6px 10px; font-size: 13px; }
+.pl-room-scope-btn.is-on { background: var(--pl-room-ink); color: var(--pl-room-paper); }

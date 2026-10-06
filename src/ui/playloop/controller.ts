@@ -7,6 +7,7 @@ import type { Agent } from '../../model';
 import * as A from './adapter';
 import type * as C from './contract';
 import { layout, type Viewport } from './geometry';
+import { tutorialFor } from './tutorial';
 
 export type Beat = C.UiView['beat'];
 
@@ -131,7 +132,7 @@ export class Controller {
       inspector: A.selectInspector(this.state, this.ui.inspect),
       drag: this.ui.drag,
       effect: this.ui.effect,
-      tutorial: null,
+      tutorial: tutorialFor(this.state, this.screen(), this.ui.pending),
       beat: this.ui.beat,
       reducedMotion: this.ui.reducedMotion,
       bands: layout(this.ui.viewport),

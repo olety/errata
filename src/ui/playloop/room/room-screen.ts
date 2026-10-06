@@ -34,6 +34,33 @@ function wordingBox(p: ScreenProps<RoomView>): HTMLElement | null {
   return el('div', 'pl-room-wording', label, ta);
 }
 
+/**
+ * The scope chip (check 4): "all projects" or one project. While judging, a room whose heads span projects lets the
+ * player confirm one; the drafts then name it, and heads from other projects turn aside with their project's name.
+ */
+function scopeBox(p: ScreenProps<RoomView>): HTMLElement | null {
+  const s = p.view.scope;
+  const chip = el('span', 'pl-room-scope-chip', s.chip);
+  const head = el('p', 'pl-room-scope', el('span', 'pl-room-scope-k', 'Scope'), chip);
+  if (!s.confirmable) return el('div', 'pl-room-scopebox', head);
+  const pick = (key: string | null, label: string) => {
+    const on = (s.confirmed?.key ?? null) === key;
+    const b = button(`pl-room-btn pl-room-scope-btn${on ? ' is-on' : ''}`, label, () => {
+      flush();
+      p.api.confirmProject(p.view.roomKey, key);
+    });
+    b.setAttribute('aria-pressed', String(on));
+    return b;
+  };
+  return el(
+    'div',
+    'pl-room-scopebox',
+    head,
+    el('p', 'pl-room-line', `Seen in ${s.projects.map((x) => x.label).join(' and ')}. The line applies to all projects unless you confirm one.`),
+    el('div', 'pl-room-buttons pl-room-scope-row', pick(null, 'All projects'), ...s.projects.map((x) => pick(x.key, `Only ${x.label}`))),
+  );
+}
+
 function askBox(p: ScreenProps<RoomView>): HTMLElement | null {
   const v = p.view;
   const a = v.existingAsks.find((x) => !declined.has(askKey(v, x)));
@@ -162,11 +189,11 @@ function compose(p: ScreenProps<RoomView>, event: boolean): HTMLElement {
   if (phone) {
     // One scroller under the beast: slip, prompt, wording, then the controls, which stick to its bottom edge once
     // judging is done (while heads wait for stamps the slip needs the room).
-    const scroller = el('div', 'pl-room-scroll', side, askBox(p), wordingBox(p), controlsBox(p));
+    const scroller = el('div', 'pl-room-scroll', side, askBox(p), scopeBox(p), wordingBox(p), controlsBox(p));
     scroller.style.height = `${Math.max(0, stageH - arenaH - cols.gap)}px`;
     root.append(arena, scroller);
   } else {
-    const rail = el('div', 'pl-room-rail', askBox(p), wordingBox(p), controlsBox(p));
+    const rail = el('div', 'pl-room-rail', askBox(p), scopeBox(p), wordingBox(p), controlsBox(p));
     side.style.width = `${cols.side}px`;
     rail.style.width = `${cols.rail}px`;
     side.style.maxHeight = `${stageH - 8}px`;
