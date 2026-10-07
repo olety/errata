@@ -1,0 +1,13 @@
+Title:
+Errata: your Claude Code and Codex sessions as a card game that rewrites your CLAUDE.md (Hackyard #4 demo)
+
+Description:
+Errata reads your Claude Code and Codex session logs in the browser and turns them into a short card run. Every monster is a pattern from your own history: the command you retried four times, the moment you stopped the agent and said "only this file". Every card is a rule. Your deck is your global CLAUDE.md and AGENTS.md, with a token budget, duplicates to merge at the campfire, and a boss that replays the cases the game held back. Apply writes the files with byte-exact backups and Undo. Nothing leaves the tab.
+
+Play the synthetic sample: https://olety.github.io/errata/
+Source (MIT): https://github.com/olety/errata
+Built solo for Hackyard Yard #4 ("Gamification"), 2026-10-05 to 2026-10-09.
+
+The synthetic sample is built from licensed public trajectories (NVIDIA SWE-Hero, CC-BY-4.0, MIT-licensed repositories) with authored dialogue; see public/sample/manifest.json. Voice: ElevenLabs. Art: gpt-image via prompts; see docs/demo/README.md.
+
+Tags: claude code, codex, agents.md, claude.md, card game, roguelike, hackathon, hackyard, developer tools
