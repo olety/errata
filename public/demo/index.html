@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Errata · demo</title>
+<meta name="description" content="A 34-second demo of Errata, the card game that turns your Claude Code and Codex session logs into your CLAUDE.md and AGENTS.md." />
+<link rel="stylesheet" href="../fonts/fonts.css" />
+<style>
+  :root { color-scheme: light; --paper: #FFF9EE; --ink: #41291F; --rose: #B86A74; --wood: #2B1A12; --line: #D9C8AE; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--wood); color: var(--ink); font-family: 'Zen Kaku Gothic New', system-ui, sans-serif; font-size: 16px; line-height: 1.5; padding: 32px 16px 48px; min-height: 100vh; }
+  main { max-width: 980px; margin: 0 auto; }
+  .slip { background: var(--paper); border-radius: 10px; padding: 20px 24px; box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+  h1 { font-family: 'Shippori Mincho B1', 'Times New Roman', serif; font-weight: 600; font-size: 28px; margin: 0 0 6px; letter-spacing: .01em; }
+  h1 small { font-weight: 500; font-size: 15px; color: var(--rose); margin-left: 8px; letter-spacing: .08em; text-transform: uppercase; }
+  p { margin: 0 0 10px; max-width: 70ch; }
+  video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 6px; margin: 16px 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: baseline; margin-top: 6px; }
+  a { color: var(--ink); text-decoration-color: var(--rose); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+  a.play { font-weight: 700; }
+  .receipt { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; color: #6B5143; margin-top: 18px; border-top: 1px solid var(--line); padding-top: 10px; }
+</style>
+</head>
+<body>
+<main class="slip">
+  <h1>Errata<small>demo</small></h1>
+  <p>Your Claude Code and Codex session logs, read in the browser and dealt as a card run. Every card is a rule. Your deck is your global CLAUDE.md and AGENTS.md.</p>
+  <video controls playsinline preload="metadata" poster="./poster.jpg" src="./errata-demo-16x9.mp4"></video>
+  <div class="row">
+    <a class="play" href="../">Play the synthetic sample</a>
+    <a href="./errata-demo-16x9.mp4">Video file (mp4, 8 MB)</a>
+  </div>
+  <p class="receipt">34 s · 1920 × 1080 · narrated and captioned · built solo for Hackyard Yard #4, 2026-10-05 to 2026-10-09 · nothing leaves the tab when you play</p>
+</main>
+</body>
+</html>
