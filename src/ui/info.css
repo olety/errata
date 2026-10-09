@@ -1,0 +1,191 @@
+/* The one (i) pattern, the icon set, the chips, the shared tooltip and the note panel (text-density pass). Paper
+   #FFF9EE, ink #41291F, a 1 px #D9C8AE rule; no blur beyond 2 px, no gradient. */
+
+.ui-ic {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible;
+  vertical-align: -3px;
+}
+.ui-ic-knot.is-gold,
+.is-gold > .ui-ic-knot {
+  color: #a87a22;
+}
+.ui-ic-knot.is-red,
+.is-red > .ui-ic-knot {
+  color: #a4452f;
+}
+
+.ui-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #41291f;
+  border-radius: 4px;
+  outline-offset: 2px;
+}
+.ui-icon:focus-visible,
+.ui-chip:focus-visible,
+.ui-info:focus-visible {
+  outline: 2px solid #41291f;
+}
+
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px 1px 5px;
+  border: 1px solid #d9c8ae;
+  border-radius: 999px;
+  background: #fff9ee;
+  color: #41291f;
+  font: 500 12px/1.4 var(--body, system-ui, sans-serif);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ui-chip .ui-ic {
+  width: 14px;
+  height: 14px;
+  vertical-align: 0;
+}
+
+/* An (i), a chip or an icon takes the pointer even inside an overlay that lets drops through. */
+.ui-info,
+.ui-chip,
+.ui-icon {
+  pointer-events: auto;
+}
+
+/* The (i): a 16 px glyph, a 44 px hit area drawn by a transparent ring so the layout keeps its size. */
+.ui-info {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  min-width: 0;
+  min-height: 0;
+  margin: 0 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #41291f;
+  cursor: help;
+  vertical-align: middle;
+  flex: none;
+  box-shadow: none;
+}
+.ui-info::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+}
+.ui-info:hover {
+  background: rgba(65, 41, 31, 0.08);
+}
+
+.ui-tip {
+  position: fixed;
+  z-index: 9000;
+  max-width: 260px;
+  padding: 6px 9px;
+  background: #fff9ee;
+  color: #41291f;
+  border: 1px solid #d9c8ae;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(65, 41, 31, 0.18);
+  font: 500 12.5px/1.4 var(--body, system-ui, sans-serif);
+  pointer-events: none;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  animation: ui-tip-in 120ms ease-out;
+}
+.ui-tip[hidden] {
+  display: none;
+}
+@keyframes ui-tip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-tip {
+    animation: none;
+  }
+}
+
+/* The note panel: the inspector's look (paper, ink, a rule), on the right; a bottom sheet on a phone. */
+.ui-note {
+  position: fixed;
+  z-index: 8000;
+  top: 72px;
+  right: 16px;
+  width: min(380px, calc(100vw - 32px));
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+  padding: 12px 16px 16px;
+  background: #fff9ee;
+  color: #41291f;
+  border: 1px solid #d9c8ae;
+  border-radius: 6px;
+  box-shadow: 0 2px 2px rgba(65, 41, 31, 0.2);
+  font: 400 14px/1.5 var(--body, system-ui, sans-serif);
+}
+.ui-note-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #d9c8ae;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+.ui-note-kicker {
+  font: 600 11px/1 var(--mono, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b5247;
+}
+.ui-note-close {
+  min-width: 44px;
+  min-height: 44px;
+  margin: -10px -12px -10px 0;
+  border: 0;
+  background: transparent;
+  color: #41291f;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ui-note-title {
+  margin: 0 0 6px;
+  font: 600 18px/1.3 var(--title, Georgia, serif);
+}
+.ui-note-body p {
+  margin: 0 0 8px;
+}
+@media (max-width: 500px) {
+  .ui-note {
+    top: auto;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: auto;
+    max-height: 60vh;
+    border-radius: 6px 6px 0 0;
+  }
+}
