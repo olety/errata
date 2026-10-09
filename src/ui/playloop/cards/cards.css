@@ -471,3 +471,4 @@
 .pl-cards-scope .ui-icon .ui-ic { width: 13px; height: 13px; vertical-align: 0; }
 .pl-cards-pile-name { display: inline-flex; align-items: center; gap: 4px; }
 .pl-cards-pile-name .ui-ic { width: 15px; height: 15px; }
+.pl-cards-page-files .pl-cards-page-once { padding: 0 6px 0 4px; font-size: 12px; vertical-align: 1px; }

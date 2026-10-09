@@ -5,7 +5,7 @@
 import type { Agent, BookView, CardView, DragPreview, DropBinder, GhostDelta, PlayResultView } from '../contract';
 import { COPY, overBudgetText, strapText } from '../contract';
 import { el, fig, inline, svg } from './dom';
-import { info, tip, type Note } from '../../info';
+import { chip, info, tip, type Note } from '../../info';
 import './cards.css';
 
 export interface BooksProps {
@@ -323,12 +323,17 @@ function Page(pv: DragPreview, p: BooksProps): HTMLElement {
         `${p.books.map((b) => `${b.file} ${pv.ghost[b.lane].text}`).join(' · ')} · ${COPY.estimated}.`,
       ]
     : [];
+  // A play that brings the managed block header shows its once-only cost beside the rules icon ("+22–23 once").
+  const heads = lanes.map((b) => pv.ghost[b.lane].blockHeader).filter((n) => n > 0);
+  const lo = Math.min(...heads);
+  const hi = Math.max(...heads);
+  const once = heads.length ? chip('rules', `+${lo === hi ? fig(lo) : `${fig(lo)}–${fig(hi)}`} once`, `Block header: the one-time marker lines a file gets with its first line (${COPY.estimated})`, 'pl-cards-page-once', false) : null;
   const line = l ? el('p', 'pl-cards-page-line', ...inline(l.text)) : null;
   if (line) line.dataset.density = 'content';
   const page = el(
     'div',
     `pl-cards-page${pv.refused ? ' is-refused' : ''}`,
-    l ? el('p', 'pl-cards-page-files', '→ ', ...l.files.flatMap((f, i) => [i ? ' · ' : '', el('b', '', f)]), ` · ${adds}`, ' ', info('About this reading', meta.slice(0, 2).join(' '), { title: 'The reading', body: [l.text, ...meta] })) : null,
+    l ? el('p', 'pl-cards-page-files', '→ ', ...l.files.flatMap((f, i) => [i ? ' · ' : '', el('b', '', f)]), ` · ${adds}`, once ? ' ' : '', once, ' ', info('About this reading', meta.slice(0, 2).join(' '), { title: 'The reading', body: [l.text, ...meta] })) : null,
     line,
     pv.refused ? el('p', 'pl-cards-refused', pv.refused) : null,
   );
