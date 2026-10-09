@@ -240,7 +240,7 @@
 }
 .pl-cards-book.is-dest, .pl-cards-booktab.is-dest { outline: 2px solid var(--pl-cards-ink); outline-offset: 3px; }
 .pl-cards-book > :not(.pl-cards-proposed) { position: relative; z-index: 1; }
-.pl-cards-book-head { display: flex; flex-direction: column; gap: 1px; }
+.pl-cards-book-head { display: flex; flex-direction: row; align-items: center; gap: 2px; }
 .pl-cards-book-name { font-family: var(--pl-cards-f-title); font-weight: 800; font-size: 16px; line-height: 20px; }
 .pl-cards-book-path { font-family: var(--pl-cards-f-mono); font-size: 11px; line-height: 14px; color: var(--pl-cards-ink-2); font-variant-ligatures: none; }
 .pl-cards-strapwrap { display: flex; align-items: center; gap: 4px; }
@@ -460,3 +460,14 @@
 .pl-cards-booktab .pl-cards-book-fig { white-space: normal; }
 .pl-cards-booktab .pl-cards-fig-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pl-cards-booktab .pl-cards-proposed-tag { top: -7px; bottom: auto; right: 8px; }
+
+/* Text-density pass: the footer is two chips (eye "3 sessions", target "3 cases"); the sentences are tooltips. */
+.pl-cards-foot.is-chips { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 0 8px; overflow: hidden; }
+.pl-cards-foot.is-chips .ui-chip { border: 0; padding: 0; background: none; gap: 3px; font: inherit; font-weight: 500; line-height: var(--pl-ll); color: var(--pl-cards-ink); }
+.pl-cards-foot.is-chips .ui-chip .ui-ic { width: 12px; height: 12px; }
+.pl-cards-foot.is-chips .pl-cards-prov { display: inline-flex; white-space: nowrap; }
+.pl-cards-foot.is-chips.has-cost .pl-cards-prov, .pl-cards-S .pl-cards-foot.is-chips.has-room .pl-cards-prov { display: inline-flex; }
+.pl-cards-scope { display: inline-flex; align-items: center; gap: 3px; }
+.pl-cards-scope .ui-icon .ui-ic { width: 13px; height: 13px; vertical-align: 0; }
+.pl-cards-pile-name { display: inline-flex; align-items: center; gap: 4px; }
+.pl-cards-pile-name .ui-ic { width: 15px; height: 15px; }

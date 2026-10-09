@@ -9,6 +9,7 @@ import { clearOf, controlLines, foldCues, roomControls, strikeCues } from './log
 import { flush } from './motion';
 import { RIGS, fitRig } from './rig';
 import { ReceiptStage } from './stage';
+import { icon, iconSvg, info, tip } from '../cards';
 import './room.css';
 
 /** "No" to an existing line sends it back for this room; presentation memory only (the act changes nothing). */
@@ -18,9 +19,25 @@ function askKey(v: RoomView, a: { cardId: string; caseId: string }): string {
   return `${v.roomKey}|${a.cardId}|${a.caseId}`;
 }
 
+/** Rooms whose wording box the player opened (presentation memory across repaints). */
+const wordingOpen = new Set<string>();
+
+/**
+ * "Your wording" (text-density pass, R11): a quill button; the textarea opens on click with the current line prefilled.
+ */
 function wordingBox(p: ScreenProps<RoomView>): HTMLElement | null {
   const w = p.view.wording;
   if (!w) return null;
+  const key = p.view.roomKey;
+  if (!wordingOpen.has(key)) {
+    const b = button('pl-room-btn pl-room-quill', null, () => {
+      wordingOpen.add(key);
+      p.api.wording(key, w.value);
+    }, { aria: w.editable ? 'Your wording: change the line in your own words before you deal' : 'Your wording: read the line' });
+    b.append(iconSvg('quill'), w.editable ? ' Your wording' : ' The wording');
+    tip(b, w.editable ? 'The line, in your words (before you deal)' : 'The line, in your words');
+    return el('div', 'pl-room-wording', b);
+  }
   const id = `pl-room-wording-${p.view.roomKey}`;
   const ta = el('textarea', '');
   ta.id = id;
@@ -40,8 +57,12 @@ function wordingBox(p: ScreenProps<RoomView>): HTMLElement | null {
  */
 function scopeBox(p: ScreenProps<RoomView>): HTMLElement | null {
   const s = p.view.scope;
-  const chip = el('span', 'pl-room-scope-chip', s.chip);
-  const head = el('p', 'pl-room-scope', el('span', 'pl-room-scope-k', 'Scope'), chip);
+  // A globe for all projects, a folder for one (text-density pass, R11); what the scope means sits behind the (i).
+  const global = !s.confirmed || /^all projects$/i.test(s.chip);
+  const chip = el('span', 'pl-room-scope-chip', icon(global ? 'globe' : 'folder', global ? 'All projects' : 'This project', undefined, false), ` ${s.chip}`);
+  const more = s.confirmable ? [`Seen in ${s.projects.map((x) => x.label).join(' and ')}. The line applies to all projects unless you confirm one.`, ...(s.hint ? [s.hint] : [])] : ['The projects this line applies to.'];
+  const head = el('p', 'pl-room-scope', el('span', 'pl-room-scope-k', 'Scope'), chip, info('About the scope', more[0]!, { title: 'Scope', body: more }));
+  if (s.hint) chip.classList.add('is-warn');
   if (!s.confirmable) return el('div', 'pl-room-scopebox', head);
   const pick = (key: string | null, label: string) => {
     const on = (s.confirmed?.key ?? null) === key;
@@ -56,8 +77,6 @@ function scopeBox(p: ScreenProps<RoomView>): HTMLElement | null {
     'div',
     'pl-room-scopebox',
     head,
-    el('p', 'pl-room-line', `Seen in ${s.projects.map((x) => x.label).join(' and ')}. The line applies to all projects unless you confirm one.`),
-    s.hint ? el('p', 'pl-room-line pl-room-hint', s.hint) : null,
     el('div', 'pl-room-buttons pl-room-scope-row', pick(null, 'All projects'), ...s.projects.map((x) => pick(x.key, `Only ${x.label}`))),
   );
 }
@@ -93,6 +112,7 @@ function controlsBox(p: ScreenProps<RoomView>): HTMLElement | null {
   const cs = roomControls(v);
   // After the play: what the room now has, and that nothing lands before Apply (P3 gate fix 4).
   const lines = [...(v.clear ? [v.clear] : []), ...(v.handDiffers ? [v.handDiffers] : []), ...controlLines(v)];
+  void lines;
   if (!cs.length && !lines.length) return null;
   const act: Record<string, () => void> = {
     deal: () => p.api.deal(),
@@ -113,6 +133,9 @@ function controlsBox(p: ScreenProps<RoomView>): HTMLElement | null {
     if (c.why) whys.add(c.why);
   });
   for (const w of whys) row.append(el('span', 'pl-room-why', w));
+  // The finalizes line, the pull-back hint and how a hand differs sit behind one (i) beside the buttons (R6).
+  const notes = [...(v.handDiffers ? [v.handDiffers] : []), ...controlLines(v)];
+  if (notes.length) row.append(info(cs[0]?.label ? `About ${cs[0].label}` : 'About this step', notes[0]!, { title: cs[0]?.label ?? 'This step', body: notes }));
   // Phones (the flow): the hand lies below the beast, so the selected card's tap target is also here, the same act as a
   // tap on the beast (tap–tap, §0a.15), with its reading already on the books' page.
   const sel = p.ui.selected ? v.hand.find((c) => c.id === p.ui.selected) : undefined;
@@ -124,7 +147,10 @@ function controlsBox(p: ScreenProps<RoomView>): HTMLElement | null {
       }),
     );
   }
-  return el('div', 'pl-room-controls', row, ...lines.map((l) => el('p', `pl-room-line${l === v.clear ? ' pl-room-clear' : ''}`, l)));
+  // After a play the clear line keeps its first sentence on screen ("3 cases now have a proposed line"); the rest,
+  // that nothing is written before Apply, is its (i).
+  const clear = v.clear ? el('p', 'pl-room-line pl-room-clear', v.clear.split('. ')[0]!.replace(/\.$/, ''), ' ', info('About this play', v.clear)) : null;
+  return el('div', 'pl-room-controls', row, clear);
 }
 
 /** The beast's height: the creature band, or less when the arena is narrow (presentation maths). */

@@ -5,6 +5,7 @@
 import type { Agent, BookView, CardView, DragPreview, DropBinder, GhostDelta, PlayResultView } from '../contract';
 import { COPY, overBudgetText, strapText } from '../contract';
 import { el, fig, inline, svg } from './dom';
+import { info, tip, type Note } from '../../info';
 import './cards.css';
 
 export interface BooksProps {
@@ -189,25 +190,40 @@ function Strap(b: BookView, ghost: GhostDelta | null): HTMLElement {
   return el('div', 'pl-cards-strapwrap', track, clasp);
 }
 
-/** The file path, breakable only after a slash. */
-function Path(path: string): HTMLElement {
-  const e = el('span', 'pl-cards-book-path');
-  path.split('/').forEach((part, i, all) => {
-    e.append(part + (i < all.length - 1 ? '/' : ''));
-    if (i < all.length - 1) e.append(document.createElement('wbr'));
-  });
-  return e;
-}
-
-/** The strap's two lines (P4 item 1): "token budget" / "104 of 1,200 used · 1,096 left". Never a bare fraction. */
+/**
+ * The strap's figure (P4 item 1, text-density pass R8): the word "budget" (the cold players read a bare bar as HP) and
+ * "104 / 1,200 tok". What is left, the over-budget words and how it is counted sit in the tooltip and the book's (i).
+ */
 function Figures(b: BookView): HTMLElement {
   const t = strapText(b.weight.now, b.weight.allowance);
-  // Line two is "104 of 1,200 used · 1,096 left"; a narrow desk book breaks it at the separator, never after it.
-  const parts = t.used.split(' · ');
-  const used = el('span', `pl-cards-fig-line${b.weight.over ? ' is-over' : ''}`, ...parts.flatMap((x, i) => [i ? el('span', 'pl-cards-fig-sep', ' · ') : null, el('span', 'pl-cards-fig-part', x)]));
-  const f = el('p', 'pl-cards-book-fig', el('span', 'pl-cards-fig-line pl-cards-fig-title', t.title), used);
-  f.title = `${t.title}: ${t.used} (tokens, ${COPY.estimated}: bytes ÷ 3 over the whole file, your own text, the block header and every line)`;
+  const over = overBudgetText(b.weight.now, b.weight.allowance);
+  const f = el(
+    'p',
+    'pl-cards-book-fig',
+    el('span', 'pl-cards-fig-line pl-cards-fig-title', 'budget'),
+    el('span', `pl-cards-fig-line pl-cards-mono${b.weight.over ? ' is-over' : ''}`, `${fig(b.weight.now)} / ${fig(b.weight.allowance)} tok`),
+    over ? el('span', 'pl-cards-fig-line is-over', over) : null,
+  );
+  tip(f, `${t.title}: ${t.used} (${COPY.estimated})`);
   return f;
+}
+
+/** Everything a book used to print under its strap, behind one (i): the path, what is left, and how it is counted. */
+function bookNote(b: BookView, ghost: GhostDelta | null): Note {
+  const t = strapText(b.weight.now, b.weight.allowance);
+  return {
+    title: b.file,
+    body: [
+      b.path,
+      `${t.title}: ${t.used} (tokens, ${COPY.estimated}: bytes ÷ 3 over the whole file, your own text, the block header and every line).`,
+      ...(ghost ? [`This play: ${ghost.text} (${COPY.estimated}).`] : []),
+      'The clasp opens when the file goes over budget; the buckle raises the budget.',
+    ],
+  };
+}
+
+function bookInfo(b: BookView, ghost: GhostDelta | null): HTMLButtonElement {
+  return info(`About ${b.file}`, `${b.path} · ${strapText(b.weight.now, b.weight.allowance).used}`, bookNote(b, ghost));
 }
 
 /** The strap in words for assistive tech: "CLAUDE.md: token budget, 104 of 1,200 used · 1,096 left, estimated". */
@@ -229,11 +245,12 @@ function Book(b: BookView, ghost: GhostDelta | null, dest: boolean, p: BooksProp
   const book = el(
     'div',
     `pl-cards-book${dest ? ' is-dest' : ''}${b.weight.over ? ' is-over' : ''}`,
-    el('div', 'pl-cards-book-head', el('b', 'pl-cards-book-name', b.file), Path(b.path)),
+    el('div', 'pl-cards-book-head', el('b', 'pl-cards-book-name', b.file), bookInfo(b, ghost && p.preview ? ghost : null)),
     Strap(b, ghost),
     Figures(b),
-    // The ghost while dragging (P4 item 1): "+46 tok (+22 header, once)"; the inspector says what the header is.
-    ghost && p.preview ? el('p', 'pl-cards-book-ghost', el('span', 'pl-cards-mono', ghost.text)) : null,
+    // The pending delta while a card is up: the whole-file figure with its unit ("+68 tok"); the split ("+46 tok
+    // (+22 header, once)") is in the tooltip and the book's (i).
+    ghost && p.preview ? tip(el('p', 'pl-cards-book-ghost', el('span', 'pl-cards-mono', ghost.delta === 0 ? 'no change' : `${signedDelta(ghost)} tok`)), `${ghost.text} (${COPY.estimated})`) : null,
     ...Notes(b),
   );
   const sync = BuckleToggle(book, b, p, onBuckle);
@@ -251,9 +268,10 @@ function Book(b: BookView, ghost: GhostDelta | null, dest: boolean, p: BooksProp
     for (const id of b.cardIds) {
       const c = byId.get(id);
       if (!c) continue;
-      const slip = el('li', `pl-cards-slip${p.glow?.includes(id) ? ' is-glow' : ''}`, el('span', 'pl-cards-slip-text', ...inline(c.face.summary)), el('span', 'pl-cards-mono pl-cards-slip-w', `${c.weight} tok`));
+      // The slip's line; its tokens are the tooltip (text-density pass: the book's figure is the strap's).
+      const slip = el('li', `pl-cards-slip${p.glow?.includes(id) ? ' is-glow' : ''}`, el('span', 'pl-cards-slip-text', ...inline(c.face.summary)));
       slip.dataset.card = id;
-      slip.title = `${c.inspector.exact} (${c.weight} tokens, ${COPY.estimated})`;
+      tip(slip, `${c.inspector.exact} · ${c.weight} tok (${COPY.estimated})`);
       slip.setAttribute("aria-label", `${c.face.summary}, ${c.weight} tokens, ${COPY.estimated}`);
       p.drag.bindCard(id, slip);
       if (p.onInspect) slip.addEventListener('contextmenu', (e) => (e.preventDefault(), p.onInspect!(id)));
@@ -274,7 +292,7 @@ function Tab(b: BookView, ghost: GhostDelta | null, dest: boolean, p: BooksProps
     'div',
     `pl-cards-booktab${dest ? ' is-dest' : ''}${b.weight.over ? ' is-over' : ''}`,
     el('div', 'pl-cards-booktab-row', el('b', 'pl-cards-book-name', b.file), Strap(b, ghost)),
-    ghost ? el('p', 'pl-cards-book-fig', el('span', 'pl-cards-mono', ghost.text), ghost.delta !== 0 ? `, ${COPY.estimated}` : '') : Figures(b),
+    ghost ? tip(el('p', 'pl-cards-book-fig', el('span', 'pl-cards-mono', ghost.delta === 0 ? 'no change' : `${signedDelta(ghost)} tok`)), `${ghost.text} (${COPY.estimated})`) : Figures(b),
     b.proposed ? el('span', 'pl-cards-proposed-tag', COPY.proposed) : null,
   );
   // Phones get the same buckle as the desk books (P2 leftover): the clasp on the tab's strap opens the raise panel.
@@ -286,16 +304,32 @@ function Tab(b: BookView, ghost: GhostDelta | null, dest: boolean, p: BooksProps
   return tab;
 }
 
+/**
+ * The reading on the open page (§0a.5): the line as it lands, always on screen before it is accepted. The ghost row
+ * says only where it lands and what it adds ("→ CLAUDE.md · AGENTS.md · +46 tok each"); scope, exceptions, what a
+ * release accepts and the per-file maths sit behind the page's (i) and in the inspector (text-density pass, R10).
+ */
 function Page(pv: DragPreview, p: BooksProps): HTMLElement {
   const l = pv.line;
+  const lanes = p.books.filter((b) => !l || l.files.includes(b.file));
+  const lines = lanes.map((b) => pv.ghost[b.lane].line).filter((n) => n !== 0);
+  const each = lines.length > 0 && lines.every((n) => n === lines[0]);
+  const adds = each ? `${lines[0]! > 0 ? '+' : ''}${fig(lines[0]!)} tok${lines.length > 1 ? ' each' : ''}` : lanes.map((b) => `${b.file} ${pv.ghost[b.lane].text}`).join(' · ');
+  const meta: string[] = l
+    ? [
+        `Lands in ${l.files.join(' · ')}.`,
+        `Scope: ${l.scope}${l.exceptions[0] !== undefined ? ` · Except: ${l.exceptions.join('; ')}` : ' · No exceptions'}.`,
+        ...(pv.accepts[0] !== undefined ? ['Releasing here accepts this reading for the heads that glow.'] : []),
+        `${p.books.map((b) => `${b.file} ${pv.ghost[b.lane].text}`).join(' · ')} · ${COPY.estimated}.`,
+      ]
+    : [];
+  const line = l ? el('p', 'pl-cards-page-line', ...inline(l.text)) : null;
+  if (line) line.dataset.density = 'content';
   const page = el(
     'div',
     `pl-cards-page${pv.refused ? ' is-refused' : ''}`,
-    l ? el('p', 'pl-cards-page-files', 'Lands in ', ...l.files.flatMap((f, i) => [i ? ' · ' : '', el('b', '', f)])) : null,
-    l ? el('p', 'pl-cards-page-line', ...inline(l.text)) : null,
-    l ? el('p', 'pl-cards-page-meta', `Scope: ${l.scope}`, l.exceptions[0] !== undefined ? ` · Except: ${l.exceptions.join('; ')}` : ' · No exceptions') : null,
-    pv.accepts[0] !== undefined ? el('p', 'pl-cards-page-meta', 'Releasing here accepts this reading for the heads that glow.') : null,
-    el('p', 'pl-cards-page-meta', ...p.books.flatMap((b, i) => [i ? ' · ' : '', el('b', '', b.file), ` ${pv.ghost[b.lane].text}`]), ` · ${COPY.estimated}`),
+    l ? el('p', 'pl-cards-page-files', '→ ', ...l.files.flatMap((f, i) => [i ? ' · ' : '', el('b', '', f)]), ` · ${adds}`, ' ', info('About this reading', meta.slice(0, 2).join(' '), { title: 'The reading', body: [l.text, ...meta] })) : null,
+    line,
     pv.refused ? el('p', 'pl-cards-refused', pv.refused) : null,
   );
   page.setAttribute('role', 'status');

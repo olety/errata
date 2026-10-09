@@ -157,9 +157,13 @@ describe('item 2: the header cost on the card', () => {
     expect(BLOCK_HEADER_LONG).toContain('paid once per file');
   });
 
-  test('the face renders the cost on the footer and the inspector explains the one-time marker lines', async () => {
+  test("the face's orb tooltip and aria-label carry the cost; the inspector explains the one-time marker lines", async () => {
+    // Text-density pass: the footer is two chips; the once-only cost moved from the face's footer into the orb's
+    // tooltip (and the card's aria-label), beside "+46 tok".
     const card = await Bun.file(join(ROOT, 'src/ui/playloop/cards/card.ts')).text();
-    expect(card).toContain("el('span', 'pl-cards-cost'");
+    expect(card).toContain("tip(top.querySelector('.pl-cards-orb')!");
+    expect(card).toContain('${c.cost ? ` · ${c.cost.text}` : \'\'}');
+    expect(card).toContain('${c.cost ? ` ${c.cost.text}: the header\'s marker lines are paid once per file.` : \'\'}');
     const insp = await Bun.file(join(ROOT, 'src/ui/playloop/cards/inspector.ts')).text();
     expect(insp).toContain('...HeaderNote(c)');
     expect(insp).toContain('BLOCK_HEADER_LONG');

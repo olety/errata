@@ -15,7 +15,11 @@ export const SAMPLE_LINES = {
   forcePush: 'Never force-push, except to your own feature branch right after a rebase.',
 } as const;
 
-const line = (text: string, focus: Tutorial['focus'] = null): Tutorial => ({ text, focus });
+/**
+ * A coach line: at most eight words, imperative, one per gesture (text-density pass, R5). The full explanation that
+ * used to sit on the wood is `more`, behind the line's (i).
+ */
+const line = (text: string, focus: Tutorial['focus'] = null, more?: string): Tutorial => (more ? { text, more, focus } : { text, focus });
 
 /** "two" for 2: the route distance to the next campfire in words. */
 const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
@@ -30,8 +34,8 @@ function fireAhead(s: A.PlayState): string {
 function firstRoomLine(s: A.PlayState, v: C.RoomView, redThread: boolean): Tutorial | null {
   if (v.phase === 'judge') {
     // The coach names the first action (P3 gate fix E); the books and Deal stay dim until the stamps are done.
-    if (v.review.remaining === v.heads.length) return line(`Read the slip. Stamp it. You stopped the agent here, and your agents read the two books below: ${COPY.tutorialFiles}`);
-    if (v.review.remaining > 0) return line(`Stamp each head from its own words: ${v.review.remaining} still to stamp. The control under the stamps can stamp the rest like the last one.`);
+    if (v.review.remaining === v.heads.length) return line('Read the slip. Stamp it.', null, `Read the slip. Stamp it. You stopped the agent here, and your agents read the two books below: ${COPY.tutorialFiles}`);
+    if (v.review.remaining > 0) return line(`Stamp each head: ${v.review.remaining} to go.`, null, `Stamp each head from its own words: ${v.review.remaining} still to stamp. The control under the stamps can stamp the rest like the last one.`);
     if (v.canDeal) return line('Every head is stamped. Deal the hand.');
     return null;
   }
@@ -42,30 +46,30 @@ function firstRoomLine(s: A.PlayState, v: C.RoomView, redThread: boolean): Tutor
     const why = v.hand.length === 1 ? 'One response fits what the logs show. ' : `${v.handDiffers ?? ''} `;
     // P4 item 2: the first line in a file also brings the block's marker lines, once; the coach says so in words.
     const cost = card.cost ? `${card.cost.text}: the line, plus the marker lines a file gets with its first line.` : `+${card.weight} tok is what the line adds to your file.`;
-    return line(`${why}Drag the card onto the beast, or click it and then the beast: it ${COPY.addsTo} for every agent whose head glows. ${cost}`, { kind: 'card', cardId: card.id });
+    return line('Drag the card onto the beast.', { kind: 'card', cardId: card.id }, `${why}Drag the card onto the beast, or click it and then the beast: it ${COPY.addsTo} for every agent whose head glows. ${cost}`);
   }
   // After the play: the new line disagrees with one already in a file (the red thread). Continue leads to the fire.
-  if (v.phase === 'done' && v.result?.played && redThread) return line(`A red thread: two lines in your files now disagree. ${fireAhead(s)} settles it. Continue when you are ready.`);
+  if (v.phase === 'done' && v.result?.played && redThread) return line('Continue. The campfire settles the red thread.', null, `A red thread: two lines in your files now disagree. ${fireAhead(s)} settles it. Continue when you are ready.`);
   return null;
 }
 
 /** One honest line for each of the sample's later rooms (the event, the middle rooms and the workshop). */
 function laterRoomLine(v: C.RoomView): Tutorial | null {
-  if (v.kind === 'event') return line('A change of plan flies off and counts nowhere. A problem turns the heron into a room with one head.');
-  if (v.phase === 'dealt' && v.handDiffers) return line(v.handDiffers, v.hand[0] ? { kind: 'card', cardId: v.hand[0].id } : null);
-  if (v.phase === 'dealt' && v.hand.length === 1) return line('One response fits what the logs show. Play it, or drop it on the shelf to skip for free.', { kind: 'card', cardId: v.hand[0]!.id });
+  if (v.kind === 'event') return line("Read the heron's slip. Stamp it.", null, 'A change of plan flies off and counts nowhere. A problem turns the heron into a room with one head.');
+  if (v.phase === 'dealt' && v.handDiffers) return line('Pick one card. Drag it onto the beast.', v.hand[0] ? { kind: 'card', cardId: v.hand[0].id } : null, v.handDiffers);
+  if (v.phase === 'dealt' && v.hand.length === 1) return line('Play the card, or shelve it.', { kind: 'card', cardId: v.hand[0]!.id }, 'One response fits what the logs show. Play it, or drop it on the shelf to skip for free.');
   if (v.phase !== 'judge') return null;
   switch (v.beast.skin) {
     case 'retry-hydra':
-      return line('The same command failed again unchanged. The neck rings count the failed runs in this one session. Read the slip, stamp it, then deal.');
+      return line('Read the slip. Stamp it. Deal.', null, 'The same command failed again unchanged. The neck rings count the failed runs in this one session. Read the slip, stamp it, then deal.');
     case 'boundary-stag':
-      return line('One stop, one head. Read the slip and stamp it; before you deal, you can change the line in your own words.');
+      return line('Read the slip. Stamp it. Deal.', null, 'One stop, one head. Read the slip and stamp it; before you deal, you can change the line in your own words.');
     case 'owl':
-      return line('A verified workflow: nothing to stamp. Deal, then drop the card on the owl\'s bench to write it as a Skill, or skip it.');
+      return line("Deal. Drop the card on the owl's bench.", null, 'A verified workflow: nothing to stamp. Deal, then drop the card on the owl\'s bench to write it as a Skill, or skip it.');
     case 'patch-moth':
-      return line('The same file was edited again and again. Read the slip and stamp it, then deal.');
+      return line('Read the slip. Stamp it. Deal.', null, 'The same file was edited again and again. Read the slip and stamp it, then deal.');
     default:
-      return line('Read each slip and stamp it, then deal.');
+      return line('Read each slip. Stamp it. Deal.');
   }
 }
 
@@ -79,36 +83,36 @@ function campfireLine(v: C.CampfireView, pending: C.UiView['pending']): Tutorial
   const red = v.threads.find((t) => t.color === 'red');
   if (pending?.kind === 'stack') {
     const t = v.threads.find((x) => x.id === pending.threadId);
-    if (t?.color === 'red') return line('Pick how to settle them. Keep one starts on your new line; the exported lines show before you seal. Cancel leaves the thread.', { kind: 'thread', threadId: t.id });
-    return line('Read the preview, then click the seal or press Enter. Escape pulls the cards apart.', t ? { kind: 'thread', threadId: t.id } : null);
+    if (t?.color === 'red') return line('Pick how to settle them.', { kind: 'thread', threadId: t.id }, 'Pick how to settle them. Keep one starts on your new line; the exported lines show before you seal. Cancel leaves the thread.');
+    return line('Read, then seal. Esc pulls apart.', t ? { kind: 'thread', threadId: t.id } : null, 'Read the preview, then click the seal or press Enter. Escape pulls the cards apart.');
   }
   if (pending) return null;
   // The red thread the player was warned about comes first and is pre-selected (P3 gate fix D).
-  if (red) return line('The red thread from your first room: two lines disagree, and Apply waits until they are settled. Stack the two red cards: drag one onto the other, or click one and then the other.', { kind: 'thread', threadId: red.id });
+  if (red) return line('Stack the two red cards.', { kind: 'thread', threadId: red.id }, 'The red thread from your first room: two lines disagree, and Apply waits until they are settled. Stack the two red cards: drag one onto the other, or click one and then the other.');
   const uv = gold(SAMPLE_LINES.uv);
-  if (uv) return line(`A gold thread: ${uv.reason}. Stack the uv cards to merge them.`, { kind: 'thread', threadId: uv.id });
+  if (uv) return line('Stack the uv cards to merge them.', { kind: 'thread', threadId: uv.id }, `A gold thread: ${uv.reason}. Stack the uv cards to merge them.`);
   const fp = gold(SAMPLE_LINES.forcePush);
-  if (fp) return line('Exceptions survive a merge: stack the force-push pair and the longer line keeps its exception.', { kind: 'thread', threadId: fp.id });
+  if (fp) return line('Stack the force-push pair.', { kind: 'thread', threadId: fp.id }, 'Exceptions survive a merge: stack the force-push pair and the longer line keeps its exception.');
   return line('The fire is quiet. Leaving is free.');
 }
 
 function bossLine(v: C.BossView): Tutorial | null {
   switch (v.turn) {
     case 'stamp':
-      return line('A later case rises: the game held it back from the start. Read it, then stamp it blind.');
+      return line('Read the case. Stamp it blind.', null, 'A later case rises: the game held it back from the start. Read it, then stamp it blind.');
     case 'answer':
-      return v.noEligibleCard ? line(`${COPY.noEligibleCard}: the reasons are on the cards. Continue; this case stays open.`) : line('Drag a glowing card from your deck onto the head, or click the card and then the head.');
+      return v.noEligibleCard ? line('No card fits. Continue.', null, `${COPY.noEligibleCard}: the reasons are on the cards. Continue; this case stays open.`) : line('Pick a glowing card for this head.', null, 'Drag a glowing card from your deck onto the head, or click the card and then the head.');
     case 'set-aside':
       return line('Set aside. Continue to the next head.');
     case 'summary':
-      return line('The tally is fixed to your final deck: how many later cases its lines answer. Continue to Apply.');
+      return line('Read the tally. Continue to Apply.', null, 'The tally is fixed to your final deck: how many later cases its lines answer. Continue to Apply.');
   }
 }
 
 function applyLine(v: C.ApplyView): Tutorial | null {
   if (v.undo?.status === 'done') return null;
-  if (v.result?.status === 'written') return line('Written and read back. Undo restores the original bytes.');
-  if (v.canSeal) return line('Read both diffs, then press the seal: backups first, and every write is read back.');
+  if (v.result?.status === 'written') return line('Written and read back. Undo restores.', null, 'Written and read back. Undo restores the original bytes.');
+  if (v.canSeal) return line('Read both diffs. Press the seal.', null, 'Read both diffs, then press the seal: backups first, and every write is read back.');
   return null;
 }
 

@@ -12,6 +12,7 @@ import { RibbonLayer } from './room/ribbon';
 import { CampfireScreen } from './campfire/campfire-screen';
 import { BossScreen } from './end/boss-screen';
 import { ApplyScreen } from './end/apply-screen';
+import { info } from '../info';
 
 function div(cls: string, ...kids: (Node | null)[]): HTMLDivElement {
   const e = document.createElement('div');
@@ -26,7 +27,9 @@ function coach(ui: C.UiView): HTMLElement | null {
   const p = document.createElement('p');
   p.className = 'pl-coach';
   p.setAttribute('role', 'status');
-  p.textContent = ui.tutorial.text;
+  p.append(ui.tutorial.text);
+  // The full explanation sits behind the coach line's (i) (text-density pass, R5).
+  if (ui.tutorial.more) p.append(' ', info('About this step', ui.tutorial.more, { title: ui.tutorial.text, body: [ui.tutorial.more] }));
   return p;
 }
 

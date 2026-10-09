@@ -699,7 +699,7 @@ export interface UiView {
   /** The last committed change; animate it once per id. */
   effect: CommitEffectView | null;
   /** Coach line and spotlight on the tutorial route; null elsewhere (filled by the integrator in P1). */
-  tutorial: { text: string; focus: { kind: 'card'; cardId: string } | { kind: 'thread'; threadId: string } | { kind: 'target'; target: DragTarget } | null } | null;
+  tutorial: { text: string; /** The full explanation behind the coach line's (i) (text-density pass). */ more?: string; focus: { kind: 'card'; cardId: string } | { kind: 'thread'; threadId: string } | { kind: 'target'; target: DragTarget } | null } | null;
   /** Room beat for choreography; every beat is interruptible and none waits on an animation. */
   beat: 'rise' | 'judge' | 'deal' | 'play' | 'strike' | 'clear' | null;
   reducedMotion: boolean;

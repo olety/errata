@@ -4,6 +4,7 @@
 import type { ControllerApi, DropBinder, PilesView } from '../contract';
 import { AGENT_NAME } from '../contract';
 import { button, el, inline, Sigil } from './dom';
+import { iconSvg, tip } from '../../info';
 import './cards.css';
 
 export interface PilesProps {
@@ -29,10 +30,11 @@ export function Piles(p: PilesProps): HTMLElement {
     'div',
     `pl-cards-pile pl-cards-shelf${p.shelfTarget ? ' is-target' : ''}`,
     p.layout === 'props' ? Stack(v.shelfCount, 'paper') : null,
-    el('span', 'pl-cards-pile-name', 'Shelf'),
+    el('span', 'pl-cards-pile-name', iconSvg('shelf'), 'Shelf'),
     el('b', 'pl-cards-pile-count pl-cards-mono', String(v.shelfCount)),
-    p.layout === 'props' ? el('span', 'pl-cards-pile-hint', p.shelfTarget ? 'Drop here to skip. Never written.' : 'Never written.') : null,
   );
+  // The hint is the tooltip now (text-density pass, R7): an icon, the word and the count stay on the wood.
+  tip(shelf, p.shelfTarget ? 'Drop here to skip. Never written.' : 'Never written.');
   shelf.setAttribute('aria-label', `Shelf: ${v.shelfCount} cards, never written${p.shelfTarget ? '. Drop a card here to skip' : ''}`);
   if (p.shelfTarget) p.drag.bindTarget('shelf', { kind: 'shelf' }, shelf);
 
@@ -41,10 +43,10 @@ export function Piles(p: PilesProps): HTMLElement {
     'div',
     'pl-cards-pile pl-cards-open',
     p.layout === 'props' ? Stack(v.openCount, 'torn') : null,
-    el('span', 'pl-cards-pile-name', 'Open'),
+    el('span', 'pl-cards-pile-name', iconSvg('book'), 'Open'),
     el('b', 'pl-cards-pile-count pl-cards-mono', String(v.openCount)),
-    p.layout === 'props' ? el('span', 'pl-cards-pile-hint', 'Confirmed cases no card answers yet.') : null,
   );
+  tip(open, 'Confirmed cases no card answers yet.');
   open.setAttribute('aria-label', `Open pile: ${v.openCount} confirmed cases without a covering card`);
 
   const toggle = (which: 'shelf' | 'open', host: HTMLElement, list: () => HTMLElement) => {

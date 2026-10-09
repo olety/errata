@@ -245,11 +245,15 @@ describe('the tutorial coach on the sample (§11, §0a.16): one line per gesture
   test('room 1, the event, the first fire in order (the red pair first, then the uv merge, then the exception merge)', () => {
     const c = new Controller(fresh(), null, { viewport: { w: 1440, h: 900 } });
     const t = () => c.uiView().tutorial;
-    // The first coach line names the first action (P3 gate fix E) and keeps the §0a.1 tutorial line.
-    expect(t()!.text).toStartWith('Read the slip. Stamp it.');
-    expect(t()!.text).toContain('Instructions become cards; other text stays protected.');
+    // Text-density pass (R5): every coach line is at most eight words; the old long line is `more`, behind its (i).
+    const short = () => expect(t()!.text.split(/\s+/).length).toBeLessThanOrEqual(8);
+    // The first coach line names the first action (P3 gate fix E); the §0a.1 tutorial line moved behind its (i).
+    expect(t()!.text).toBe('Read the slip. Stamp it.');
+    expect(t()!.more).toContain('Instructions become cards; other text stays protected.');
     c.key('a');
-    expect(t()!.text).toStartWith('Stamp each head from its own words: 2 still to stamp.');
+    short();
+    expect(t()!.text).toBe('Stamp each head: 2 to go.');
+    expect(t()!.more).toStartWith('Stamp each head from its own words: 2 still to stamp.');
     c.key('a');
     c.key('a');
     expect(t()!.text).toBe('Every head is stamped. Deal the hand.');
@@ -258,13 +262,15 @@ describe('the tutorial coach on the sample (§11, §0a.16): one line per gesture
     if (room.kind !== 'room') throw new Error('not a room');
     expect(room.view.hand.length).toBe(1);
     expect(room.view.hand[0]!.cost!.text).toBe('+46 tok · +22–23 once');
-    expect(t()).toEqual({ text: 'One response fits what the logs show. Drag the card onto the beast, or click it and then the beast: it adds to your proposed files for every agent whose head glows. +46 tok · +22–23 once: the line, plus the marker lines a file gets with its first line.', focus: { kind: 'card', cardId: room.view.hand[0]!.id } });
+    expect(t()).toEqual({ text: 'Drag the card onto the beast.', more: 'One response fits what the logs show. Drag the card onto the beast, or click it and then the beast: it adds to your proposed files for every agent whose head glows. +46 tok · +22–23 once: the line, plus the marker lines a file gets with its first line.', focus: { kind: 'card', cardId: room.view.hand[0]!.id } });
     c.key('Enter');
-    // The campfire is named by where it is on the route (P3 gate fix D).
-    expect(t()!.text).toBe('A red thread: two lines in your files now disagree. The campfire, two rooms on, settles it. Continue when you are ready.');
+    // The campfire is named by where it is on the route (P3 gate fix D), behind the line's (i).
+    short();
+    expect(t()!.more).toBe('A red thread: two lines in your files now disagree. The campfire, two rooms on, settles it. Continue when you are ready.');
     c.key('Enter');
     expect(c.screen().kind).toBe('event');
-    expect(t()!.text).toContain('A change of plan flies off');
+    short();
+    expect(t()!.more).toContain('A change of plan flies off');
     c.key('c');
     c.key('Enter');
     const fire = c.screen();
@@ -273,18 +279,21 @@ describe('the tutorial coach on the sample (§11, §0a.16): one line per gesture
     const red = fire.view.threads.find((x) => x.color === 'red')!;
     expect(fire.view.focusedPair?.threadId).toBe(red.id);
     expect(t()!.focus).toEqual({ kind: 'thread', threadId: red.id });
+    short();
     c.api.drop(red.members[0]!, { kind: 'card', cardId: red.members[1]! });
-    expect(t()!.text).toContain('Keep one starts on your new line');
+    short();
+    expect(t()!.more).toContain('Keep one starts on your new line');
     const full = (c.screen() as { view: C.CampfireView }).view.lanes.codex.find((k) => k.inspector.exact === TUTORIAL.redLink.onLine)!;
     c.api.campfire.settle(red.id, { kind: 'exception', on: full.id, text: TUTORIAL.redLink.text, when: {} });
     const uv = (c.screen() as { view: C.CampfireView }).view.threads.find((x) => x.color === 'gold' && x.members.length === 3)!;
     expect(t()!.focus).toEqual({ kind: 'thread', threadId: uv.id });
-    expect(t()!.text).toContain(uv.reason);
+    expect(t()!.more).toContain(uv.reason);
     c.api.drop(uv.members[0]!, { kind: 'card', cardId: uv.members[1]! });
-    expect(t()!.text).toContain('click the seal or press Enter');
+    expect(t()!.text).toBe('Read, then seal. Esc pulls apart.');
+    expect(t()!.more).toContain('click the seal or press Enter');
     c.api.campfire.fuse(uv.id, uv.autoText!);
     const fp = (c.screen() as { view: C.CampfireView }).view.threads.find((x) => x.color === 'gold')!;
-    expect(t()).toEqual({ text: 'Exceptions survive a merge: stack the force-push pair and the longer line keeps its exception.', focus: { kind: 'thread', threadId: fp.id } });
+    expect(t()).toEqual({ text: 'Stack the force-push pair.', more: 'Exceptions survive a merge: stack the force-push pair and the longer line keeps its exception.', focus: { kind: 'thread', threadId: fp.id } });
     c.api.campfire.fuse(fp.id, fp.autoText!);
     expect(t()!.text).toBe('The fire is quiet. Leaving is free.');
   });

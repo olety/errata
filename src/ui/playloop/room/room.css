@@ -416,3 +416,18 @@
    controls stick just above the status strip, always inside the screen. */
 .pl-room.is-flow .pl-room-scroll { overflow: visible; height: auto; }
 .pl-room.is-flow .pl-room-controls, .pl-room.is-phone.is-flow:not(.is-judging) .pl-room-controls { position: sticky; bottom: calc(var(--pl-status-h, 50px) + 6px); z-index: 5; box-shadow: 0 -4px 10px rgba(65, 41, 31, 0.12); }
+
+/* Text-density pass: the four stamps are stamp marks, a small ink drawing with the word under it in small caps; the
+   letter keys live in the tooltip. */
+.pl-room-stamps { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.pl-room-stamp.pl-room-stampmark { padding: 6px 4px 5px; text-align: center; min-height: 58px; }
+.pl-room-stamp-label { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.pl-room-stamp-label svg { width: 22px; height: 22px; stroke-width: 1.6; }
+.pl-room-stamp-word { font: 600 10.5px/1.15 var(--pl-room-body); font-variant: small-caps; letter-spacing: 0.04em; text-transform: lowercase; }
+.pl-room.is-phone .pl-room-stamps { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pl-room-rings-line { display: flex; align-items: center; gap: 4px; color: var(--pl-room-ink); }
+.pl-room-btn.pl-room-quill { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 6px 12px; font-size: 13px; }
+.pl-room-btn.pl-room-quill svg { width: 16px; height: 16px; }
+.pl-room-scope-chip { display: inline-flex; align-items: center; gap: 4px; }
+.pl-room-scope-chip.is-warn { border-color: #b86a74; }
+.pl-room-buttons { align-items: center; }

@@ -1,6 +1,7 @@
 // Owner: room/rig. The beast (§4, §0a.22): one rig logic for every skin. Body plate, one head sprite per skin at a fixed
 // scale, five sockets, SVG necks under the body (their lower ends hide behind it), one shared ground shadow, CSS/SVG
 // state treatments. A head's state comes from HeadView.state only; it folds below its socket only when bound.
+import { info } from '../cards';
 import type { BeastView, DropBinder, HeadGlow, HeadState, HeadView, RoomPhase, UiView } from '../contract';
 import { agentName, el, sigil, svg } from './dom';
 import { packTags, ringsText, shortDate, type HeadCue, type TagPlacement, type TagRequest } from './logic';
@@ -402,7 +403,9 @@ export function Beast(p: BeastProps): HTMLElement {
   const dots = el('span', 'pl-room-pipdots');
   for (let i = 0; i < Math.min(p.beast.pips.confirmed, 12); i++) dots.append(el('span', `pl-room-pip${i < p.beast.pips.addressed ? ' is-lit' : ''}`));
   if (p.beast.pips.confirmed > 0) pips.append(dots);
-  pips.append(el('span', '', p.beast.pips.text));
+  const pv = p.beast.pips;
+  // Text-density pass (R7): the pips, a number with its unit, and the full sentence behind the shared (i).
+  pips.append(el('span', 'pl-room-pips-n', pv.confirmed > 0 ? `${pv.addressed} / ${pv.confirmed} ${pv.confirmed === 1 ? 'case' : 'cases'}` : 'no cases yet'), info('Cases in this room', pv.text, { title: 'Cases in this room', body: [pv.text, 'A lit pip is a confirmed case that a proposed line answers. Nothing is written before Apply.'] }));
   root.append(pips);
 
   // Overflow: "N more · a bound · u unreviewed", exactly.

@@ -3,6 +3,7 @@
 import type { ControllerApi, RouteKnotView, RouteView, StatusView } from '../contract';
 import { SEALED_WHY, sealedText } from '../contract';
 import { el, Sigil, svg } from '../cards/dom';
+import { iconSvg, info, tip } from '../../info';
 import './layout.css';
 
 /** Knot glyphs, one per node kind (16 px, ink stroke; the current knot gets a ring). */
@@ -47,7 +48,7 @@ export function RouteHeader(p: RouteHeaderProps): HTMLElement {
     const words = [k.label, k.state === 'current' ? 'here' : k.state === 'done' ? 'done' : 'ahead', `${k.heads} heads`, `${k.open} open`, `${k.unreviewed} unreviewed`].join(' · ');
     const knot = el('button', `pl-layout-knot is-${k.state} is-${k.kind}`, svg('0 0 16 16', 'pl-layout-knot-glyph', KNOT[k.kind]), marks);
     knot.type = 'button';
-    knot.title = words;
+    tip(knot, k.label);
     knot.setAttribute('aria-label', words);
     if (k.state === 'current') knot.setAttribute('aria-current', 'step');
     const first = k.caseIds[0];
@@ -55,13 +56,15 @@ export function RouteHeader(p: RouteHeaderProps): HTMLElement {
     else knot.disabled = true;
     list.append(el('li', `pl-layout-knot-li is-${k.state}`, knot));
   }
-  // The held-back cases in full words (P3 gate fix 5); a click opens one line on what withholding is.
+  // The held-back cases (P3 gate fix 5): a wax seal and the count; the words in the tooltip, and a click opens one line
+  // on what withholding is.
   let why: HTMLElement | null = null;
   let sealed: HTMLElement | null = null;
   if (r.sealed.count > 0) {
-    const b = el('button', 'pl-layout-sealed', el('span', '', sealedText(r.sealed.count)), ...r.sealed.sigils.map((a) => Sigil(a, true)));
+    const b = el('button', 'pl-layout-sealed', iconSvg('seal'), el('span', 'pl-layout-num', String(r.sealed.count)), el('span', 'pl-layout-sealed-word', 'held'), ...r.sealed.sigils.map((a) => Sigil(a, true)));
     b.type = 'button';
-    b.title = SEALED_WHY;
+    tip(b, sealedText(r.sealed.count).replace(' held', ', held'));
+    b.setAttribute('aria-label', `${sealedText(r.sealed.count)}. ${SEALED_WHY}`);
     b.setAttribute('aria-expanded', String(sealedOpen));
     why = el('p', 'pl-layout-sealed-why', SEALED_WHY);
     why.hidden = !sealedOpen;
@@ -81,7 +84,10 @@ export function RouteHeader(p: RouteHeaderProps): HTMLElement {
       const cur = bar.querySelector<HTMLElement>('.pl-layout-knot-li.is-current');
       if (cur && bar.scrollWidth > bar.clientWidth) bar.scrollLeft = Math.max(0, cur.offsetLeft - (bar.clientWidth - cur.offsetWidth) / 2);
     });
-  return el('header', 'pl-layout-head', bar, why, el('h1', 'pl-layout-title', p.title), p.subtitle ? el('p', 'pl-layout-sub', p.subtitle) : null);
+  // The subtitle explains the place: it sits behind the title's (i) (text-density pass).
+  const h1 = el('h1', 'pl-layout-title', p.title);
+  const row = el('div', 'pl-layout-titlerow', h1, p.subtitle ? info(`About ${p.title}`, p.subtitle, { title: p.title, body: [p.subtitle] }) : null);
+  return el('header', 'pl-layout-head', bar, why, row);
 }
 
 /** The status bar: "synthetic sample · 12 sessions", the notice line. Nothing here is a drop target. */

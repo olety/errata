@@ -117,6 +117,9 @@
   margin: 0; font-family: var(--pl-cards-f-title, serif); font-weight: 800; font-size: 26px; line-height: 28px;
   color: var(--pl-cards-ink, #41291f); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
 }
+.pl-layout-titlerow { display: flex; align-items: center; justify-content: center; gap: 4px; max-width: 100%; }
+.pl-layout-sealed .ui-ic { width: 15px; height: 15px; }
+.pl-layout-sealed-word { font-size: 12px; }
 .pl-layout-sub { margin: 1px 0 0; font-size: 13px; line-height: 16px; color: var(--pl-cards-ink, #41291f); max-width: 46em; }
 .pl-layout-phone .pl-layout-title { font-size: 22px; line-height: 24px; }
 .pl-layout-phone .pl-layout-sub { font-size: 12px; line-height: 14px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }

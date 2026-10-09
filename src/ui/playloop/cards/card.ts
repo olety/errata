@@ -2,8 +2,9 @@
 // the hand, the books, the piles, the campfire's lanes and the boss's answer cards.
 // Import from ../contract only. Never the adapter or the engine.
 import type { CardView, DropBinder } from '../contract';
-import { BLOCK_HEADER_WHY, COPY } from '../contract';
+import { COPY } from '../contract';
 import { ART_FOCUS, asset, button, cardArt, el, ImportedEmblem, inline, Sigil, svg, TypeGlyph } from './dom';
+import { chip, icon, tip, type IconName } from '../../info';
 import './cards.css';
 
 export interface CardProps {
@@ -75,7 +76,8 @@ export function Card(p: CardProps): HTMLElement {
   const sigils = el('span', 'pl-cards-sigils', Sigil('claude', c.sigils.claude), Sigil('codex', c.sigils.codex));
   // The orb says its unit (P3 gate fix 1): "+46 tok", what the line adds to its file. The inspector shows the maths.
   const top = el('div', 'pl-cards-top', el('span', 'pl-cards-orb', el('b', 'pl-cards-num', `+${c.weight}`), el('small', '', 'tok')), p.size === 'S' ? null : sigils, TypeGlyph(c.type));
-  top.querySelector('.pl-cards-orb')!.setAttribute('title', `+${c.weight} tok is what this line adds to its file (tokens, ${COPY.estimated}: bytes ÷ 3)`);
+  // The orb's tooltip says what the figure is; a play that brings the block header names its once-only cost there too.
+  tip(top.querySelector('.pl-cards-orb')!, `+${c.weight} tok: what this line adds to its file (${COPY.estimated})${c.cost ? ` · ${c.cost.text}` : ''}`);
   const ear = el('span', 'pl-cards-ear');
   ear.setAttribute('aria-hidden', 'true');
 
@@ -92,28 +94,24 @@ export function Card(p: CardProps): HTMLElement {
     img.style.objectPosition = ART_FOCUS[key];
     art.append(img);
   } else art.append(svg('0 0 64 48', 'pl-cards-seal', [{ d: 'M32 9a15 15 0 1 1 0 30 15 15 0 0 1 0-30Z', fill: true }, { d: 'M26 22v-3a6 6 0 0 1 12 0v3M24 22h16v10H24Z' }]));
-  art.append(el('span', 'pl-cards-scope', c.scope));
+  // The scope ribbon: a globe for all projects, a folder for one project (text-density pass, R7).
+  const global = /^(global|all projects)$/i.test(c.scope);
+  art.append(el('span', 'pl-cards-scope', icon(global ? 'globe' : 'folder', global ? 'All projects' : `Project: ${c.scope}`, undefined, false), global ? null : c.scope));
   if (p.size === 'S') art.append(sigils);
 
   // 3 · title plate · 4 · summary (or a marked excerpt) · 5 · footer: provenance, then the room line.
   const title = el('div', 'pl-cards-title', c.face.title);
   const summary = el('div', 'pl-cards-summary');
-  const foot = el('div', 'pl-cards-foot', el('span', 'pl-cards-prov', c.provenance));
+  // 5 · footer (text-density pass, R7/R10): two chips, an icon and a number with its unit; the sentences are tooltips.
+  const foot = el('div', 'pl-cards-foot is-chips', provChip(c.provenance));
   if (c.footer) {
-    // At S (the 132 px overview) the room line says the number and "here" only; M and L say "answers n cases here".
-    const parts = footerParts(p.size === 'S' ? c.footer.text.replace(/^answers (\d+) cases? here/, 'answers $1 here') : c.footer.text);
-    foot.append(el('span', `pl-cards-room${parts.length > 1 ? ' is-split' : ''}`, ...parts.map((t, i) => el('span', '', i > 0 ? `· ${t}` : t))));
+    const n = c.footer.eligible;
+    foot.append(chip('target', `${n} ${n === 1 ? 'case' : 'cases'}`, c.footer.text, 'pl-cards-room', false));
     foot.classList.add('has-room');
   }
-  if (c.cost) {
-    // P4 item 2: a play that brings the block header shows its cost on the face ("+46 tok · +22 once"). The footer
-    // keeps two rows in the fixed box, so the provenance yields here (as it does at S) and stays in the inspector.
-    // At S the orb already says the line's tokens; the footer keeps the once-only part ("+22 once").
-    const cost = el('span', 'pl-cards-cost', p.size === 'S' ? c.cost.text.replace(/^\+\d+ tok · /, '') : c.cost.text);
-    cost.title = `${c.cost.files.map((f) => `${f.file}: +${f.line} tok for the line, +${f.header} once for ${BLOCK_HEADER_WHY}`).join('; ')} (tokens, ${COPY.estimated})`;
-    foot.append(cost);
-    foot.classList.add('has-cost');
-  }
+  // P4 item 2: the once-only block header cost ("+46 tok · +22–23 once") is in the orb's tooltip, the card's
+  // aria-label and the inspector's marker-line note; the face keeps the two chips.
+  if (c.cost) foot.classList.add('has-cost');
 
   const face = el('div', 'pl-cards-face', top, art, title, summary, foot, ear);
   root.append(face);
@@ -128,6 +126,15 @@ export function Card(p: CardProps): HTMLElement {
   views.set(root, c);
   scheduleFit();
   return root;
+}
+
+/** The provenance as a chip: an eye and "3 sessions" for a seen line, a book for a line from your file. */
+function provChip(prov: string): HTMLElement {
+  // A line from your own file has no count: the book icon alone, the words in its tooltip.
+  if (prov === 'From your file') return el('span', 'pl-cards-prov', icon('book', prov, prov, false));
+  const seen = /^seen (?:passing )?in (\d+) sessions$/.exec(prov);
+  const [name, text]: [IconName, string] = seen ? ['eye', `${seen[1]} sessions`] : prov === 'seen once' ? ['eye', '1 session'] : prov === 'From your file' ? ['book', 'your file'] : ['eye', prov];
+  return chip(name, text, prov, 'pl-cards-prov', false);
 }
 
 function paintSummary(root: HTMLElement, summary: HTMLElement, c: CardView, overflowed: boolean): void {

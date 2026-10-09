@@ -83,6 +83,8 @@ button.on { border-color: var(--ink); font-weight: 700; }
   background: #fff9ee; color: var(--ink); border: 1px solid rgba(65, 41, 31, 0.4);
   font: 500 14px/1.35 var(--body); text-align: center; box-shadow: 0 -2px 12px rgba(30, 18, 10, 0.25);
 }
+/* The coach never blocks a drop; only its (i) takes the pointer (text-density pass). */
+.pl-coach .ui-info { pointer-events: auto; }
 .pl-layout-tablet .pl-coach { max-width: min(600px, calc(100vw - 360px)); font-size: 13px; }
 /* Phones: the hand fills the wood, so the coach takes the whole status strip (its text yields while coaching). */
 .pl-layout-phone .pl-coach { inset: 0; transform: none; width: auto; max-width: none; display: flex; align-items: center; justify-content: center; padding: 2px 12px; border: 0; border-radius: 0; box-shadow: none; font-size: 12px; line-height: 1.25; }
