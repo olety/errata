@@ -96,14 +96,28 @@ button.mt-slip:disabled { opacity: 0.55; cursor: not-allowed; }
 .mt-run { width: min(560px, 100%); }
 .mt-run table, .mt-act table { margin: 6px 0 10px; font-size: 13.5px; }
 .mt-run td, .mt-act td { border-bottom: 1px solid var(--pl-cards-line, #e4d3ba); padding: 4px 6px; }
-.mt-counts { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; width: min(1120px, 100%); }
-.mt-count { padding: 10px 14px; }
-.mt-count dt { font-size: 12.5px; color: var(--pl-cards-ink-2, #69503f); }
-.mt-count dd { margin: 2px 0 0; font: 13.5px/1.4 var(--mono); font-variant-ligatures: none; overflow-wrap: anywhere; }
+.mt-counts { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px 14px; width: min(1120px, 100%); margin: 0; padding: 0; list-style: none; }
+/* A count tile (text-density pass): an icon, the number with its unit, the (i) holding the definition. */
+.mt-count { display: flex; align-items: center; gap: 8px; padding: 6px 4px 6px 12px; min-height: 44px; }
+.mt-count > .ui-ic { width: 18px; height: 18px; color: var(--pl-cards-ink-2, #69503f); }
+.mt-count-text { flex: 1; font: 600 15px/1.3 var(--body); font-variant-numeric: tabular-nums; }
 .mt-act { width: min(460px, 100%); }
 .mt-act h2, .mt-run h2 { font-size: 19px; margin: 0 0 4px; }
-.mt-act ol { margin: 6px 0 4px; padding-left: 22px; font-size: 13.5px; }
-.mt-act li { margin: 2px 0; }
+.mt-act h2 { display: flex; align-items: center; gap: 4px; }
+.mt-act h2 > .ui-icon { margin-left: auto; padding: 4px; color: var(--pl-cards-ink-2, #69503f); }
+/* The act's route strip: one paper roundel per place, joined by a 1 px rule; names on hover or focus. */
+.mt-route { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 8px 0 4px; padding: 0; list-style: none; }
+.mt-route li { position: relative; }
+.mt-route li + li::before { content: ''; position: absolute; left: -14px; top: 50%; width: 14px; height: 1px; background: #d9c8ae; }
+.mt-route .ui-icon { width: 36px; height: 36px; border: 1px solid #d9c8ae; border-radius: 50%; background: #fff9ee; }
+.mt-route .ui-icon .ui-ic { width: 18px; height: 18px; vertical-align: 0; }
+.mt-route-list { margin: 6px 0 0; padding-left: 22px; }
+/* Chips on the import and mirror pages: a row of icon chips with their (i). */
+.mt-chips { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.mt-privacy-chip { margin: 0; }
+.ui-chip.mt-warn { color: #9b3b47; border-color: #9b3b47; }
+.mt-choice b .ui-ic, .mt-drop .ui-ic { width: 18px; height: 18px; margin-right: 6px; vertical-align: -2px; }
+.mt-sub .ui-info { vertical-align: -4px; }
 .mt-note { font-size: 13px; color: var(--pl-cards-ink-2, #69503f); margin: 4px 0 0; }
 
 /* The character card: one card in the fixed L box (208 × 291), zones like every card. Decoration: a hand mirror. */
@@ -112,12 +126,12 @@ button.mt-slip:disabled { opacity: 0.55; cursor: not-allowed; }
   background: var(--pl-cards-paper, #fff9ee); border: 1px solid var(--pl-cards-line-2, #cfb89a); border-radius: 9px;
   box-shadow: 0 1px 0 rgba(58, 33, 22, 0.06), 0 3px 6px rgba(58, 33, 22, 0.16), 0 12px 26px rgba(58, 33, 22, 0.24);
 }
-.mt-char-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--pl-cards-ink-2, #69503f); }
+.mt-char-top { display: flex; justify-content: flex-end; align-items: center; font-size: 12px; color: var(--pl-cards-ink-2, #69503f); }
 .mt-char-art { display: grid; place-items: center; border: 1px solid var(--pl-cards-line, #e4d3ba); border-radius: 3px; background: var(--pl-cards-paper-2, #f6ebd8); }
 .mt-char-art svg { width: 64px; height: 88px; fill: none; stroke: var(--pl-cards-ink, #41291f); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .mt-char-name { align-self: center; margin: 0; font: 800 18px/22px var(--title); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mt-char-line { margin: 0; font-size: 14px; line-height: 18px; }
-.mt-char-foot { align-self: end; font-size: 12px; color: var(--pl-cards-ink-2, #69503f); border-top: 1px solid var(--pl-cards-line, #e4d3ba); padding-top: 4px; }
+.mt-char-foot { align-self: end; display: flex; font-size: 12px; color: var(--pl-cards-ink-2, #69503f); border-top: 1px solid var(--pl-cards-line, #e4d3ba); padding-top: 4px; }
 
 @media (max-width: 599px) {
   .mt h1 { font-size: 24px; }

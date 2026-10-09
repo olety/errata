@@ -12,7 +12,8 @@ import { newDeck, type DeckState } from '../deck/deck';
 import { budgetFor, weigh } from '../deck/file';
 import { asset } from './playloop/cards/dom';
 import { strapText } from './playloop/contract';
-import { actLine, mirrorRows } from './mirror-view';
+import { actLine, mirrorTiles, routeIcon } from './mirror-view';
+import { chip, icon, iconSvg, info, tip } from './info';
 import { browserStore, forgetApply, forgetGrants, keepGrants, keptGrants, loadApply, saveApply, type KeptGrants, type RememberedApply } from './persist';
 import { undoBundle } from '../apply/engine';
 import { CODEX_OVERRIDE } from '../deck/lanes';
@@ -311,7 +312,7 @@ function material(cls: string, sky: Child[], wood: Child[]): HTMLElement {
 }
 
 /** One book lying closed on the wood: its strap at the file's real token count once read, else "not read yet". */
-function closedBook(name: string, path: string, bytes: Uint8Array | null | undefined, tilt: string, unread: string): HTMLElement {
+function closedBook(name: string, path: string, bytes: Uint8Array | null | undefined, tilt: string, unread: string, unreadTip?: string): HTMLElement {
   let strap: HTMLElement;
   let fig: HTMLElement;
   if (bytes === undefined) {
@@ -325,7 +326,8 @@ function closedBook(name: string, path: string, bytes: Uint8Array | null | undef
     strap = h('div', { class: `mt-strap${now > allowance ? ' is-over' : ''}` }, h('i', { style: `width:${Math.min(100, Math.round((now / Math.max(allowance, now, 1)) * 1000) / 10)}%` }));
     fig = h('p', { class: 'mt-book-fig' }, h('span', {}, bytes === null ? `${t.title}: no file yet, it starts empty` : t.title), h('span', {}, t.used));
   }
-  const b = h('div', { class: `mt-book ${tilt}`, role: 'img', 'aria-label': `${name}, closed: ${fig.textContent}` }, h('span', { class: 'mt-book-name' }, name), h('span', { class: 'mt-book-path' }, path), strap, fig);
+  const b = h('div', { class: `mt-book ${tilt}`, role: 'img', 'aria-label': `${name}, closed: ${fig.textContent}${bytes === undefined && unreadTip ? `. ${unreadTip}` : ''}` }, h('span', { class: 'mt-book-name' }, name), h('span', { class: 'mt-book-path' }, path), strap, fig);
+  if (bytes === undefined && unreadTip) tip(b, unreadTip);
   return b;
 }
 
@@ -390,7 +392,7 @@ function viewImport(): HTMLElement {
   // A file input for the same path as the drop (keyboard, touch, and browsers without folder access).
   const input = h('input', { type: 'file', accept: '.jsonl', multiple: 'multiple', class: 'mt-file', 'aria-label': 'Choose .jsonl session files' }) as HTMLInputElement;
   input.addEventListener('change', () => void onDrop([...(input.files ?? [])]));
-  const drop = h('div', { class: 'mt-slip mt-drop tilt-c' }, 'Or drop .jsonl session files here, or pick them: ', input);
+  const drop = tip(h('div', { class: 'mt-slip mt-drop tilt-c' }, iconSvg('folder'), ' Drop .jsonl files here ', input), 'Or pick session files with the button');
   drop.addEventListener('dragover', (e) => {
     e.preventDefault();
     drop.classList.add('hot');
@@ -404,23 +406,47 @@ function viewImport(): HTMLElement {
   const claudeN = sel?.chosen.filter((c) => c.agent === 'claude').length ?? 0;
   const codexN = sel?.chosen.filter((c) => c.agent === 'codex').length ?? 0;
   const day = (t: number | null) => (t ? new Date(t).toISOString().slice(0, 10) : '–');
-  const choice = (label: string, sub: string, onclick: () => void, cls: string) => h('button', { class: `mt-slip mt-choice ${cls}`, onclick }, h('b', {}, label), h('span', {}, sub));
+  // Each choice is its label; the line under it is the button's tooltip (text-density pass).
+  const choice = (ic: 'book' | 'folder', label: string, sub: string, onclick: () => void, cls: string) => tip(h('button', { class: `mt-slip mt-choice ${cls}`, onclick, 'aria-description': sub }, h('b', {}, iconSvg(ic), label)), sub);
   return material(
     'mt-import',
-    [h('h1', {}, 'Your rules file is a deck.'), h('p', { class: 'mt-sub' }, 'Read your recent Claude Code and Codex sessions, review what happened, and write better rules into CLAUDE.md and AGENTS.md. Everything stays in this tab.')],
     [
-      h('div', { class: 'mt-row' }, closedBook('CLAUDE.md', '~/.claude/CLAUDE.md', S.books.claude, 'tilt-a', 'not read yet'), closedBook('AGENTS.md', '~/.codex/AGENTS.md', S.books.codex, 'tilt-b', 'read at the mirror or at Apply')),
+      h('h1', {}, 'Your rules file is a deck.'),
+      h(
+        'p',
+        { class: 'mt-sub' },
+        'Review your sessions, write better rules.',
+        info('About Errata', 'Read sessions, review them, write rules', { title: 'Your rules file is a deck', body: ['Read your recent Claude Code and Codex sessions, review what happened, and write better rules into CLAUDE.md and AGENTS.md. Everything stays in this tab.'] }),
+      ),
+    ],
+    [
+      h('div', { class: 'mt-row' }, closedBook('CLAUDE.md', '~/.claude/CLAUDE.md', S.books.claude, 'tilt-a', 'not read yet'), closedBook('AGENTS.md', '~/.codex/AGENTS.md', S.books.codex, 'tilt-b', 'not read yet', 'Read at the mirror or at Apply')),
       keptSlip(),
       h(
         'div',
         { class: 'mt-row' },
-        choice('Play the synthetic sample', 'Twelve made-up sessions and two small files. Nothing of yours is read.', () => void startSample(), 'is-primary tilt-a'),
-        hasFSA && choice('Choose your ~/.claude folder', 'Your Claude Code sessions and CLAUDE.md, read only.', () => void pickClaude(), 'tilt-b'),
-        hasFSA && choice('Choose ~/.codex/sessions', 'Your Codex rollouts, read only.', () => void pickCodexSessions(), 'tilt-c'),
+        choice('book', 'Play the synthetic sample', 'Twelve made-up sessions and two small files. Nothing of yours is read.', () => void startSample(), 'is-primary tilt-a'),
+        hasFSA && choice('folder', 'Choose your ~/.claude folder', 'Your Claude Code sessions and CLAUDE.md, read only.', () => void pickClaude(), 'tilt-b'),
+        hasFSA && choice('folder', 'Choose ~/.codex/sessions', 'Your Codex rollouts, read only.', () => void pickCodexSessions(), 'tilt-c'),
       ),
-      !hasFSA && h('p', { class: 'mt-slip mt-privacy' }, 'This browser cannot open folders. Drop session files instead; Apply then gives you the lines to paste.'),
+      !hasFSA &&
+        h(
+          'p',
+          { class: 'mt-slip mt-privacy mt-chips' },
+          chip('folder', 'No folder access', 'This browser cannot open folders. Drop session files instead.'),
+          info('About folder access', 'Drop files; Apply gives lines to paste', { title: 'No folder access', body: ['This browser cannot open folders. Drop session files instead; Apply then gives you the lines to paste.'] }),
+        ),
       drop,
-      h('p', { class: 'mt-slip mt-privacy tilt-b' }, 'Only projects/**/*.jsonl under ~/.claude and rollout-*.jsonl under ~/.codex/sessions are read, each file in full. Secrets are redacted as each line is parsed. The page makes no network request to any other site, before or after it loads, and sends nothing you read or write anywhere.'),
+      // The privacy paragraph, whole, in the shield's note (text-density pass).
+      h(
+        'p',
+        { class: 'mt-chips mt-privacy-chip' },
+        chip('shield', 'Stays in this tab', 'No network request; nothing you read or write is sent.'),
+        info('What is read, and what is sent', 'What is read; nothing is sent', {
+          title: 'What is read, and what is sent',
+          body: ['Only projects/**/*.jsonl under ~/.claude and rollout-*.jsonl under ~/.codex/sessions are read, each file in full. Secrets are redacted as each line is parsed. The page makes no network request to any other site, before or after it loads, and sends nothing you read or write anywhere.'],
+        }),
+      ),
       sel &&
         h(
           'div',
@@ -509,29 +535,39 @@ function mirrorEmblem(): SVGSVGElement {
   return s;
 }
 
-/** The character card in the fixed L box: the name from the fixed table, the counts as its line (§8). */
+/**
+ * The character card in the fixed L box: the name from the fixed table and its one line (§8). "The sampled build ·
+ * Trait" and where it was seen sit behind the card's (i); an eye chip keeps the sessions count (text-density pass).
+ */
 function characterCard(c: NonNullable<Analysis['mirror']['character']>, total: number): HTMLElement {
+  const seen = `Seen in ${c.evidenceSessions} of ${total} sessions.`;
   return h(
     'div',
-    { class: 'mt-char', role: 'img', 'aria-label': `The sampled build: ${c.name}. ${c.line}. Seen in ${c.evidenceSessions} of ${total} sessions.` },
-    h('div', { class: 'mt-char-top' }, h('span', {}, 'The sampled build'), h('span', {}, 'Trait')),
+    { class: 'mt-char', role: 'group', 'aria-label': `The sampled build: ${c.name}. ${c.line}. ${seen}` },
+    h('div', { class: 'mt-char-top' }, info('About this card', 'The sampled build · Trait', { title: `The sampled build · Trait: ${c.name}`, body: [`${c.name}: ${c.line}.`, seen, 'The name comes from a fixed table; the line is the counts behind it.'] })),
     h('div', { class: 'mt-char-art' }, mirrorEmblem()),
     h('p', { class: 'mt-char-name' }, c.name),
     h('p', { class: 'mt-char-line' }, c.line),
-    h('div', { class: 'mt-char-foot' }, `seen in ${c.evidenceSessions} of ${total} sessions`),
+    h('div', { class: 'mt-char-foot' }, chip('eye', `${c.evidenceSessions} / ${total} sessions`, seen)),
   );
+}
+
+/** The act as a strip of places: one icon each, in order, the place's name on hover or focus (text-density pass). */
+function routeStrip(A: Analysis): HTMLElement {
+  return h('ol', { class: 'mt-route', 'aria-label': 'The act, place by place' }, ...A.route.nodes.map((n, i) => h('li', {}, icon(routeIcon(n.kind), `${i + 1}. ${nodeLabel(A, n)}`))));
 }
 
 function viewMirror(): HTMLElement {
   const A = S.A!;
   const m = A.mirror;
   const read = S.read;
+  const readSlip = read && `Read ${mib(read.bytes)} MiB in ${(read.ms / 1000).toFixed(1)} s${read.cancelled ? ' · cancelled, partial run' : ''}${read.failed ? ` · ${read.failed} files could not be read` : ''}`;
   return material(
     'mt-mirror',
     [
       h('h1', {}, S.mode === 'sample' ? 'What the synthetic sample shows' : 'What your sessions show'),
       // One line saying what the page is, then the way on at the top (P3 gate fix E).
-      h('p', { class: 'mt-sub' }, 'Counts from the sessions, before any play. Nothing here is a problem until you stamp it.'),
+      h('p', { class: 'mt-sub' }, 'Counts before play.', info('About the mirror', 'Nothing is a problem until you stamp it', { title: 'The mirror', body: ['Counts from the sessions, before any play. Nothing here is a problem until you stamp it.'] })),
       h('button', { class: 'primary mt-start', onclick: () => startPlayLoop() }, 'Start the act'),
     ],
     [
@@ -542,14 +578,38 @@ function viewMirror(): HTMLElement {
         h(
           'div',
           { class: 'mt-slip mt-act tilt-b' },
-          h('h2', {}, 'The act'),
-          h('p', { class: 'mt-note' }, actLine(A)),
-          h('ol', {}, ...A.route.nodes.map((n) => h('li', {}, nodeLabel(A, n)))),
-          read && h('p', { class: 'mt-note' }, `Read ${mib(read.bytes)} MiB in ${(read.ms / 1000).toFixed(1)} s${read.cancelled ? ' · cancelled, partial run' : ''}${read.failed ? ` · ${read.failed} files could not be read` : ''}`),
+          h(
+            'h2',
+            {},
+            'The act',
+            info('About the act', actLine(A), { title: 'The act', body: [actLine(A), h('ol', { class: 'mt-route-list' }, ...A.route.nodes.map((n) => h('li', {}, nodeLabel(A, n))))] }),
+            readSlip && icon('clock', readSlip),
+          ),
+          routeStrip(A),
+          read && (read.cancelled || read.failed > 0) && h('p', { class: 'mt-chips' }, chip('cross', read.cancelled ? 'partial run' : `${read.failed} files unread`, readSlip!, 'mt-warn')),
         ),
       ),
-      h('dl', { class: 'mt-counts' }, ...mirrorRows(m).map(([k, v], i) => h('div', { class: `mt-slip mt-count ${['tilt-a', 'tilt-b', 'tilt-c', ''][i % 4]}` }, h('dt', {}, k), h('dd', {}, v)))),
-      S.mode === 'real' && !S.dirs.codexLoaded && hasFSA && h('div', { class: 'mt-slip mt-privacy' }, h('p', {}, 'Optional: load AGENTS.md now so its token budget and any disagreements show during the act. Read only; write access is asked at Apply.'), h('button', { onclick: () => void readCodexHome() }, 'Choose ~/.codex')),
+      // Each count is an icon and the number with its unit; its definition (the old slip's words) sits behind its (i).
+      h(
+        'ul',
+        { class: 'mt-counts' },
+        ...mirrorTiles(m).map((t, i) =>
+          tip(
+            h('li', { class: `mt-slip mt-count ${['tilt-a', 'tilt-b', 'tilt-c', ''][i % 4]}`, 'data-def': t.def, 'aria-label': t.def }, iconSvg(t.icon), h('span', { class: 'mt-count-text' }, t.text), info(`About: ${t.label}`, t.label, { title: t.label, body: [t.def.slice(t.label.length + 2)] })),
+            t.label,
+          ),
+        ),
+      ),
+      S.mode === 'real' &&
+        !S.dirs.codexLoaded &&
+        hasFSA &&
+        h(
+          'div',
+          { class: 'mt-slip mt-privacy mt-chips' },
+          chip('book', 'AGENTS.md, optional', 'Load it now; read only'),
+          info('About AGENTS.md', 'Its token budget shows during the act', { title: 'AGENTS.md, optional', body: ['Optional: load AGENTS.md now so its token budget and any disagreements show during the act. Read only; write access is asked at Apply.'] }),
+          h('button', { onclick: () => void readCodexHome() }, 'Choose ~/.codex'),
+        ),
     ],
   );
 }

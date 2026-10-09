@@ -46,9 +46,11 @@ describe('end to end on the built app (Chrome for Testing)', () => {
         expect(run).toContain('Codex sessions1');
         await p.click('Start the run');
         await p.until("document.querySelector('h1')?.textContent === 'What your sessions show'");
-        const rows = await p.eval<string[]>(text('.mt-count'));
-        expect(rows.find((r) => r.startsWith('Sessions'))).toStartWith('Sessions2 (Claude Code 1, Codex 1)');
+        // Each count tile shows the number with its unit; its definition (label: value) rides on data-def and its (i).
+        const rows = await p.eval<string[]>("[...document.querySelectorAll('.mt-count')].map((e) => e.dataset.def)");
+        expect(rows.find((r) => r.startsWith('Sessions'))).toStartWith('Sessions: 2 (Claude Code 1, Codex 1)');
         expect(rows.find((r) => r.startsWith('Tool calls'))).toContain('interrupted, no result');
+        expect(await p.eval<string[]>(text('.mt-count-text'))).toContain('2 sessions');
         // "Start the act" sits at the top of the mirror, under one line saying what the page is.
         const top = await p.eval<number>("[...document.querySelectorAll('button')].find((b) => b.textContent === 'Start the act').getBoundingClientRect().top");
         expect(top).toBeLessThan(300);

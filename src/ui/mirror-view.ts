@@ -3,6 +3,7 @@
 
 import type { Analysis } from '../pipeline';
 import { NEGATIVE_LABELS, type NegativeKind } from '../noise';
+import type { IconName } from './info';
 
 /**
  * The act's places counted the way the list shows them (P3 gate fix 8): "8 places: 5 rooms in 4 places, 2 campfires,
@@ -47,3 +48,66 @@ export function mirrorRows(m: Analysis['mirror'], labels: Record<string, string>
   ];
 }
 
+
+/** One count tile on the mirror (text-density pass): an icon, the number with its unit and at most three words, and
+ * the definition (the mirrorRows label and value, word for word) for the tile's (i). */
+export interface MirrorTile {
+  icon: IconName;
+  text: string;
+  /** The mirrorRows label (the tile's tooltip and its note title). */
+  label: string;
+  /** "label: value", the full definition that used to sit on the slip. */
+  def: string;
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** The mirror's tiles, one per mirrorRows row and in the same order, from the same fields (no new numbers but a sum). */
+export function mirrorTiles(m: Analysis['mirror'], labels: Record<string, string> = NEGATIVE_LABELS): MirrorTile[] {
+  const rows = mirrorRows(m, labels);
+  const notFailures = Object.values(m.negatives).reduce((a, v) => a + v, 0);
+  const top = m.topTools[0];
+  const short: [MirrorTile['icon'], string][] = [
+    ['book', plural(m.sessions.total, 'session', 'sessions')],
+    ['folder', plural(m.projects.total, 'project', 'projects')],
+    ['question', `${m.sessions.partial} partial ${m.sessions.partial === 1 ? 'session' : 'sessions'}`],
+    ['chat', `${m.humanTurns} your ${m.humanTurns === 1 ? 'message' : 'messages'}`],
+    ['shelf', `${plural(m.excluded.total, 'turn', 'turns')} excluded`],
+    ['stop', `${plural(m.interrupts, 'stop', 'stops')} · ${m.interventions.lines} drew a line`],
+    ['repeat', `${m.repeatedCommand.episodes} unchanged ${m.repeatedCommand.episodes === 1 ? 'retry' : 'retries'}`],
+    ['cross', `${m.repeatedCommand.genuineFailures} / ${m.repeatedCommand.shellCalls} shell runs failed`],
+    ['tick', plural(notFailures, 'false alarm', 'false alarms')],
+    ['quill', plural(m.editSequences.candidates, 'edit sequence', 'edit sequences')],
+    ['rules', plural(m.directives.repeated, 'repeated instruction', 'repeated instructions')],
+    ['knot', plural(m.workflows.occurrences, 'workflow run', 'workflow runs')],
+    ['wrench', plural(m.calls.total, 'tool call', 'tool calls')],
+    ['list', top ? `top: ${top[0]}` : '0 tool calls'],
+    ['lock', plural(m.redactions, 'secret redacted', 'secrets redacted')],
+  ];
+  return rows.map(([label, value], i) => ({ icon: short[i]![0], text: short[i]![1], label, def: `${label}: ${value}` }));
+}
+
+/** The act's route strip: one icon per place kind, in the order the act visits them (text-density pass). */
+export function routeIcon(kind: Analysis['route']['nodes'][number]['kind']): IconName {
+  switch (kind) {
+    case 'encounter':
+    case 'elite':
+      return 'target';
+    case 'event':
+      return 'bend';
+    case 'review':
+      return 'eye';
+    case 'workshop':
+      return 'wrench';
+    case 'card-review':
+      return 'rules';
+    case 'campfire':
+      return 'fire';
+    case 'boss':
+      return 'seal';
+    case 'audit':
+      return 'list';
+    case 'apply':
+      return 'tick';
+  }
+}
