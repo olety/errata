@@ -7,9 +7,9 @@
 import './end.css';
 import type { BossHeadView, BossView, CardView, ReceiptView, ScreenProps } from '../contract';
 import { FILE_OF } from '../contract';
-import { Books, Card } from '../cards';
+import { Books, Card, icon, iconSvg, info, tip, type IconName } from '../cards';
 import { ART } from './art';
-import { button, el, heron, INERT, linkedLine, receipt, rich, tag } from './dom';
+import { button, el, heron, INERT, linkedLine, receipt, rich, splitLabel, tag } from './dom';
 import { bookRows, bossMotion, bossPlan, fmt, newBossMemory, PLATE, plateBox, type BossPlan, type HeadLook } from './model';
 
 /** Presentation memory across repaints (see bossMotion): each animation plays once. */
@@ -111,7 +111,7 @@ function facedRow(plan: BossPlan, p: ScreenProps<BossView>, tearing: ReadonlySet
       el('span', 'pl-end-facedtag', head.receipt.date ?? '', el('b', '', word)),
     );
     item.type = 'button';
-    item.title = `${head.receipt.quote ?? 'Tool evidence only'} · ${word}`;
+    tip(item, `${head.receipt.quote ?? 'Tool evidence only'} · ${word}`);
     // A head still unstamped stays sealed to the inspector (the adapter withholds it).
     if (head.disposition === 'unreviewed') item.disabled = true;
     else item.addEventListener('click', () => p.api.inspect({ caseId: head.caseId }));
@@ -120,37 +120,51 @@ function facedRow(plan: BossPlan, p: ScreenProps<BossView>, tearing: ReadonlySet
   return row;
 }
 
-/** Sealed heads still under the water: wax marks, the view's count, never their words. */
+/** Sealed heads still under the water: wax marks, the view's count, never their words; the sentence in the tooltip. */
 function belowMarks(n: number): HTMLElement {
   const marks = el('span', 'pl-end-seals');
+  marks.setAttribute('aria-hidden', 'true');
   for (let i = 0; i < Math.min(n, 12); i++) marks.append(el('i', ''));
-  return el('div', 'pl-end-below', marks, `${fmt(n)} more sealed ${n === 1 ? 'head' : 'heads'} under the water, after this one`);
+  const said = `${fmt(n)} more sealed ${n === 1 ? 'head' : 'heads'} under the water, after this one`;
+  const row = el('div', 'pl-end-below', marks, `${fmt(n)} more`);
+  row.tabIndex = 0;
+  row.setAttribute('aria-label', said);
+  return tip(row, said);
 }
 
 /** The slip: the receipt and the blind stamp, then the answer, the reasons and Continue; at the end, the score. */
 function slip(plan: BossPlan, v: BossView, p: ScreenProps<BossView>, f: { rise: boolean; ink: boolean; inkScore: boolean }): HTMLElement {
   const cur = plan.current;
   const s = el('aside', `pl-end-slip${cur ? '' : ' pl-end-scorecard'}${f.rise ? ' pl-end-unfold' : ''}`);
-  s.append(el('header', 'pl-end-sliphead', el('h2', 'pl-end-title', plan.title), cur ? el('span', 'pl-end-kicker', cur.source === 'open' ? 'An earlier Open page' : 'A sealed head') : null));
+  s.append(el('header', 'pl-end-sliphead', el('h2', 'pl-end-title', plan.title), cur ? el('span', 'pl-end-kicker', cur.source === 'open' ? icon('book', 'An earlier Open page') : icon('seal', 'A sealed head')) : null));
 
   if (cur) {
     s.append(receipt(cur.receipt));
     if (plan.stamps) {
       const row = el('div', 'pl-end-stamps');
-      const buttons = plan.stamps.map((st) =>
-        button(`${st.label}`, 'pl-end-stampbtn', () => {
+      // Stamp marks, as on the room's slip (text-density pass, R9): a small ink drawing and the word; the letter key
+      // and the full label sit in the tooltip and the aria-label.
+      const MARK: Record<string, [IconName, string]> = { issue: ['cross', 'A problem'], pivot: ['bend', 'A change of plan'], 'not-a-problem': ['tick', 'Not a problem'], unclear: ['question', 'Unclear'] };
+      const buttons = plan.stamps.map((st) => {
+        const [ic, word] = MARK[st.stamp] ?? ['question', st.label];
+        const b = button('', 'pl-end-stampbtn pl-end-stampmarkbtn', () => {
           // The blind stamp locks on click: every stamp goes inert before the controller answers.
           for (const x of buttons) x.disabled = true;
           p.api.boss.stamp(cur.caseId, st.stamp);
-        }),
-      );
-      plan.stamps.forEach((st, i) => buttons[i]!.append(el('kbd', 'pl-end-key', st.key.toUpperCase())));
+        });
+        b.append(iconSvg(ic), el('span', 'pl-end-stampword', word));
+        b.setAttribute('aria-label', `${st.label} (key ${st.key.toUpperCase()})`);
+        tip(b, `${st.label} · key ${st.key.toUpperCase()}`);
+        return b;
+      });
       row.append(...buttons);
       s.append(row);
     } else if (plan.chosen) {
-      s.append(el('div', `pl-end-stamped${f.ink ? ' pl-end-ink' : ''}`, el('span', 'pl-end-stampmark', plan.chosen), el('small', '', cur.source === 'open' ? 'stamped earlier, in its room' : 'stamped blind · locked')));
+      const how = cur.source === 'open' ? icon('clock', 'Stamped earlier, in its room') : icon('lock', 'Stamped blind · locked');
+      s.append(el('div', `pl-end-stamped${f.ink ? ' pl-end-ink' : ''}`, el('span', 'pl-end-stampmark', plan.chosen), how));
     }
-    if (plan.coach) s.append(el('p', 'pl-end-coach', plan.coach));
+    // The table's coach line (the sample's tutorial) already names the gesture: the slip says it only when that is off.
+    if (plan.coach && !p.ui.tutorial) s.append(el('p', 'pl-end-coach', plan.hint ?? plan.coach, plan.hint && plan.hint !== plan.coach ? info('About this step', plan.coach) : null));
     const reading = readingFor(v, plan, p);
     if (reading) s.append(reading);
     if (plan.reasons.length) s.append(reasonsList(plan));
@@ -160,12 +174,14 @@ function slip(plan: BossPlan, v: BossView, p: ScreenProps<BossView>, f: { rise: 
 
   const controls = el('div', 'pl-end-controls');
   for (const c of plan.controls) {
-    controls.append(
-      button(c.label, `pl-end-btn${c.primary ? ' pl-end-primary' : ''}`, () => {
-        if (c.act === 'advance') p.api.advance();
-        else p.api.boss.next();
-      }),
-    );
+    // R6: the verb on the button ("Continue"), the rest ("leave it open") in its tooltip.
+    const [verb, more] = splitLabel(c.label);
+    const btn = button(verb, `pl-end-btn${c.primary ? ' pl-end-primary' : ''}`, () => {
+      if (c.act === 'advance') p.api.advance();
+      else p.api.boss.next();
+    });
+    if (more) tip(btn, more);
+    controls.append(btn);
   }
   s.append(controls);
   return s;
@@ -195,6 +211,34 @@ function readingFor(v: BossView, plan: BossPlan, p: ScreenProps<BossView>): HTML
   );
 }
 
+/**
+ * The tally as short rows (a number with its unit, one icon each) and one (i) whose note holds the printed lines, every
+ * not-yet-judged excerpt still a link to its inspector row.
+ */
+function tallyBody(plan: BossPlan, p: ScreenProps<BossView>): { head: HTMLElement; rows: HTMLElement } {
+  const sc = plan.score;
+  const open = (cardId: string) => p.api.inspect({ cardId });
+  const printed = sc.lines.map((l) => el('p', '', ...linkedLine(l, sc.unjudged, open)));
+  const more = info('About the tally', sc.note, { title: sc.head, body: [sc.note, ...printed] });
+  const rows = el(
+    'ul',
+    'pl-end-lines pl-end-rows',
+    ...sc.rows.map((r, i) => {
+      const unjudged = r.link ? sc.unjudged.find((u) => u.cardId === r.link) : undefined;
+      let text: Node = document.createTextNode(r.text);
+      if (r.link) {
+        const b = button(r.text, 'pl-end-link', () => open(r.link!));
+        tip(b, `'${unjudged?.excerpt ?? ''}' · open it to judge`);
+        text = b;
+      }
+      const li = el('li', 'pl-end-row', iconSvg(r.icon), text);
+      li.style.setProperty('--i', String(i));
+      return li;
+    }),
+  );
+  return { head: el('span', 'pl-end-label pl-end-tallyhead', sc.head, more), rows };
+}
+
 function reasonsList(plan: BossPlan): HTMLElement {
   return el(
     'div',
@@ -207,15 +251,13 @@ function reasonsList(plan: BossPlan): HTMLElement {
 /** The score, exactly as printed by the view, with its validity; set-asides beside it and listed by date. */
 function scoreSheet(plan: BossPlan, ink: boolean, p: ScreenProps<BossView>): HTMLElement {
   const sc = plan.score;
+  const t = tallyBody(plan, p);
+  t.head.className = `pl-end-validity${sc.final ? ' pl-end-final' : ''}`;
   return el(
     'div',
     `pl-end-score pl-end-score-${sc.validity}${ink ? ' pl-end-inkscore' : ''}`,
-    el('ol', 'pl-end-lines', ...sc.lines.map((l, i) => {
-      const li = el('li', '', ...linkedLine(l, sc.unjudged, (cardId) => p.api.inspect({ cardId })));
-      li.style.setProperty('--i', String(i));
-      return li;
-    })),
-    el('p', `pl-end-validity${sc.final ? ' pl-end-final' : ''}`, sc.note),
+    t.rows,
+    t.head,
     plan.setAside.length
       ? el('div', 'pl-end-asides', el('span', 'pl-end-label', 'Set aside'), el('ul', '', ...plan.setAside.map((x) => el('li', '', el('b', '', x.label), ' · ', aside(x.head.receipt)))))
       : null,
@@ -226,9 +268,10 @@ function aside(r: ReceiptView): HTMLElement {
   return el('span', '', `${r.date ?? 'no date'} · `, r.quote !== null ? el('i', 'pl-end-quote-i', rich(r.quote)) : 'Tool evidence only');
 }
 
-/** The live tally beside the heads: the same printed lines, never shown as final. */
+/** The live tally beside the heads: short rows, the printed lines behind its (i), never shown as final. */
 function tally(plan: BossPlan, p: ScreenProps<BossView>): HTMLElement {
-  return el('aside', 'pl-end-tally', el('span', 'pl-end-label', plan.score.note), el('ol', 'pl-end-lines', ...plan.score.lines.map((l) => el('li', '', ...linkedLine(l, plan.score.unjudged, (cardId) => p.api.inspect({ cardId }))))));
+  const t = tallyBody(plan, p);
+  return el('aside', 'pl-end-tally', t.head, t.rows);
 }
 
 /** The final deck's cards in their books. Only glowing cards glow, and only once the head can be answered. */
@@ -260,13 +303,13 @@ function wood(v: BossView, plan: BossPlan, p: ScreenProps<BossView>): HTMLElemen
         Card({ card: c, size: b.card.size, selected: p.ui.selected === c.id, drag: plan.dragCards ? p.drag : null, onInspect: (id) => p.api.inspect({ cardId: id }) }),
       );
       const why = plan.dragCards ? reason.get(c.id) : null;
-      if (why) slot.title = why;
+      if (why) tip(slot, why);
       // Say it in words as well as in light: which cards can answer this case, and why the others cannot.
       if (plan.dragCards) {
         const card = slot.querySelector<HTMLElement>('[data-card]');
         const label = card?.getAttribute('aria-label') ?? '';
         if (card) card.setAttribute('aria-label', plan.glow.has(c.id) ? `Glows: can answer this case. ${label}` : `${label}${why ? ` Cannot answer this case: ${why}.` : ''}`);
-        if (plan.glow.has(c.id)) slot.append(el('span', 'pl-end-glowtag', 'can answer'));
+        if (plan.glow.has(c.id)) slot.append(el('span', 'pl-end-glowtag', icon('target', 'Can answer', 'Can answer this case')));
       }
       strip.append(slot);
     }

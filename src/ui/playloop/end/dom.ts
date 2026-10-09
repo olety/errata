@@ -2,6 +2,7 @@
 // becomes <code> built with textContent, never parsed HTML.
 
 import type { DropBinder, ReceiptView } from '../contract';
+import { tip } from '../cards';
 import { splitTicks, tagText } from './model';
 
 export type Kid = Node | string | null | false | undefined;
@@ -24,6 +25,12 @@ export function rich(text: string): DocumentFragment {
     } else f.append(document.createTextNode(p.text));
   }
   return f;
+}
+
+/** R6: "Continue · leave it open" → ["Continue", "leave it open"]: the verb on the button, the rest in its tooltip. */
+export function splitLabel(label: string): [string, string | null] {
+  const at = label.indexOf(' · ');
+  return at < 0 ? [label, null] : [label.slice(0, at), label.slice(at + 3)];
 }
 
 export function button(label: string, cls: string, onClick: () => void, disabled = false): HTMLButtonElement {
@@ -51,15 +58,10 @@ export function tag(r: Pick<ReceiptView, 'agent' | 'project' | 'date'>, cls = ''
 export function receipt(r: ReceiptView, opts: { compact?: boolean } = {}): HTMLElement {
   const quote = r.quote !== null ? el('blockquote', 'pl-end-quote', '“', rich(r.quote), '”') : el('p', 'pl-end-noquote', 'Tool evidence only');
   const act = r.action || r.result ? el('p', 'pl-end-act', r.action ? el('span', 'pl-end-mono', rich(r.action)) : null, r.action && r.result ? ' → ' : null, r.result ? el('span', 'pl-end-mono', rich(r.result)) : null) : null;
-  return el(
-    'div',
-    `pl-end-receipt${opts.compact ? ' pl-end-receipt-compact' : ''}`,
-    quote,
-    r.pasted ? el('span', 'pl-end-chip', 'pasted text') : null,
-    act,
-    r.then ? el('p', 'pl-end-then', 'then ', el('span', 'pl-end-mono', rich(r.then))) : null,
-    tag(r),
-  );
+  const then = r.then ? el('p', 'pl-end-then', 'then ', el('span', 'pl-end-mono', rich(r.then))) : null;
+  // The receipt's evidence is content the player reads, like the quote: the word-count check leaves it out.
+  for (const n of [quote, act, then]) n?.setAttribute('data-density', 'content');
+  return el('div', `pl-end-receipt${opts.compact ? ' pl-end-receipt-compact' : ''}`, quote, r.pasted ? el('span', 'pl-end-chip', 'pasted text') : null, act, then, tag(r));
 }
 
 /** A folded paper heron (a change of plan flies off, §4). Inline SVG: paper fill, ink folds, no gradient. */
@@ -115,7 +117,7 @@ export function linkedLine(text: string, links: readonly { cardId: string; excer
     if (at < 0) continue;
     if (at > 0) out.push(document.createTextNode(rest.slice(0, at)));
     const b = button(q, 'pl-end-link', () => open(l.cardId));
-    b.title = 'Open this line in the inspector: Accept this reading, or Does not apply';
+    tip(b, 'Open this line in the inspector: Accept this reading, or Does not apply');
     out.push(b);
     rest = rest.slice(at + q.length);
   }

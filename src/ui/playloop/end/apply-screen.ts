@@ -6,9 +6,9 @@
 import './end.css';
 import type { ApplyDiffView, ApplyView, ScreenProps } from '../contract';
 import { COPY } from '../contract';
-import { Books } from '../cards';
+import { Books, icon, info, tip } from '../cards';
 import { ART } from './art';
-import { button, el, INERT, linkedLine, receipt, rich } from './dom';
+import { button, el, INERT, linkedLine, receipt, rich, splitLabel } from './dom';
 import { applyMotion, applyPlan, diffRows, fmt, newApplyMemory, plateBox, summaryPlan, type ApplyPlan, type DiffRow } from './model';
 
 /** Presentation memory across repaints (see applyMotion): the pane choice, each ink and the crack play once. */
@@ -78,12 +78,21 @@ function diffsBody(v: ApplyView, plan: ApplyPlan): DocumentFragment {
 
 function diffSheet(d: ApplyDiffView): HTMLElement {
   const lines = el('div', 'pl-end-lines-diff');
+  // The diff body is the file's own bytes: content, left out of the word-count check.
+  lines.setAttribute('data-density', 'content');
   for (const row of diffRows(d.ops)) lines.append(rowEl(d, row));
+  const kind = d.kind === 'skill' ? 'Skill body' : 'Global file';
+  // R1: the figure keeps its unit on screen ("104 → 284 / 1,200 tok"); the budget sentence and "estimated" in its tooltip.
+  const budget = d.weight ? `token budget: ${fmt(d.weight.before)} → ${fmt(d.weight.after)} of ${fmt(d.weight.allowance)} used · ${COPY.estimated}` : null;
+  const fig = d.weight && budget ? tip(el('span', 'pl-end-weight', `${fmt(d.weight.before)} → ${fmt(d.weight.after)} / ${fmt(d.weight.allowance)} tok`), budget) : null;
+  if (fig && budget) {
+    fig.tabIndex = 0;
+    fig.setAttribute('aria-label', budget);
+  }
   return el(
     'article',
     `pl-end-diff pl-end-diff-${d.kind}`,
-    el('header', 'pl-end-diffhead', el('b', 'pl-end-difflabel', d.label), el('span', 'pl-end-badge', d.kind === 'skill' ? 'Skill body' : 'Global file'), el('span', 'pl-end-path', d.path)),
-    d.weight ? el('p', 'pl-end-weight', `token budget: ${fmt(d.weight.before)} → ${fmt(d.weight.after)} of ${fmt(d.weight.allowance)} used · ${COPY.estimated}`) : null,
+    el('header', 'pl-end-diffhead', el('b', 'pl-end-difflabel', d.label), el('span', 'pl-end-badge', icon(d.kind === 'skill' ? 'wrench' : 'globe', `${kind} · ${d.path}`)), fig),
     d.problem ? el('p', 'pl-end-warn', rich(d.problem)) : null,
     d.blocker ? el('p', 'pl-end-warn', rich(d.blocker)) : null,
     lines,
@@ -122,7 +131,17 @@ function runBody(v: ApplyView, p: ScreenProps<ApplyView>): HTMLElement {
     section('The tally', el('ol', 'pl-end-lines', ...s.lines.map((l) => el('li', '', ...linkedLine(l, s.unjudged, (cardId) => p.api.inspect({ cardId })))))),
     section(
       'Your files',
-      el('ul', 'pl-end-files', ...s.files.map((f) => el('li', '', el('b', '', f.file), ' ', el('span', 'pl-end-fig', f.text), f.raised ? el('span', 'pl-end-raised', ` · ${f.raised}`) : null))),
+      el(
+        'ul',
+        'pl-end-files',
+        ...s.files.map((f, i) => {
+          const n = v.summary.files[i]!;
+          const fig = tip(el('span', 'pl-end-fig', `${fmt(n.before)} → ${fmt(n.after)} / ${fmt(n.allowance)} tok`), f.text);
+          fig.tabIndex = 0;
+          fig.setAttribute('aria-label', f.text);
+          return el('li', '', el('b', '', f.file), ' ', fig, f.raised ? el('span', 'pl-end-raised', ` · ${f.raised}`) : null);
+        }),
+      ),
     ),
     section('Operations', el('p', '', s.operations.length ? s.operations.join(' · ') : 'No committed operations.')),
     section(`Open pages · ${fmt(s.openCount)}`, s.open.length ? el('div', 'pl-end-pages', ...s.open.map((o) => receipt(o.receipt, { compact: true }))) : el('p', 'pl-end-soft', 'No open pages.')),
@@ -141,17 +160,23 @@ function sealBox(v: ApplyView, plan: ApplyPlan, p: ScreenProps<ApplyView>, fresh
   const stamps = el('div', `pl-end-inkrow${v.undo?.status === 'done' ? ' pl-end-undone' : ''}`);
   for (const s of plan.stamps) {
     const order = fresh.indexOf(s.key);
-    const slot = el('div', `pl-end-inkslot pl-end-ink-${s.state}${order >= 0 ? ' pl-end-inking' : ''}`, el('span', 'pl-end-inkmark', s.label), el('small', '', s.state === 'failed' ? `did not verify · ${s.meaning}` : s.state === 'undone' ? `undone · the original bytes are back` : s.meaning));
+    // The stamp keeps its word; its sentence ("every read-back matched", "both files within budget") is its tooltip.
+    const said = s.state === 'failed' ? `did not verify · ${s.meaning}` : s.state === 'undone' ? `undone · the original bytes are back` : s.meaning;
+    const short = s.state === 'failed' ? 'did not verify' : s.state === 'undone' ? 'undone' : null;
+    const slot = el('div', `pl-end-inkslot pl-end-ink-${s.state}${order >= 0 ? ' pl-end-inking' : ''}`, el('span', 'pl-end-inkmark', s.label), short ? el('small', '', short) : null);
     if (order >= 0) slot.style.setProperty('--i', String(order));
-    slot.title = s.why;
+    tip(slot, said);
+    slot.tabIndex = 0;
     slot.setAttribute('aria-label', `${s.label}: ${s.state}. ${s.why}`);
     stamps.append(slot);
   }
   const verified = v.footer !== null;
   const undone = v.undo?.status === 'done';
   const wax = button(verified ? 'Sealed' : undone ? 'Cracked' : 'Seal', `pl-end-wax${verified ? ' pl-end-pressed' : ''}${undone ? ' pl-end-cracked' : ''}${crack ? ' pl-end-crack' : ''}`, () => void p.api.apply.seal(), !plan.seal);
-  wax.title = plan.seal ? 'Write Skill bodies first, then both files, with backups and read-back' : verified ? 'Written and read back' : 'The seal waits until nothing blocks it';
-  return el('div', 'pl-end-sealbox', el('div', 'pl-end-sealrow', wax, stamps));
+  const waxWhy = plan.seal ? 'Write Skill bodies first, then both files, with backups and read-back' : verified ? 'Written and read back' : 'The seal waits until nothing blocks it';
+  tip(wax, waxWhy);
+  const more = info('About the seal', 'Backups first, every write read back, Undo after.', { title: 'The seal', body: [waxWhy, ...plan.stamps.map((s) => s.why)] });
+  return el('div', 'pl-end-sealbox', el('div', 'pl-end-sealrow', wax, stamps, more));
 }
 
 /** The write's outcome: the result, which files verified, the backup, Undo and its outcome, the footer. */
@@ -161,7 +186,7 @@ function outcome(v: ApplyView, plan: ApplyPlan, p: ScreenProps<ApplyView>): Node
     r ? el('p', `pl-end-result pl-end-result-${r.status}`, rich(r.text)) : null,
     plan.files.length ? el('ul', 'pl-end-filestat', ...plan.files.map((f) => el('li', '', el('span', 'pl-end-path', f.path), ` · ${f.text}`))) : null,
     r?.bundle ? el('p', 'pl-end-soft pl-end-backup', 'Backup ', el('span', 'pl-end-path', r.bundle)) : null,
-    v.canUndo ? button('Undo · crack the seal', 'pl-end-btn', () => void p.api.apply.undo(), !plan.undo) : null,
+    v.canUndo ? undoButton(plan, p) : null,
     v.undo
       ? v.undo.status === 'refused'
         ? el('p', 'pl-end-warn', rich(v.undo.text ?? 'Undo was refused.'))
@@ -173,6 +198,15 @@ function outcome(v: ApplyView, plan: ApplyPlan, p: ScreenProps<ApplyView>): Node
   return parts.filter((x): x is HTMLElement => x !== null);
 }
 
+/** R6: "Undo" on the button, "crack the seal" in its tooltip. */
+function undoButton(plan: ApplyPlan, p: ScreenProps<ApplyView>): HTMLElement {
+  const [verb, more] = splitLabel('Undo · crack the seal');
+  const b = button(verb, 'pl-end-btn', () => void p.api.apply.undo(), !plan.undo);
+  if (more) tip(b, more);
+  b.setAttribute('aria-label', 'Undo, crack the seal');
+  return b;
+}
+
 /**
  * The second visit (spec §7): keep the receipt and the line ids in this browser, only on the player's word. Off until
  * chosen; one click either way.
@@ -182,7 +216,9 @@ function rememberBox(v: ApplyView, p: ScreenProps<ApplyView>): HTMLElement {
   return el(
     'div',
     'pl-end-remember',
-    el('p', 'pl-end-soft', saved ? 'Kept in this browser: the receipt and the ids of the lines written. No session text is kept.' : 'Keep this receipt in this browser for your next visit? Only the receipt (backup id, files, checksums) and the ids of the lines written; no session text.'),
+    saved
+      ? el('p', 'pl-end-soft', 'Kept in this browser.', info('About the kept receipt', 'No session text is kept.', { title: 'Kept in this browser', body: ['Kept in this browser: the receipt and the ids of the lines written. No session text is kept.'] }))
+      : el('p', 'pl-end-soft', 'Keep this receipt here?', info('About keeping the receipt', 'For your next visit. No session text.', { title: 'Keep the receipt', body: ['Keep this receipt in this browser for your next visit? Only the receipt (backup id, files, checksums) and the ids of the lines written; no session text.'] })),
     button(saved ? 'Forget it' : 'Keep the receipt', 'pl-end-btn', () => p.api.apply.remember(!saved)),
   );
 }
@@ -209,7 +245,15 @@ function exportedBox(v: ApplyView): HTMLElement | null {
     'div',
     'pl-end-exported',
     el('h3', 'pl-end-runhead', 'Exported, not applied'),
-    el('p', 'pl-end-soft', 'This browser cannot write files, so nothing was changed on disk. Paste each block at the end of the file named above it, or download it.'),
+    el(
+      'p',
+      'pl-end-soft',
+      'Nothing was changed on disk.',
+      info('About the export', 'This browser cannot write files. Paste or download each block.', {
+        title: 'Exported, not applied',
+        body: ['This browser cannot write files, so nothing was changed on disk. Paste each block at the end of the file named above it, or download it.'],
+      }),
+    ),
     ...files,
   );
 }
@@ -237,6 +281,6 @@ function blockersBox(v: ApplyView, plan: ApplyPlan, p: ScreenProps<ApplyView>): 
   // Optional grants (the ~/.agents folder for Codex Skills) and any grant not already offered by a blocker.
   const loose = plan.grants.filter((g) => !hasGrantBlocker || g.optional);
   if (loose.length) box.append(el('div', 'pl-end-actions', ...loose.map((g) => button(g.label, 'pl-end-btn', () => void p.api.apply.grant(g.which), plan.locked))));
-  if (!plan.blockers.length && plan.seal) box.append(el('p', 'pl-end-soft', 'Nothing blocks the seal. Open pages never do.'));
+  if (!plan.blockers.length && plan.seal) box.append(el('p', 'pl-end-soft', 'Nothing blocks the seal.', info('About blockers', 'Open pages never block the seal.', { title: 'Nothing blocks the seal', body: ['Nothing blocks the seal. Open pages never do.'] })));
   return box;
 }

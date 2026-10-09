@@ -69,6 +69,32 @@ export interface ScoreNote {
   final: boolean;
 }
 
+/** The validity as a two-word header (the full note sits behind its (i)): never "final" unless locked. */
+export const SCORE_HEAD: Record<BossView['score']['validity'], string> = { live: 'Live tally', locked: 'Final tally', stale: 'Stale tally' };
+
+/**
+ * The tally as short rows (text-density pass): each number with its unit, one icon, the printed line behind the panel's
+ * (i). `link` is the card a single not-yet-judged line opens in the inspector.
+ */
+export interface TallyRow {
+  icon: 'seal' | 'tick' | 'folder' | 'question';
+  text: string;
+  link: string | null;
+}
+
+export function tallyRows(sc: Pick<BossView['score'], 'later' | 'earlier' | 'original' | 'unjudged' | 'lines'>): TallyRow[] {
+  const rows: TallyRow[] = [];
+  const first = sc.lines[0] ?? '';
+  if (!first.startsWith('Later cases')) rows.push({ icon: 'seal', text: 'No later cases', link: null });
+  else rows.push({ icon: 'seal', text: sc.later.confirmed > 0 ? `Later cases ${fmt(sc.later.addressed)} / ${fmt(sc.later.confirmed)}` : 'Later cases: none a problem', link: null });
+  rows.push({ icon: 'tick', text: `Earlier cases ${fmt(sc.earlier.addressed)} / ${fmt(sc.earlier.confirmed)}`, link: null });
+  if (sc.original.established) rows.push({ icon: 'folder', text: `Your files ${fmt(sc.original.addressed)} / ${fmt(sc.original.confirmed)} cases`, link: null });
+  const n = sc.unjudged.length;
+  if (n > 0) rows.push({ icon: 'question', text: `${fmt(n)} ${n === 1 ? 'line' : 'lines'} not yet judged`, link: n === 1 ? sc.unjudged[0]!.cardId : null });
+  else if (!sc.original.established) rows.push({ icon: 'folder', text: 'Your files: not mapped', link: null });
+  return rows;
+}
+
 export function scoreNote(validity: BossView['score']['validity']): ScoreNote {
   switch (validity) {
     case 'live':
@@ -94,6 +120,8 @@ export interface BossPlan {
   /** The stamp the current head carries, once stamped. */
   chosen: string | null;
   coach: string | null;
+  /** The coach at most eight words, imperative (R5); the full `coach` sits behind its (i). */
+  hint: string | null;
   /** The current head accepts the answer drag (stamped a problem, or an Open page, and not yet addressed). */
   headTarget: boolean;
   /** Deck cards are drag sources only while the head can be answered. */
@@ -103,7 +131,7 @@ export interface BossPlan {
   /** "No eligible card": one row per candidate with its reason. */
   reasons: { cardId: string; title: string; summary: string; reason: string }[];
   controls: BossControl[];
-  score: { lines: string[]; unjudged: BossView['score']['unjudged']; validity: BossView['score']['validity'] } & ScoreNote;
+  score: { lines: string[]; unjudged: BossView['score']['unjudged']; validity: BossView['score']['validity']; head: string; rows: TallyRow[] } & ScoreNote;
   /** At the summary: the set-aside heads, in reveal order (oldest first), each with its stamp. */
   setAside: { head: BossHeadView; label: string }[];
 }
@@ -122,27 +150,33 @@ export function bossPlan(v: BossView): BossPlan {
       : [];
 
   let coach: string | null = null;
+  let hint: string | null = null;
   let controls: BossControl[] = [];
   switch (v.turn) {
     case 'stamp':
       coach = 'Read the receipt, then stamp it. Blind: nothing in your deck shows anything until you do.';
+      hint = 'Read the receipt, then stamp it.';
       controls = [{ act: 'next', label: 'Continue · leave it unstamped', primary: false }];
       break;
     case 'answer':
       if (current?.addressed) {
         coach = 'Answered: a line in your final deck answers this case. It stays a proposed line until Apply.';
+        hint = 'Answered. Proposed until Apply.';
         controls = [{ act: 'next', label: 'Continue', primary: true }];
       } else if (v.noEligibleCard) {
         coach = `${COPY.noEligibleCard} · this case stays open.`;
+        hint = `${COPY.noEligibleCard}. It stays open.`;
         controls = [{ act: 'next', label: 'Continue', primary: true }];
       } else {
         coach = open ? 'An earlier Open page faces your final deck. Drag a glowing card onto it, or click the card and then the page, to answer it.' : 'Drag a glowing card onto the head, or click the card and then the head, to answer it.';
+        hint = open ? 'Pick a glowing card for this page.' : 'Pick a glowing card for this head.';
         controls = [{ act: 'next', label: 'Continue · leave it open', primary: false }];
       }
       break;
     case 'set-aside': {
       const label = current ? stampLabel(current.disposition) : null;
       coach = `Set aside${label ? ` as “${label}”` : ''}. It counts nowhere and is listed at the end.`;
+      hint = `Set aside${label ? ` as “${label}”` : ''}.`;
       controls = [{ act: 'next', label: 'Continue', primary: true }];
       break;
     }
@@ -175,12 +209,13 @@ export function bossPlan(v: BossView): BossPlan {
     stamps: v.turn === 'stamp' && current?.source === 'sealed' ? STAMPS : null,
     chosen: current ? stampLabel(current.disposition) : null,
     coach,
+    hint,
     headTarget: answerable,
     dragCards: answerable,
     glow,
     reasons,
     controls,
-    score: { lines: v.score.lines, unjudged: v.score.unjudged, validity: v.score.validity, ...scoreNote(v.score.validity) },
+    score: { lines: v.score.lines, unjudged: v.score.unjudged, validity: v.score.validity, head: SCORE_HEAD[v.score.validity], rows: tallyRows(v.score), ...scoreNote(v.score.validity) },
     setAside,
   };
 }
