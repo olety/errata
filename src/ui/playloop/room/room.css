@@ -236,7 +236,10 @@
 }
 /* The wrap is a plain paper veil: the diagonal binding lines read as a glitch, so they are not drawn. */
 .pl-room-wrap svg { display: none; }
-.pl-room-head.is-wrapped .pl-room-head-img { filter: grayscale(0.6) contrast(0.8) brightness(1.04); }
+/* Unstamped heads keep their colour (grey read as dead or disabled); the head the slip talks about gets a halo. */
+.pl-room-head.is-wrapped .pl-room-head-img { filter: none; }
+.pl-room-head.is-wrapped .pl-room-wrap { background-color: transparent; }
+.pl-room.is-judging .pl-room-head.is-focused .pl-room-head-img { filter: drop-shadow(0 0 3px rgba(255, 249, 238, 0.95)) drop-shadow(0 0 12px rgba(255, 236, 200, 0.9)); }
 .pl-room-head.is-standing .pl-room-head-img { filter: sepia(0.35) saturate(1.3) brightness(0.9); }
 .pl-room-head.is-bound { transform: translate(var(--fx, 0px), var(--fy, 0px)) scaleY(0.3); }
 .pl-room-head.is-sunk { transform: translate(var(--sx, 0px), var(--sy, 0px)) scale(0.42); opacity: 0.4; }

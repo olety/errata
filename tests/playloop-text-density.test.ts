@@ -31,7 +31,9 @@ afterAll(() => {
  *   both books their budget units (R8), the slip its tag chips and the four stamp words (R9), and the tally its
  *   exact counts with units (R14).
  */
-const CAP: Record<ScreenKey, number> = { import: 60, mirror: 90, room: 95, campfire: 90, boss: 90, apply: 120 };
+// mirror 145: the four how-to steps and the act's place names with one line each are the screen's point (owner
+// 10-10: "make it grokkable"); the counts sit in the All counts note.
+const CAP: Record<ScreenKey, number> = { import: 60, mirror: 145, room: 95, campfire: 90, boss: 90, apply: 120 };
 
 describe('visible words at rest, per screen (1440 × 900)', () => {
   for (const s of Object.keys(CAP) as ScreenKey[]) {

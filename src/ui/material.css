@@ -140,3 +140,21 @@ button.mt-slip:disabled { opacity: 0.55; cursor: not-allowed; }
   .mt-book.tilt-a, .mt-book.tilt-b { rotate: 0deg; }
   .mt-counts { grid-template-columns: 1fr; }
 }
+
+/* The mirror as a run briefing (owner 10-10): four how-to steps, then the act's places with portraits. */
+.mt-how { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; width: min(1120px, 100%); margin: 0; padding: 0; list-style: none; }
+.mt-step { position: relative; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; padding: 12px 14px; }
+.mt-step-n { position: absolute; top: -10px; left: -8px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #41291f; color: #fff9ee; font: 700 14px/1 var(--body); }
+.mt-step > .ui-ic { grid-row: 1 / 3; width: 28px; height: 28px; color: #41291f; }
+.mt-step b { font: 700 18px/1.2 var(--title, serif); }
+.mt-step span:last-child { font-size: 14px; line-height: 1.35; color: #69503f; }
+.mt-face-h { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font: 600 22px/1.2 var(--title, serif); color: #fff9ee; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45); }
+.mt-places { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; width: min(1180px, 100%); margin: 0; padding: 0; list-style: none; }
+.mt-place { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 128px; padding: 10px 8px 12px; text-align: center; }
+.mt-place-n { position: absolute; top: 6px; left: 8px; font: 600 12px/1 var(--mono, monospace); color: #69503f; }
+.mt-place-art { display: grid; place-items: center; width: 92px; height: 92px; border-radius: 50%; background: #f3e8d6; overflow: hidden; }
+.mt-place-art img { width: 100%; height: 100%; object-fit: contain; }
+.mt-place-art .ui-ic { width: 40px; height: 40px; color: #41291f; }
+.mt-place-name { font: 700 15px/1.2 var(--title, serif); }
+.mt-place-line { font-size: 13px; line-height: 1.3; color: #69503f; }
+@media (max-width: 760px) { .mt-how { grid-template-columns: 1fr 1fr; } }

@@ -12,10 +12,8 @@ import { newDeck, type DeckState } from '../deck/deck';
 import { budgetFor, weigh } from '../deck/file';
 import { asset } from './playloop/cards/dom';
 import { strapText } from './playloop/contract';
-import { actLine, mirrorRows, mirrorTiles, routeIcon } from './mirror-view';
+import { actLine, mirrorRows, mirrorTiles } from './mirror-view';
 
-/** The mirror's tiles: the counts the act's rooms come from. */
-const ACT_COUNTS = ['Stops (you interrupted the agent)', 'The same instruction in several sessions', 'Same command failing again unchanged', 'Check → diff → report workflow'];
 /** The mirror's receipt line: the run's size and what was redacted. */
 const RECEIPT_COUNTS = ['Sessions', 'Projects', 'Secrets redacted while reading'];
 import { chip, icon, iconSvg, info, tip } from './info';
@@ -526,40 +524,75 @@ function nodeLabel(A: Analysis, n: RouteNode): string {
   }
 }
 
-/** The hand mirror: the Trait card's emblem (decoration only). */
-function mirrorEmblem(): SVGSVGElement {
-  const ns = 'http://www.w3.org/2000/svg';
-  const s = document.createElementNS(ns, 'svg');
-  s.setAttribute('viewBox', '0 0 32 44');
-  s.setAttribute('aria-hidden', 'true');
-  for (const d of ['M16 2a11 11 0 1 1 0 22 11 11 0 0 1 0-22Z', 'M16 6.5a6.5 6.5 0 0 0-6.2 4.6', 'M16 24v8M13 32h6l-1.2 9.5h-3.6Z']) {
-    const p = document.createElementNS(ns, 'path');
-    p.setAttribute('d', d);
-    s.append(p);
+
+
+
+/** The mirror's four steps: what a first-time player does, in order. */
+const HOW: [Parameters<typeof iconSvg>[0], string, string][] = [
+  ['eye', 'Read', 'what the agent did and what you said'],
+  ['question', 'Judge', 'was it a problem?'],
+  ['rules', 'Play a rule', 'drag a card onto the monster'],
+  ['tick', 'Apply', 'we write CLAUDE.md and AGENTS.md; Undo any time'],
+];
+
+/** A room family's portrait for the mirror (the same plates the rooms use). */
+const PORTRAIT: Record<string, string> = { directive: 'beasts/suite-wyrm/head.webp', 'repeated-command': 'beasts/retry-hydra/head.webp', boundary: 'beasts/boundary-stag/head.webp', rewrite: 'beasts/patch-moth/head.webp', workflow: 'beasts/owl/body.webp' };
+
+/** One place of the act on the mirror: its number, a portrait or an icon, its name and one plain line. */
+function placeCard(A: Analysis, n: RouteNode, i: number): HTMLElement {
+  const rooms = n.rooms.map((k) => A.rooms.find((r) => r.key === k)).filter((r): r is Analysis['rooms'][number] => !!r);
+  const sessions = rooms.reduce((a, r) => a + r.sessions, 0);
+  const pic = (path: string) => h('img', { src: asset(path), alt: '', loading: 'lazy', decoding: 'async' });
+  let art: Node;
+  let name: string;
+  let line: string;
+  switch (n.kind) {
+    case 'encounter':
+    case 'elite':
+    case 'review':
+      art = pic(PORTRAIT[rooms[0]?.family ?? 'directive'] ?? PORTRAIT.directive!);
+      name = rooms.map((r) => r.name).join(' · ') || 'A room';
+      line = `seen in ${sessions} ${sessions === 1 ? 'session' : 'sessions'}`;
+      break;
+    case 'event':
+      art = pic('beasts/heron/head.webp');
+      name = 'A change of plan';
+      line = 'you changed course mid-task';
+      break;
+    case 'workshop':
+      art = pic('beasts/owl/body.webp');
+      name = 'The workshop';
+      line = 'a routine that could be a Skill';
+      break;
+    case 'card-review':
+      art = iconSvg('rules');
+      name = 'Your rules';
+      line = 'the lines you already have';
+      break;
+    case 'campfire':
+      art = iconSvg('fire');
+      name = 'Campfire';
+      line = 'merge and trim your rules';
+      break;
+    case 'boss': {
+      const held = rooms.reduce((a, r) => a + r.withheld.length, 0);
+      art = iconSvg('seal');
+      name = 'The boss';
+      line = `${held} later ${held === 1 ? 'case tests' : 'cases test'} your deck`;
+      break;
+    }
+    case 'audit':
+      art = iconSvg('list');
+      name = 'Final audit';
+      line = 'every case against your deck';
+      break;
+    case 'apply':
+      art = iconSvg('tick');
+      name = 'Apply';
+      line = 'write your files';
+      break;
   }
-  return s;
-}
-
-/**
- * The character card in the fixed L box: the name from the fixed table and its one line (§8). "The sampled build ·
- * Trait" and where it was seen sit behind the card's (i); an eye chip keeps the sessions count (text-density pass).
- */
-function characterCard(c: NonNullable<Analysis['mirror']['character']>, total: number): HTMLElement {
-  const seen = `Seen in ${c.evidenceSessions} of ${total} sessions.`;
-  return h(
-    'div',
-    { class: 'mt-char', role: 'group', 'aria-label': `The sampled build: ${c.name}. ${c.line}. ${seen}` },
-    h('div', { class: 'mt-char-top' }, info('About this card', 'The sampled build · Trait', { title: `The sampled build · Trait: ${c.name}`, body: [`${c.name}: ${c.line}.`, seen, 'The name comes from a fixed table; the line is the counts behind it.'] })),
-    h('div', { class: 'mt-char-art' }, mirrorEmblem()),
-    h('p', { class: 'mt-char-name' }, c.name),
-    h('p', { class: 'mt-char-line' }, c.line),
-    h('div', { class: 'mt-char-foot' }, chip('eye', `${c.evidenceSessions} / ${total} sessions`, seen)),
-  );
-}
-
-/** The act as a strip of places: one icon each, in order, the place's name on hover or focus (text-density pass). */
-function routeStrip(A: Analysis): HTMLElement {
-  return h('ol', { class: 'mt-route', 'aria-label': 'The act, place by place' }, ...A.route.nodes.map((n, i) => h('li', {}, icon(routeIcon(n.kind), `${i + 1}. ${nodeLabel(A, n)}`))));
+  return h('li', { class: `mt-slip mt-place is-${n.kind}`, 'aria-label': `${i + 1}. ${nodeLabel(A, n)}` }, h('span', { class: 'mt-place-n' }, String(i + 1)), h('span', { class: 'mt-place-art' }, art), h('b', { class: 'mt-place-name' }, name), h('span', { class: 'mt-place-line' }, line));
 }
 
 function viewMirror(): HTMLElement {
@@ -572,42 +605,20 @@ function viewMirror(): HTMLElement {
     [
       h('h1', {}, S.mode === 'sample' ? 'What the synthetic sample shows' : 'What your sessions show'),
       // One line saying what the page is, then the way on at the top (P3 gate fix E).
-      h('p', { class: 'mt-sub' }, 'Counts before play.', info('About the mirror', 'Nothing is a problem until you stamp it', { title: 'The mirror', body: ['Counts from the sessions, before any play. Nothing here is a problem until you stamp it.'] })),
+      h('p', { class: 'mt-sub' }, `We read ${m.sessions.total} sessions. Each monster is a moment from them.`, info('About the mirror', 'Nothing is a problem until you stamp it', { title: 'The mirror', body: ['Counts from the sessions, before any play. Nothing here is a problem until you stamp it.'] })),
       h('button', { class: 'primary mt-start', onclick: () => startPlayLoop() }, 'Start the act'),
     ],
     [
+      // How it works, in four steps a first-time player can follow (owner 10-10: "grokkable by dumdums").
       h(
-        'div',
-        { class: 'mt-row' },
-        m.character ? characterCard(m.character, m.sessions.total) : h('p', { class: 'mt-slip' }, 'Not enough evidence for a character card yet.'),
-        h(
-          'div',
-          { class: 'mt-slip mt-act tilt-b' },
-          h(
-            'h2',
-            {},
-            'The act',
-            info('About the act', actLine(A), { title: 'The act', body: [actLine(A), h('ol', { class: 'mt-route-list' }, ...A.route.nodes.map((n) => h('li', {}, nodeLabel(A, n))))] }),
-            readSlip && icon('clock', readSlip),
-          ),
-          routeStrip(A),
-          read && (read.cancelled || read.failed > 0) && h('p', { class: 'mt-chips' }, chip('cross', read.cancelled ? 'partial run' : `${read.failed} files unread`, readSlip!, 'mt-warn')),
-        ),
+        'ol',
+        { class: 'mt-how', 'aria-label': 'How it works' },
+        ...HOW.map(([ic, verb, line], i) => h('li', { class: `mt-slip mt-step ${['tilt-a', 'tilt-b', 'tilt-c', ''][i % 4]}` }, h('span', { class: 'mt-step-n' }, String(i + 1)), iconSvg(ic), h('b', {}, verb), h('span', {}, line))),
       ),
-      // The four counts the act's rooms are built from, as tiles; the run's size and the redactions as one receipt
-      // line; every other count sits in the "All counts" note (the mirror said too much at once).
-      h(
-        'ul',
-        { class: 'mt-counts' },
-        ...mirrorTiles(m)
-          .filter((t) => ACT_COUNTS.includes(t.label))
-          .map((t, i) =>
-            tip(
-              h('li', { class: `mt-slip mt-count ${['tilt-a', 'tilt-b', 'tilt-c', ''][i % 4]}`, 'data-def': t.def, 'aria-label': t.def }, iconSvg(t.icon), h('span', { class: 'mt-count-text' }, t.text), info(`About: ${t.label}`, t.label, { title: t.label, body: [t.def.slice(t.label.length + 2)] })),
-              t.label,
-            ),
-          ),
-      ),
+      // What you will face: every place of the act in order, a monster's portrait and one plain line each.
+      h('h2', { class: 'mt-face-h' }, 'What you will face', info('About the act', actLine(A), { title: 'The act', body: [actLine(A), h('ol', { class: 'mt-route-list' }, ...A.route.nodes.map((n) => h('li', {}, nodeLabel(A, n))))] })),
+      h('ol', { class: 'mt-places', 'aria-label': 'The act, place by place' }, ...A.route.nodes.map((n, i) => placeCard(A, n, i))),
+      read && (read.cancelled || read.failed > 0) && h('p', { class: 'mt-chips' }, chip('cross', read.cancelled ? 'partial run' : `${read.failed} files unread`, readSlip!, 'mt-warn')),
       h(
         'p',
         { class: 'mt-slip mt-receipt mt-chips' },
@@ -618,6 +629,8 @@ function viewMirror(): HTMLElement {
             c.setAttribute('data-def', t.def);
             return c;
           }),
+        m.character && chip('eye', m.character.name, `Your style: ${m.character.name}. ${m.character.line}. Seen in ${m.character.evidenceSessions} of ${m.sessions.total} sessions.`),
+        readSlip && icon('clock', readSlip),
         info('All counts', 'Every count from the sessions', { title: 'All counts', body: [h('ul', { class: 'mt-all-counts' }, ...mirrorRows(m).map(([k, v]) => h('li', { 'data-def': `${k}: ${v}` }, h('b', {}, k), ` ${v}`)))] }),
       ),
       S.mode === 'real' &&
