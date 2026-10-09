@@ -941,3 +941,126 @@
   border: 1px solid var(--pl-campfire-ink); border-radius: 4px;
 }
 .pl-campfire-side { scrollbar-width: thin; scrollbar-color: var(--pl-campfire-ink) transparent; }
+
+/* Text-density pass (2026-10-09): knots, icons and chips in place of sentences; the sentences sit behind the (i). */
+.pl-campfire-threadrow {
+  position: relative;
+}
+.pl-campfire-threadrow > .pl-campfire-thread {
+  padding-right: 34px;
+}
+.pl-campfire-thread-info {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+.pl-campfire-threadrow:has(.pl-campfire-thread[aria-pressed='true']) .pl-campfire-thread-info .ui-info {
+  color: var(--pl-campfire-paper);
+}
+.pl-campfire-thread-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pl-campfire-thread[aria-pressed='true'] .pl-campfire-knot.is-gold {
+  color: #e4c27a;
+}
+.pl-campfire-thread[aria-pressed='true'] .pl-campfire-knot.is-red {
+  color: #e9a493;
+}
+.pl-campfire-knot {
+  display: inline-flex;
+  align-items: center;
+}
+.pl-campfire-knot.is-gold {
+  color: #a87a22;
+}
+.pl-campfire-knot.is-red {
+  color: #a4452f;
+}
+.pl-campfire-reason {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pl-campfire-also {
+  padding: 3px 6px;
+  background: transparent;
+}
+.pl-campfire-also.is-gold .ui-ic-knot {
+  color: #a87a22;
+}
+.pl-campfire-also.is-red .ui-ic-knot {
+  color: #a4452f;
+}
+.pl-campfire-shared {
+  margin: 4px 0 8px;
+}
+.pl-campfire-h .ui-info,
+.pl-campfire-sect-h .ui-info,
+.pl-campfire-label .ui-info {
+  margin-left: 4px;
+  vertical-align: -3px;
+}
+.pl-campfire-label .ui-info {
+  vertical-align: middle;
+}
+.pl-campfire-sect-h.is-icon {
+  margin-bottom: 2px;
+  color: var(--pl-campfire-soft);
+}
+.pl-campfire-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.pl-campfire-figure.ui-chip {
+  font-size: 13px;
+  padding: 2px 9px 2px 6px;
+}
+.pl-campfire-chips > .ui-chip.pl-campfire-chip {
+  color: var(--pl-campfire-ink);
+}
+.pl-campfire-chips > .ui-icon {
+  color: var(--pl-campfire-soft);
+  padding: 2px;
+}
+.pl-campfire-sealbtn {
+  font-size: 15px;
+}
+.pl-campfire-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pl-campfire-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.pl-campfire-fire-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pl-campfire-fire-ash {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pl-campfire-fire-ash .ui-ic {
+  width: 14px;
+  height: 14px;
+}
+.pl-campfire-flag .ui-ic,
+.pl-campfire-done .ui-ic {
+  width: 13px;
+  height: 13px;
+  vertical-align: -2px;
+}
+.pl-campfire-coach .ui-info {
+  margin-left: 4px;
+}

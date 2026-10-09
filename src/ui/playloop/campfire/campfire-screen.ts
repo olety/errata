@@ -5,7 +5,8 @@
 import './campfire.css';
 import type { CampfireView, CardView, ChangePreviewView, ScreenProps, ThreadView } from '../contract';
 import { COPY, FILE_OF } from '../contract';
-import { Books, Card, Piles } from '../cards';
+import { Books, Card, chip, icon, iconSvg, info, Piles, tip } from '../cards';
+import type { IconName } from '../cards';
 import * as M from './model';
 
 type Kid = Node | string | null | false | undefined;
@@ -32,18 +33,32 @@ function inline(text: string, ticks = false): DocumentFragment {
   return f;
 }
 
-function button(label: Kid | Kid[], cls: string, onClick: () => void, opts: { pressed?: boolean; fk?: string; disabled?: boolean; title?: string } = {}): HTMLButtonElement {
+function button(label: Kid | Kid[], cls: string, onClick: () => void, opts: { pressed?: boolean; fk?: string; disabled?: boolean; title?: string; aria?: string; tip?: string } = {}): HTMLButtonElement {
   const b = el('button', `pl-campfire-btn ${cls}`.trim(), ...(Array.isArray(label) ? label : [label]));
   b.type = 'button';
   if (opts.pressed !== undefined) b.setAttribute('aria-pressed', String(opts.pressed));
   if (opts.fk) b.dataset.fk = opts.fk;
   if (opts.disabled) b.disabled = true;
   if (opts.title) b.title = opts.title;
+  if (opts.aria) b.setAttribute('aria-label', opts.aria);
+  if (opts.tip) tip(b, opts.tip);
   b.addEventListener('click', onClick);
   return b;
 }
 
 const px = (n: number) => `${n}px`;
+
+/** The thread's knot in its colour and its one kind word (R12); the full name goes to aria-labels and tooltips. */
+const knot = (color: 'gold' | 'red') => el('span', `pl-campfire-knot is-${color}`, iconSvg('knot'));
+const kindWord = (color: 'gold' | 'red') => (color === 'gold' ? 'Gold' : 'Red');
+const kindFull = (color: 'gold' | 'red') => (color === 'gold' ? 'Gold thread · stack to merge' : 'Red thread · stack to settle');
+/** A thread's reason behind its (i): the tooltip carries the reason, the note the full line. */
+const reasonInfo = (t: ThreadView) => info(`Why this ${kindWord(t.color).toLowerCase()} thread`, t.reason, { title: kindFull(t.color), body: [t.reason] });
+/** A short line with its old long text behind the (i) (R5). */
+const withInfo = (cls: string, short: string, label: string, full: string) => el('p', cls, short, ' ', info(label, full.length > 90 ? `${full.slice(0, 86).replace(/\s+\S*$/, '')}…` : full, { title: label, body: [full] }));
+/** A button with an icon and one or two words; its full name stays the accessible name. */
+const iconLabel = (name: IconName, word: string): Kid[] => [iconSvg(name), ` ${word}`];
+const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
 const PLATE_URL = `${import.meta.env.BASE_URL}playloop/campfire/campfire.webp`;
 
 // ------------------------------------------------------------------ presentation state (never game state)
@@ -125,7 +140,9 @@ function onKey(e: KeyboardEvent): void {
   if (e.key !== 'Enter' && e.key !== 'Escape') return;
   if (e.isComposing || e.keyCode === 229) return;
   const t = e.target instanceof HTMLElement ? e.target : null;
-  const inside = !!t && (L.stage.contains(t) || L.wood.contains(t));
+  // An open (i) note owns its keys: Enter on its close button must not seal, Escape closes the note only.
+  if (t?.closest('.ui-note')) return;
+  const inside =!!t && (L.stage.contains(t) || L.wood.contains(t));
   const kt = M.keyTarget(t?.tagName, t?.dataset.role === 'seal', inside);
   if (e.key === 'Escape') {
     if (kt === 'outside-field') return;
@@ -374,6 +391,10 @@ function cardTitle(L: Live, id: string): string {
   return c ? c.face.title : 'A card';
 }
 
+function plainSummary(L: Live, id: string): string {
+  return (L.cards.get(id)?.face.summary ?? 'A card').replace(/`/g, '');
+}
+
 function summaryOf(L: Live, id: string): DocumentFragment | string {
   const c = L.cards.get(id);
   return c ? inline(c.face.summary) : 'A card';
@@ -392,7 +413,7 @@ function cardSlot(L: Live, card: CardView, where: string, opts: { size: 'S' | 'M
   const box = opts.size === 'S' ? M.CARD_S : opts.size === 'L' ? M.CARD_L : { w: ui.bands.card.w, h: ui.bands.card.h };
   slot.style.width = px(box.w);
   slot.style.height = px(box.h);
-  if (eligible) slot.append(el('span', 'pl-campfire-flag', 'Eligible for the pinned page'));
+  if (eligible) slot.append(tip(el('span', 'pl-campfire-flag', iconSvg('target'), ' Eligible'), 'Eligible for the pinned page'));
   if (opts.target) drag.bindTarget(`card:${card.id}:${where}`, { kind: 'card', cardId: card.id }, slot);
   return slot;
 }
@@ -409,22 +430,31 @@ function threadsPanel(L: Live): HTMLElement {
   const v = L.p.view;
   const focused = v.focusedPair?.threadId ?? null;
   const rows = v.threads.map((t) => {
+    // The knot and the kind word on the row; the reason behind the (i) beside it (R12). The full name stays the label.
     const b = button(
       [
-        el('span', 'pl-campfire-thread-kind', t.color === 'gold' ? 'Gold thread · stack to merge' : 'Red thread · stack to settle'),
-        el('span', 'pl-campfire-thread-reason', t.reason),
+        el('span', 'pl-campfire-thread-kind', knot(t.color), ` ${kindWord(t.color)}`),
         el('span', 'pl-campfire-thread-members', ...t.members.map((id) => el('span', '', summaryOf(L, id)))),
       ],
       `pl-campfire-thread is-${t.color}${spot(L, { thread: t.id }) ? ' is-spotlit' : ''}`,
       () => L.p.api.campfire.focus({ a: t.members[0]!, b: t.members[1]!, threadId: t.id }),
-      { pressed: t.id === focused, fk: `thread:${t.id}` },
+      { pressed: t.id === focused, fk: `thread:${t.id}`, aria: `${kindFull(t.color)}: ${t.members.map((id) => plainSummary(L, id)).join(' / ')}` },
     );
-    return b;
+    return el('div', 'pl-campfire-threadrow', b, el('span', 'pl-campfire-thread-info', reasonInfo(t)));
   });
-  const list = el('div', 'pl-campfire-thread-list', ...(rows.length ? rows : [el('p', 'pl-campfire-muted', 'No threads at this fire: nothing to merge or settle.')]));
+  const list = el('div', 'pl-campfire-thread-list', ...(rows.length ? rows : [withInfo('pl-campfire-muted', 'No threads here.', 'No threads', 'No threads at this fire: nothing to merge or settle.')]));
   list.dataset.sk = 'y:threads';
   const tut = L.p.ui.tutorial;
-  return el('section', 'pl-campfire-panel pl-campfire-threads', tut ? el('p', 'pl-campfire-coach is-tutorial', tut.text) : null, L.p.view.coach ? el('p', 'pl-campfire-coach', L.p.view.coach) : null, el('h2', 'pl-campfire-h', 'Threads'), list);
+  const more = tut ? (tut as { more?: string }).more : undefined;
+  const coach = L.p.view.coach;
+  return el(
+    'section',
+    'pl-campfire-panel pl-campfire-threads',
+    tut ? el('p', 'pl-campfire-coach is-tutorial', tut.text, more ? info('About this step', more) : null) : null,
+    coach ? (words(coach) <= 8 ? el('p', 'pl-campfire-coach', coach) : withInfo('pl-campfire-coach', 'Make room before Apply.', 'About the room', coach)) : null,
+    el('h2', 'pl-campfire-h', 'Threads'),
+    list,
+  );
 }
 
 function centre(L: Live): HTMLElement {
@@ -436,7 +466,10 @@ function centre(L: Live): HTMLElement {
     card.dataset.sk = 'y:result';
     body = el('div', 'pl-campfire-proposalrow', body, card);
   }
-  return el('section', 'pl-campfire-centre', hover ? el('p', `pl-campfire-hover${L.p.ui.drag?.preview?.refused ? ' is-refused' : ''}`, hover) : null, body);
+  const refused = !!L.p.ui.drag?.preview?.refused;
+  // A refusal reads in full; a proposal's hover keeps its verb clause ("Release to stack them"), the rest is the preview's.
+  const shown = hover && !refused && hover.includes(':') ? `${hover.slice(0, hover.indexOf(':'))}.` : hover;
+  return el('section', 'pl-campfire-centre', shown ? el('p', `pl-campfire-hover${refused ? ' is-refused' : ''}`, shown) : null, body);
 }
 
 function threadLine(color: 'gold' | 'red' | null): SVGSVGElement {
@@ -456,7 +489,7 @@ function pairVisual(L: Live): HTMLElement {
   const fp = v.focusedPair;
   const size = L.geo.pairCard.size;
   if (!fp) {
-    return el('div', 'pl-campfire-pair is-empty', el('p', 'pl-campfire-hint', 'No threads at this fire. Drag a card into the fire to see what a cut frees, or onto the other book to write it to both files.'));
+    return el('div', 'pl-campfire-pair is-empty', withInfo('pl-campfire-hint', 'No threads here.', 'What you can do', 'No threads at this fire. Drag a card into the fire to see what a cut frees, or onto the other book to write it to both files.'));
   }
   const t: ThreadView | null = fp.threadId ? (v.threads.find((x) => x.id === fp.threadId) ?? null) : null;
   const a = L.cards.get(fp.a);
@@ -467,10 +500,14 @@ function pairVisual(L: Live): HTMLElement {
   return el(
     'div',
     'pl-campfire-pair',
-    !roomy ? null : t ? el('p', `pl-campfire-reason is-${t.color}`, el('b', '', t.color === 'gold' ? 'Gold thread' : 'Red thread'), ` · ${t.reason}`) : el('p', 'pl-campfire-reason', 'No thread joins these two.'),
+    !roomy ? null : t ? el('p', `pl-campfire-reason is-${t.color}`, knot(t.color), el('b', '', ` ${kindWord(t.color)}`), reasonInfo(t)) : el('p', 'pl-campfire-reason', 'No thread joins these two.'),
     el('div', 'pl-campfire-pair-row', a ? cardSlot(L, a, 'pair', { size, source: true, target: true }) : null, threadLine(t?.color ?? null), b ? cardSlot(L, b, 'pair', { size, source: true, target: true }) : null),
-    others.length && roomy ? el('p', 'pl-campfire-also', 'Also on this thread: ', ...others.map((id) => el('span', 'pl-campfire-also-card', summaryOf(L, id)))) : null,
-    t && roomy ? el('p', 'pl-campfire-hint', t.color === 'gold' ? 'Drag one card onto the other to see the merge. Nothing changes until you seal.' : 'Drag one card onto the other to choose how to settle them. Cancel leaves the thread.') : null,
+    others.length && roomy ? el('p', `pl-campfire-also${t ? ` is-${t.color}` : ''}`, chip('knot', `+${others.length} ${others.length === 1 ? 'card' : 'cards'}`, `Also on this thread: ${others.map((id) => plainSummary(L, id)).join(' / ')}`)) : null,
+    t && roomy
+      ? t.color === 'gold'
+        ? withInfo('pl-campfire-hint', 'Stack them to preview the merge.', 'About the merge', 'Drag one card onto the other to see the merge. Nothing changes until you seal.')
+        : withInfo('pl-campfire-hint', 'Stack them to settle.', 'About settling', 'Drag one card onto the other to choose how to settle them. Cancel leaves the thread.')
+      : null,
   );
 }
 
@@ -510,7 +547,7 @@ function proposalVisual(L: Live, p: M.Proposal): HTMLElement {
   switch (p.kind) {
     case 'fuse':
     case 'settle':
-      return stackVisual(L, M.stackOrder(p.members, p.top, p.under), p.top, [el('b', '', p.thread.color === 'gold' ? 'Gold thread' : 'Red thread'), ` · ${p.thread.reason}`], `is-${p.thread.color}`);
+      return stackVisual(L, M.stackOrder(p.members, p.top, p.under), p.top, [knot(p.thread.color), el('b', '', ` ${kindWord(p.thread.color)}`), reasonInfo(p.thread)], `is-${p.thread.color}`);
     case 'gone':
       return stackVisual(L, M.stackOrder(p.members, p.top, p.under), p.top, ['These cards no longer share a thread.'], 'is-gone');
     case 'swap':
@@ -563,13 +600,18 @@ function proposalPanel(L: Live, p: M.Proposal): HTMLElement {
       }),
     );
   }
-  if (p.kind === 'retarget' && p.from === 'chips') controls.push(el('p', 'pl-campfire-muted', 'Narrowing removes the line from one file.'));
-  if (p.kind === 'cut') controls.push(el('p', 'pl-campfire-muted', 'A burned card waits in the ash until Apply, and you can restore it. Cutting a Skill pointer never deletes a skill folder.'));
+  // The panel's explanatory sentence sits behind the title's (i) (R2).
+  const about =
+    p.kind === 'cut'
+      ? 'A burned card waits in the ash until Apply, and you can restore it. Cutting a Skill pointer never deletes a skill folder.'
+      : p.kind === 'retarget' && p.from === 'chips'
+        ? 'Narrowing removes the line from one file.'
+        : null;
   // The result (exported lines or the new text, weight, cases) sits right under the choice, or beside the stack on
   // desktop; the lines as they stand and the cases to accept follow the controls.
   const detail = el('div', 'pl-campfire-detailhost', previewPart(L, 'detail'));
   L.detailHost = detail;
-  const kids: Kid[] = [el('h2', 'pl-campfire-h', title), ...head, L.geo.mode === 'desktop' ? null : resultHost(L), ...controls, detail];
+  const kids: Kid[] = [el('h2', 'pl-campfire-h', title, about ? info(`About: ${title}`, about) : null), ...head, L.geo.mode === 'desktop' ? null : resultHost(L), ...controls, detail];
   if (L.geo.mode !== 'phone') {
     const bar = el('div', 'pl-campfire-sealbar', ...sealBarKids(L));
     L.sealHosts.push(bar);
@@ -578,35 +620,36 @@ function proposalPanel(L: Live, p: M.Proposal): HTMLElement {
   return el('div', 'pl-campfire-proposal', ...kids);
 }
 
-/** The shared content words of a gold thread, with their share (the thread itself shows the kind only). */
-function sharedLine(t: ThreadView): HTMLElement | null {
-  if (!t.shared) return null;
-  return el('p', 'pl-campfire-shared', el('span', 'pl-campfire-label', t.members.length > 2 ? `Words all ${t.members.length} lines share` : 'Words both lines share'), ' ', ...t.shared.words.flatMap((w, i) => [i ? ' · ' : '', el('mark', 'pl-campfire-word', w)]), ` (${t.shared.words.length} of their ${t.shared.of} content words)`);
+/** The shared content words of a gold thread, highlighted; the share and how the text was picked sit behind the (i). */
+function sharedLine(t: ThreadView, more: string[]): HTMLElement | null {
+  const share = t.shared ? `${t.members.length > 2 ? `Words all ${t.members.length} lines share` : 'Words both lines share'}: ${t.shared.words.join(' · ')} (${t.shared.words.length} of their ${t.shared.of} content words)` : null;
+  const body = [share, ...more].filter((x): x is string => !!x);
+  const i = body.length ? info('About the merge', body[0]!, { title: 'About the merge', body }) : null;
+  if (!t.shared) return i ? el('p', 'pl-campfire-shared', i) : null;
+  return el('p', 'pl-campfire-shared', ...t.shared.words.flatMap((w, n) => [n ? ' · ' : '', el('mark', 'pl-campfire-word', w)]), ' ', i);
 }
 
 function fuseControls(L: Live, p: Extract<M.Proposal, { kind: 'fuse' }>): Kid[] {
   const t = p.thread;
   if (!p.editing) {
     return [
-      sharedLine(t),
-      el('p', 'pl-campfire-muted', 'The engine picked the shortest line that keeps every protected word.'),
-      button('Edit the wording', '', () => {
+      sharedLine(t, ['The engine picked the shortest line that keeps every protected word.']),
+      button(iconLabel('quill', 'Edit'), 'pl-campfire-iconbtn', () => {
         drafts.fuse[t.id] = { editing: true, text: t.autoText ?? '' };
         rerender();
-      }, { fk: 'edit-wording' }),
+      }, { fk: 'edit-wording', aria: 'Edit the wording' }),
     ];
   }
   return [
-    sharedLine(t),
-    el('p', 'pl-campfire-muted', t.autoText ? 'Your wording replaces the automatic text.' : 'No automatic text: the lines differ. The editor holds every line; write them as one.'),
+    sharedLine(t, [t.autoText ? 'Your wording replaces the automatic text.' : 'No automatic text: the lines differ. The editor holds every line; write them as one.']),
     editor(L, p.text, 'Write one line that keeps what each says.', (text) => {
       drafts.fuse[t.id] = { editing: true, text };
     }),
     t.autoText
-      ? button('Use the automatic text', '', () => {
+      ? button(iconLabel('repeat', 'Automatic'), 'pl-campfire-iconbtn', () => {
           delete drafts.fuse[t.id];
           rerender();
-        }, { fk: 'auto-text' })
+        }, { fk: 'auto-text', aria: 'Use the automatic text', tip: 'Use the automatic text' })
       : null,
   ];
 }
@@ -622,7 +665,9 @@ function editor(L: Live, value: string, label: string, onText: (t: string) => vo
     onText(ta.value);
     refresh();
   });
-  return el('label', 'pl-campfire-field', el('span', 'pl-campfire-label', label), ta, el('span', 'pl-campfire-muted', 'Enter seals · Escape cancels'));
+  // The field's sentence is its aria-label and tooltip; the key hint stays (R6: keys in a few words).
+  tip(ta, label);
+  return el('label', 'pl-campfire-field', ta, el('span', 'pl-campfire-muted', 'Enter seals · Esc cancels'));
 }
 
 function settleSlots(L: Live, p: Extract<M.Proposal, { kind: 'settle' }>): { slots: HTMLElement; detail: Kid } {
@@ -634,13 +679,13 @@ function settleSlots(L: Live, p: Extract<M.Proposal, { kind: 'settle' }>): { slo
     if (full) rerender();
     else refresh();
   };
-  const slot = (s: M.SettleSlot, label: string, disabled = false) => button(label, 'pl-campfire-slotbtn', () => set({ slot: s }), { pressed: d.slot === s, fk: `slot:${s}`, disabled });
+  const slot = (s: M.SettleSlot, label: string, full: string, disabled = false) => button(label, 'pl-campfire-slotbtn', () => set({ slot: s }), { pressed: d.slot === s, fk: `slot:${s}`, disabled, aria: full, tip: full });
   const slots = el(
     'div',
     'pl-campfire-slots',
-    slot('keep', 'Keep one'),
-    slot('separate', 'Separate the conditions', v.projects.length === 0),
-    slot('exception', 'Write an exception'),
+    slot('keep', 'Keep one', 'Keep one line; the other is cut'),
+    slot('separate', 'Separate', 'Separate the conditions: one line applies only in a project', v.projects.length === 0),
+    slot('exception', 'Exception', 'Write an exception onto one line'),
     button('Cancel', 'pl-campfire-slotbtn', () => {
       delete drafts.settle[t.id];
       cancelProposal();
@@ -649,12 +694,12 @@ function settleSlots(L: Live, p: Extract<M.Proposal, { kind: 'settle' }>): { slo
   const pick = (ids: string[], current: string, onPick: (id: string) => void, prefix: string, verb: string) =>
     el('div', 'pl-campfire-choices', ...ids.map((id) => button([`${verb}: `, el('span', 'pl-campfire-quoted', summaryOf(L, id))], 'pl-campfire-choice', () => onPick(id), { pressed: current === id, fk: `${prefix}:${id}` })));
   let detail: Kid = null;
-  if (d.slot === 'keep') detail = el('div', 'pl-campfire-detail', el('span', 'pl-campfire-label', 'Keep which line? The other is cut.'), pick(t.members, d.keep, (id) => set({ keep: id }), 'keep', 'Keep'));
+  if (d.slot === 'keep') detail = el('div', 'pl-campfire-detail', el('span', 'pl-campfire-label', 'Keep which line?', info('About keeping one', 'The other is cut.')), pick(t.members, d.keep, (id) => set({ keep: id }), 'keep', 'Keep'));
   if (d.slot === 'separate') {
     detail = el(
       'div',
       'pl-campfire-detail',
-      el('span', 'pl-campfire-label', 'Which line applies only in one project? The other gains an exception for it.'),
+      el('span', 'pl-campfire-label', 'Which line is project-only?', info('About separating', 'Which line applies only in one project? The other gains an exception for it.')),
       pick(t.members, d.bind, (id) => set({ bind: id }), 'bind', 'Only in a project'),
       el('span', 'pl-campfire-label', 'Which project?'),
       el('div', 'pl-campfire-choices', ...v.projects.map((pr) => button(pr.label, 'pl-campfire-choice', () => set({ projectKey: pr.key }), { pressed: d.projectKey === pr.key, fk: `project:${pr.key}` }))),
@@ -704,13 +749,14 @@ function resultHost(L: Live): HTMLElement {
 /** The preview with the campfire's words: card titles, case tags, a Read control per case. */
 function previewPart(L: Live, part: 'result' | 'detail'): HTMLElement {
   const v = L.p.view;
+  const settle = L.proposal?.kind === 'settle';
   const ctx: PreviewCtx = {
     title: (id) => (L.cards.has(id) ? cardTitle(L, id) : null),
     compact: L.geo.mode === 'desktop',
     caseLabel: (id) => M.caseTag(id, v, L.preview?.refs ?? []),
     onCase: (id) => L.p.api.inspect({ caseId: id }),
-    empty:
-      L.proposal?.kind === 'settle' ? 'Pick a slot: the lines as they would be exported show here before you seal. Cancel leaves the red thread.' : 'The preview shows here: the lines as they would be exported, the tokens per file and the cases.',
+    empty: settle ? 'Pick a slot.' : 'Preview shows here.',
+    emptyMore: settle ? 'Pick a slot: the lines as they would be exported show here before you seal. Cancel leaves the red thread.' : 'The preview shows here: the lines as they would be exported, the tokens per file and the cases.',
   };
   return part === 'result' ? resultPart(L.preview, ctx) : detailPart(L.preview, ctx);
 }
@@ -722,9 +768,17 @@ interface PreviewCtx {
   caseLabel(caseId: string): string | null;
   onCase: ((caseId: string) => void) | null;
   empty: string;
+  /** The full sentence behind the empty line's (i). */
+  emptyMore?: string;
 }
 
 const sect = (h: string, ...kids: Kid[]) => el('section', 'pl-campfire-sect', el('h3', 'pl-campfire-sect-h', h), ...kids);
+/** A section whose heading is a small icon (R12): the old heading is the icon's label and tooltip. */
+const sectIcon = (name: IconName, h: string, ...kids: Kid[]) => {
+  const s = el('section', 'pl-campfire-sect', el('h3', 'pl-campfire-sect-h is-icon', icon(name, h)), ...kids);
+  s.setAttribute('aria-label', h);
+  return s;
+};
 const lineRow = (text: string | null, title: string | null, struck: boolean, files: string[] = []) =>
   el(
     'li',
@@ -738,43 +792,50 @@ const lineRow = (text: string | null, title: string | null, struck: boolean, fil
 function resultPart(pv: ChangePreviewView | null, ctx: PreviewCtx): HTMLElement {
   const root = el('div', 'pl-campfire-seal pl-campfire-result');
   if (!pv) {
-    root.append(el('p', 'pl-campfire-muted', ctx.empty));
+    root.append(ctx.emptyMore ? withInfo('pl-campfire-muted', ctx.empty, 'About the preview', ctx.emptyMore) : el('p', 'pl-campfire-muted', ctx.empty));
     return root;
   }
   if (pv.refused) root.append(el('p', 'pl-campfire-refused', pv.refused));
   const cut = pv.after === null && pv.lines.length === 0;
-  if (cut) root.append(sect('Deleted from the files', el('ul', 'pl-campfire-lines', ...pv.before.map((b) => lineRow(b.text, ctx.title(b.id), true)))));
+  if (cut) root.append(sectIcon('cross', 'Deleted from the files', el('ul', 'pl-campfire-lines', ...pv.before.map((b) => lineRow(b.text, ctx.title(b.id), true)))));
   if (pv.after) {
     const a = pv.after;
+    // No heading: the sealed line, then its file chip (R12). The scope is an icon with its words in the tooltip.
+    const after = el(
+      'section',
+      'pl-campfire-sect',
+      el('p', 'pl-campfire-reading', inline(a.text, true)),
+      el(
+        'div',
+        'pl-campfire-chips',
+        // Only the files whose bytes change (P3 gate fix 10), never the card's targets as such.
+        ...(pv.changed.length ? pv.changed.map((f) => chip('folder', f, `changes ${f}`, 'pl-campfire-chip')) : [chip('folder', 'no change', 'no file changes', 'pl-campfire-chip')]),
+        icon('globe', `Scope: ${a.scope}`, a.scope),
+        a.trigger ? el('span', 'pl-campfire-chip', `when ${a.trigger}`) : null,
+        ...a.exceptions.map((x) => el('span', 'pl-campfire-chip is-kept', `kept: ${x}`)),
+      ),
+    );
+    after.setAttribute('aria-label', 'After the seal');
+    root.append(after);
+  }
+  if (pv.lines.length) root.append(sectIcon('seal', 'Exported after the seal', el('ul', 'pl-campfire-lines', ...pv.lines.map((l) => lineRow(l.text, ctx.title(l.id), l.text === null, l.files)))));
+  // The figures: tokens per changed file and the deck's cases, each a number with its unit; the sentences are tooltips.
+  const rows = M.weightRows(pv.ghost).filter((r) => pv.changed.length === 0 || pv.changed.includes(r.file as never));
+  const tokChip = (r: (typeof rows)[number]) => {
+    const short = r.delta.split(/ \(| · /)[0]!;
+    return chip('scale', rows.length > 1 ? `${r.file} ${short}` : short, `${r.file}: ${r.span} tok · ${r.delta} (${r.estimated})`, 'pl-campfire-figure pl-campfire-mono');
+  };
+  root.append(el('section', 'pl-campfire-sect pl-campfire-figures', ...rows.map(tokChip), chip('target', `${pv.cases.deckBefore} → ${pv.cases.deckAfter} cases`, pv.cases.text, 'pl-campfire-figure pl-campfire-cases')));
+  if (pv.cases.opened.length || pv.cases.addressed.length) {
     root.append(
-      sect(
-        'After the seal',
-        el('p', 'pl-campfire-reading', inline(a.text, true)),
-        el(
-          'div',
-          'pl-campfire-chips',
-          // Only the files whose bytes change (P3 gate fix 10), never the card's targets as such.
-          el('span', 'pl-campfire-chip', pv.changed.length ? `changes ${pv.changed.join(' and ')}` : 'no file changes'),
-          el('span', 'pl-campfire-chip', a.scope),
-          a.trigger ? el('span', 'pl-campfire-chip', `when ${a.trigger}`) : null,
-          ...a.exceptions.map((x) => el('span', 'pl-campfire-chip is-kept', `kept: ${x}`)),
-        ),
+      el(
+        'section',
+        'pl-campfire-sect',
+        pv.cases.opened.length ? el('div', '', el('span', 'pl-campfire-label', 'Reopens'), el('ul', 'pl-campfire-caselist', ...pv.cases.opened.map((id) => caseRow(id, ctx)))) : null,
+        pv.cases.addressed.length ? el('div', '', el('span', 'pl-campfire-label', 'Newly addressed'), el('ul', 'pl-campfire-caselist', ...pv.cases.addressed.map((id) => caseRow(id, ctx)))) : null,
       ),
     );
   }
-  if (pv.lines.length) root.append(sect('Exported after the seal', el('ul', 'pl-campfire-lines', ...pv.lines.map((l) => lineRow(l.text, ctx.title(l.id), l.text === null, l.files)))));
-  root.append(
-    sect(
-      'Token budget',
-      el('table', 'pl-campfire-weights', el('tbody', '', ...M.weightRows(pv.ghost).filter((r) => pv.changed.length === 0 || pv.changed.includes(r.file as never)).map((r) => el('tr', '', el('th', '', r.file), el('td', 'pl-campfire-mono', r.span), el('td', 'pl-campfire-delta', el('span', 'pl-campfire-mono', r.delta), ' ', el('span', 'pl-campfire-est', r.estimated)))))),
-    ),
-    sect(
-      'Cases',
-      el('p', 'pl-campfire-cases', pv.cases.text),
-      pv.cases.opened.length ? el('div', '', el('span', 'pl-campfire-label', 'Reopens'), el('ul', 'pl-campfire-caselist', ...pv.cases.opened.map((id) => caseRow(id, ctx)))) : null,
-      pv.cases.addressed.length ? el('div', '', el('span', 'pl-campfire-label', 'Newly addressed'), el('ul', 'pl-campfire-caselist', ...pv.cases.addressed.map((id) => caseRow(id, ctx)))) : null,
-    ),
-  );
   return root;
 }
 
@@ -791,7 +852,7 @@ function detailPart(pv: ChangePreviewView | null, ctx: PreviewCtx): HTMLElement 
   // On desktop the stack on the stage shows the lines as they stand; the panel keeps to the choice and the seal.
   if (!cut && !ctx.compact) root.append(sect('Now', el('ul', 'pl-campfire-lines', ...pv.before.map((b) => lineRow(b.text, ctx.title(b.id), false)))));
   if (pv.needsAcceptance.length) {
-    root.append(sect('Accept the new text', el('p', 'pl-campfire-muted', 'A new text binds nothing until you accept it for each case. After the seal, accept it here:'), el('ul', 'pl-campfire-caselist', ...pv.needsAcceptance.map(caseChip))));
+    root.append(el('section', 'pl-campfire-sect', el('h3', 'pl-campfire-sect-h', 'Accept after the seal', info('About accepting', 'A new text binds nothing until you accept it for each case.', { title: 'Accept the new text', body: ['A new text binds nothing until you accept it for each case. After the seal, accept it here.'] })), el('ul', 'pl-campfire-caselist', ...pv.needsAcceptance.map(caseChip))));
   }
   return root;
 }
@@ -801,7 +862,11 @@ function sealBarKids(L: Live): Kid[] {
   if (!p) return [];
   const { seal } = M.proposalTitle(p);
   const ok = !!L.seal.call;
-  const b = el('button', `pl-campfire-sealbtn${L.p.ui.reducedMotion ? ' is-static' : ''}`, el('span', 'pl-campfire-wax', ''), el('span', 'pl-campfire-seal-label', seal), el('small', 'pl-campfire-seal-sub', 'click, or press Enter · on touch, hold'), el('small', 'pl-campfire-seal-hold', 'keep holding'));
+  // R6: a verb on the button ("Seal", "Burn"); its full name is the accessible name, the keys are the tooltip.
+  const verb = p.kind === 'cut' ? 'Burn' : 'Seal';
+  const b = el('button', `pl-campfire-sealbtn${L.p.ui.reducedMotion ? ' is-static' : ''}`, el('span', 'pl-campfire-wax', ''), el('span', 'pl-campfire-seal-label', verb), el('small', 'pl-campfire-seal-hold', 'keep holding'));
+  b.setAttribute('aria-label', seal);
+  tip(b, `${seal}: click or Enter · on touch, hold`);
   b.type = 'button';
   b.dataset.role = 'seal';
   b.dataset.fk = 'seal';
@@ -855,21 +920,20 @@ function afterPanel(L: Live, a: AfterSeal): HTMLElement {
       el('span', '', (a.labels[id] = M.caseTag(id, L.p.view) ?? a.labels[id] ?? 'A reviewed case')),
       button('Read', 'pl-campfire-small', () => api.inspect({ caseId: id }), { fk: `after-read:${id}` }),
       a.bound.has(id)
-        ? el('span', 'pl-campfire-done', 'Accepted · now addressed')
+        ? tip(el('span', 'pl-campfire-done', iconSvg('tick'), ' Accepted'), 'Accepted · now addressed')
         : a.accepted.has(id)
-          ? el('span', 'pl-campfire-done', 'Accepted')
-          : button('Accept for this case', 'pl-campfire-small is-primary', () => {
+          ? el('span', 'pl-campfire-done', iconSvg('tick'), ' Accepted')
+          : button('Accept', 'pl-campfire-small is-primary', () => {
               a.sent = id;
               api.campfire.acceptMapping(a.resultId, id);
-            }, { fk: `accept:${id}` }),
+            }, { fk: `accept:${id}`, aria: 'Accept for this case' }),
     ),
   );
   return el(
     'div',
     'pl-campfire-after',
-    el('h2', 'pl-campfire-h', 'Accept the new line'),
+    el('h2', 'pl-campfire-h', 'Accept the new line', info('About accepting', 'The sealed text binds nothing until you accept it for a case.', { title: 'Accept the new line', body: ['The sealed text binds nothing until you accept it for a case. Read each case, then accept it where the line answers it.'] })),
     el('p', 'pl-campfire-reading', inline(a.text, true)),
-    el('p', 'pl-campfire-muted', 'The sealed text binds nothing until you accept it for a case. Read each case, then accept it where the line answers it.'),
     el('ul', 'pl-campfire-caselist', ...rows),
     button('Done', '', () => {
       local.after = null;
@@ -882,57 +946,62 @@ function selectedPanel(L: Live, c: CardView): HTMLElement {
   const { api, view: v } = L.p;
   const onShelf = v.piles.shelf.some((x) => x.id === c.id);
   const actions: Kid[] = [];
-  if (onShelf) {
-    actions.push(el('p', 'pl-campfire-muted', 'A shelf card returns only as a swap: drag it, or tap a deck card of the same family, to see the swap.'));
-  } else {
+  if (!onShelf) {
     actions.push(
-      button('Sharpen the wording', '', () => {
+      button(iconLabel('quill', 'Sharpen'), 'pl-campfire-iconbtn', () => {
         drafts.edit = { kind: 'sharpen', cardId: c.id, text: c.inspector.exact };
         rerender();
-      }, { fk: 'act:sharpen' }),
-      button('Into the fire', '', () => api.tapTarget({ kind: 'fire' }), { fk: 'act:fire' }),
+      }, { fk: 'act:sharpen', aria: 'Sharpen the wording' }),
+      button(iconLabel('fire', 'Burn'), 'pl-campfire-iconbtn', () => api.tapTarget({ kind: 'fire' }), { fk: 'act:fire', aria: 'Into the fire' }),
     );
     if (c.targets !== 'both') {
       const other = c.targets === 'claude' ? 'codex' : 'claude';
-      actions.push(button(`Also write it to ${FILE_OF[other]}`, '', () => api.tapTarget({ kind: 'book-retarget', lane: other }), { fk: 'act:widen' }));
+      actions.push(button(iconLabel('book', `+ ${FILE_OF[other]}`), 'pl-campfire-iconbtn', () => api.tapTarget({ kind: 'book-retarget', lane: other }), { fk: 'act:widen', aria: `Also write it to ${FILE_OF[other]}`, tip: `Also write it to ${FILE_OF[other]}` }));
     } else {
       for (const lane of ['claude', 'codex'] as const) {
-        actions.push(button(`Keep it in ${FILE_OF[lane]} only`, '', () => {
+        actions.push(button(iconLabel('book', `${FILE_OF[lane]} only`), 'pl-campfire-iconbtn', () => {
           drafts.edit = { kind: 'narrow', cardId: c.id, targets: lane };
           rerender();
-        }, { fk: `act:narrow-${lane}` }));
+        }, { fk: `act:narrow-${lane}`, aria: `Keep it in ${FILE_OF[lane]} only` }));
       }
     }
   }
-  actions.push(button('Inspect', '', () => api.inspect({ cardId: c.id }), { fk: 'act:inspect' }), button('Clear selection', '', () => api.select(null), { fk: 'act:clear' }));
+  actions.push(button('Inspect', '', () => api.inspect({ cardId: c.id }), { fk: 'act:inspect' }), button('Clear', '', () => api.select(null), { fk: 'act:clear', aria: 'Clear selection' }));
+  const about = onShelf ? 'A shelf card returns only as a swap: drag it, or tap a deck card of the same family, to see the swap.' : 'Or drag it: onto a card on its thread, into the fire, or onto the other book. Nothing changes until you seal.';
   return el(
     'div',
     'pl-campfire-selected',
-    el('h2', 'pl-campfire-h', c.face.title),
+    el('h2', 'pl-campfire-h', c.face.title, info('What you can do', about)),
     el('p', 'pl-campfire-reading', inline(c.inspector.exact, true)),
-    el('div', 'pl-campfire-chips', el('span', 'pl-campfire-chip', M.filesOf(c.targets)), el('span', 'pl-campfire-chip', c.scope), el('span', 'pl-campfire-chip pl-campfire-mono', `${c.weight} ${COPY.estimated}`)),
+    el('div', 'pl-campfire-chips', el('span', 'pl-campfire-chip', M.filesOf(c.targets)), el('span', 'pl-campfire-chip', c.scope), tip(el('span', 'pl-campfire-chip pl-campfire-mono', `${c.weight} tok`), `${c.weight} tok, ${COPY.estimated}`)),
     el('div', 'pl-campfire-actions', ...actions),
-    onShelf ? null : el('p', 'pl-campfire-muted', 'Or drag it: onto a card on its thread, into the fire, or onto the other book. Nothing changes until you seal.'),
   );
 }
 
 function tabsPanel(L: Live): HTMLElement {
   const { view: v, api } = L.p;
-  const tab = (k: typeof local.side, label: string) => button(label, 'pl-campfire-tab', () => {
+  // Icon, word and count on each tab (R12); what each pile means sits behind the (i) under the tabs.
+  const tab = (k: typeof local.side, name: IconName, label: string, full: string) => button(iconLabel(name, label), 'pl-campfire-tab', () => {
     local.side = k;
     rerender();
-  }, { pressed: local.side === k, fk: `side:${k}` });
-  const tabs = el('div', 'pl-campfire-tabs', tab('shelf', `Shelf · ${v.piles.shelfCount}`), tab('ash', `Ash · ${v.ashCount}`), tab('open', v.pinned ? 'Pinned page' : `Open · ${v.piles.openCount}`));
+  }, { pressed: local.side === k, fk: `side:${k}`, aria: full });
+  const tabs = el(
+    'div',
+    'pl-campfire-tabs',
+    tab('shelf', 'shelf', `Shelf ${v.piles.shelfCount}`, `Shelf · ${v.piles.shelfCount}`),
+    tab('ash', 'urn', `Ash ${v.ashCount}`, `Ash · ${v.ashCount}`),
+    tab('open', 'book', v.pinned ? 'Pinned' : `Open ${v.piles.openCount}`, v.pinned ? 'Pinned page' : `Open · ${v.piles.openCount}`),
+  );
   let body: HTMLElement;
   if (local.side === 'shelf') {
-    if (v.piles.shelfCount === 0) body = el('p', 'pl-campfire-muted', 'The shelf is empty. Cards you skip rest there; at the fire, drag one onto a deck card of the same family to see a swap.');
+    if (v.piles.shelfCount === 0) body = withInfo('pl-campfire-muted', 'Empty.', 'About the shelf', 'The shelf is empty. Cards you skip rest there; at the fire, drag one onto a deck card of the same family to see a swap.');
     else {
       const strip = el('div', 'pl-campfire-shelf', ...v.piles.shelf.map((c) => cardSlot(L, c, 'shelf', { size: L.geo.pairCard.size, source: true, target: false })));
       strip.dataset.sk = 'x:shelf';
-      body = el('div', '', el('p', 'pl-campfire-muted', 'Never written. Drag one onto a deck card of the same family to see the swap.'), strip);
+      body = el('div', '', withInfo('pl-campfire-muted', 'Drag onto a deck card to swap.', 'About the shelf', 'Never written. Drag one onto a deck card of the same family to see the swap.'), strip);
     }
   } else if (local.side === 'ash') {
-    if (v.ashCount === 0) body = el('p', 'pl-campfire-muted', 'Nothing burned yet. A cut card waits here until Apply, and you can restore it.');
+    if (v.ashCount === 0) body = withInfo('pl-campfire-muted', 'Empty.', 'About the ash', 'Nothing burned yet. A cut card waits here until Apply, and you can restore it.');
     else {
       body = el(
         'ul',
@@ -953,7 +1022,8 @@ function tabsPanel(L: Live): HTMLElement {
         }, { fk: 'reopened-done' }),
       )
     : null;
-  return el('div', 'pl-campfire-tabspanel', note, tabs, body, el('p', 'pl-campfire-muted pl-campfire-free', 'Leaving is free. Apply is where an open clasp waits.'));
+  // "Leaving is free. Apply is where an open clasp waits." is the Leave button's tooltip now.
+  return el('div', 'pl-campfire-tabspanel', note, tabs, body);
 }
 
 function openPanel(L: Live): HTMLElement {
@@ -966,7 +1036,7 @@ function openPanel(L: Live): HTMLElement {
       el('p', 'pl-campfire-tag', M.tagText(v.pinned.tag)),
       r.quote ? el('p', 'pl-campfire-quote', '“', inline(r.quote), '”') : el('p', 'pl-campfire-muted', 'Tool evidence only'),
       r.action || r.result ? el('p', 'pl-campfire-mono', inline([r.action, r.result].filter(Boolean).join(' → '))) : null,
-      el('p', 'pl-campfire-muted', 'Pinned as a puzzle. Each deck card shows whether it is eligible for this case: eligibility, never coverage. It is not a drop target.'),
+      withInfo('pl-campfire-muted', 'Pinned as a puzzle.', 'About pinning', 'Pinned as a puzzle. Each deck card shows whether it is eligible for this case: eligibility, never coverage. It is not a drop target.'),
       el(
         'ul',
         'pl-campfire-cands',
@@ -975,11 +1045,11 @@ function openPanel(L: Live): HTMLElement {
       el('div', 'pl-campfire-actions', button('Read the case', 'pl-campfire-small', () => api.inspect({ caseId: v.pinned!.caseId }), { fk: 'pin-read' }), button('Unpin', 'pl-campfire-small', () => api.campfire.pin(null), { fk: 'unpin' })),
     );
   }
-  if (v.piles.openCount === 0) return el('p', 'pl-campfire-muted', 'No Open pages: every confirmed case has a line in the proposal.');
+  if (v.piles.openCount === 0) return withInfo('pl-campfire-muted', 'None open.', 'About Open pages', 'No Open pages: every confirmed case has a line in the proposal.');
   return el(
     'div',
     '',
-    el('p', 'pl-campfire-muted', 'Pin one Open page as a puzzle: the deck shows which cards are eligible for it.'),
+    withInfo('pl-campfire-muted', 'Pin one as a puzzle.', 'About pinning', 'Pin one Open page as a puzzle: the deck shows which cards are eligible for it.'),
     el(
       'ul',
       'pl-campfire-openlist',
@@ -1008,7 +1078,7 @@ function bottomRow(L: Live): HTMLElement {
   }
   const tabs = el('nav', 'pl-campfire-lanetabs', ...M.LANE_TABS.map((t) => button(t.label, 'pl-campfire-lanetab', () => api.campfire.tab(t.tab), { pressed: v.tab === t.tab, fk: `lane:${t.tab}` })));
   tabs.setAttribute('aria-label', 'Lanes');
-  const leave = button('Leave the campfire', 'pl-campfire-leave', () => api.advance(), { fk: 'leave' });
+  const leave = button('Leave', 'pl-campfire-leave', () => api.advance(), { fk: 'leave', aria: 'Leave the campfire', tip: 'Leaving is free. Apply is where an open clasp waits.' });
   if (L.geo.mode !== 'phone') {
     tabs.style.left = px(L.geo.lane.x);
     leave.style.left = px(L.geo.stage.pad);
@@ -1037,7 +1107,10 @@ function fillWood(L: Live): void {
   ell.setAttribute('rx', '47');
   ell.setAttribute('ry', '47');
   ring.append(ell);
-  const fire = el('div', `pl-campfire-fire${hot ? ' is-hot' : ''}${lit ? ' is-lit' : ''}${L.anim?.kind === 'cut' ? ' is-burning' : ''}`, ring, el('span', 'pl-campfire-fire-label', lit ? 'Over the fire' : 'The fire'), el('span', 'pl-campfire-fire-ash', `Ash · ${v.ashCount}`));
+  // The fire and the ash as icons (R12); the words stay in the labels and tooltips.
+  const ash = tip(el('span', 'pl-campfire-fire-ash', iconSvg('urn'), ` ${v.ashCount}`), `Ash · ${v.ashCount}: burned cards wait here until Apply`);
+  ash.setAttribute('aria-label', `Ash · ${v.ashCount}`);
+  const fire = el('div', `pl-campfire-fire${hot ? ' is-hot' : ''}${lit ? ' is-lit' : ''}${L.anim?.kind === 'cut' ? ' is-burning' : ''}`, ring, el('span', 'pl-campfire-fire-label', iconSvg('fire'), lit ? ' Over the fire' : null), ash);
   fire.setAttribute('aria-label', 'The fire: drop a card here to see a cut');
   fire.style.width = px(geo.fire.w);
   fire.style.height = px(geo.fire.h);
@@ -1046,7 +1119,7 @@ function fillWood(L: Live): void {
   const lane = el('div', 'pl-campfire-lane', ...v.lanes[v.tab].map((c) => cardSlot(L, c, 'lane', { size: ui.bands.card.size, source: true, target: true })));
   lane.dataset.sk = `x:lane:${v.tab}`;
   lane.setAttribute('aria-label', `${M.LANE_TABS.find((t) => t.tab === v.tab)!.label} lane`);
-  if (v.lanes[v.tab].length === 0) lane.append(el('p', 'pl-campfire-empty', v.tab === 'both' ? 'No card is in both files yet. Drag a card onto the other book to see it in both.' : 'No cards in this lane.'));
+  if (v.lanes[v.tab].length === 0) lane.append(v.tab === 'both' ? withInfo('pl-campfire-empty', 'None in both files.', 'About this lane', 'No card is in both files yet. Drag a card onto the other book to see it in both.') : el('p', 'pl-campfire-empty', 'No cards in this lane.'));
   refreshBooks(L);
   const piles = el('div', 'pl-campfire-piles', Piles({ piles: v.piles, layout: ui.bands.piles.mode, shelfTarget: false, api, drag }));
   if (geo.mode === 'phone') {
