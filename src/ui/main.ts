@@ -12,7 +12,12 @@ import { newDeck, type DeckState } from '../deck/deck';
 import { budgetFor, weigh } from '../deck/file';
 import { asset } from './playloop/cards/dom';
 import { strapText } from './playloop/contract';
-import { actLine, mirrorTiles, routeIcon } from './mirror-view';
+import { actLine, mirrorRows, mirrorTiles, routeIcon } from './mirror-view';
+
+/** The mirror's tiles: the counts the act's rooms come from. */
+const ACT_COUNTS = ['Stops (you interrupted the agent)', 'The same instruction in several sessions', 'Same command failing again unchanged', 'Check → diff → report workflow'];
+/** The mirror's receipt line: the run's size and what was redacted. */
+const RECEIPT_COUNTS = ['Sessions', 'Projects', 'Secrets redacted while reading'];
 import { chip, icon, iconSvg, info, tip } from './info';
 import { browserStore, forgetApply, forgetGrants, keepGrants, keptGrants, loadApply, saveApply, type KeptGrants, type RememberedApply } from './persist';
 import { undoBundle } from '../apply/engine';
@@ -589,16 +594,31 @@ function viewMirror(): HTMLElement {
           read && (read.cancelled || read.failed > 0) && h('p', { class: 'mt-chips' }, chip('cross', read.cancelled ? 'partial run' : `${read.failed} files unread`, readSlip!, 'mt-warn')),
         ),
       ),
-      // Each count is an icon and the number with its unit; its definition (the old slip's words) sits behind its (i).
+      // The four counts the act's rooms are built from, as tiles; the run's size and the redactions as one receipt
+      // line; every other count sits in the "All counts" note (the mirror said too much at once).
       h(
         'ul',
         { class: 'mt-counts' },
-        ...mirrorTiles(m).map((t, i) =>
-          tip(
-            h('li', { class: `mt-slip mt-count ${['tilt-a', 'tilt-b', 'tilt-c', ''][i % 4]}`, 'data-def': t.def, 'aria-label': t.def }, iconSvg(t.icon), h('span', { class: 'mt-count-text' }, t.text), info(`About: ${t.label}`, t.label, { title: t.label, body: [t.def.slice(t.label.length + 2)] })),
-            t.label,
+        ...mirrorTiles(m)
+          .filter((t) => ACT_COUNTS.includes(t.label))
+          .map((t, i) =>
+            tip(
+              h('li', { class: `mt-slip mt-count ${['tilt-a', 'tilt-b', 'tilt-c', ''][i % 4]}`, 'data-def': t.def, 'aria-label': t.def }, iconSvg(t.icon), h('span', { class: 'mt-count-text' }, t.text), info(`About: ${t.label}`, t.label, { title: t.label, body: [t.def.slice(t.label.length + 2)] })),
+              t.label,
+            ),
           ),
-        ),
+      ),
+      h(
+        'p',
+        { class: 'mt-slip mt-receipt mt-chips' },
+        ...mirrorTiles(m)
+          .filter((t) => RECEIPT_COUNTS.includes(t.label))
+          .map((t) => {
+            const c = chip(t.icon, t.text, t.def, 'mt-receipt-item');
+            c.setAttribute('data-def', t.def);
+            return c;
+          }),
+        info('All counts', 'Every count from the sessions', { title: 'All counts', body: [h('ul', { class: 'mt-all-counts' }, ...mirrorRows(m).map(([k, v]) => h('li', { 'data-def': `${k}: ${v}` }, h('b', {}, k), ` ${v}`)))] }),
       ),
       S.mode === 'real' &&
         !S.dirs.codexLoaded &&

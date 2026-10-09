@@ -46,11 +46,15 @@ describe('end to end on the built app (Chrome for Testing)', () => {
         expect(run).toContain('Codex sessions1');
         await p.click('Start the run');
         await p.until("document.querySelector('h1')?.textContent === 'What your sessions show'");
-        // Each count tile shows the number with its unit; its definition (label: value) rides on data-def and its (i).
-        const rows = await p.eval<string[]>("[...document.querySelectorAll('.mt-count')].map((e) => e.dataset.def)");
+        // The act's counts are tiles and the run's size is the receipt line, each with its definition on data-def; every
+        // other count sits in the "All counts" note.
+        const rows = await p.eval<string[]>("[...document.querySelectorAll('.mt-count, .mt-receipt-item')].map((e) => e.dataset.def)");
         expect(rows.find((r) => r.startsWith('Sessions'))).toStartWith('Sessions: 2 (Claude Code 1, Codex 1)');
-        expect(rows.find((r) => r.startsWith('Tool calls'))).toContain('interrupted, no result');
-        expect(await p.eval<string[]>(text('.mt-count-text'))).toContain('2 sessions');
+        expect(await p.eval<string[]>(text('.mt-receipt-item .ui-chip-text'))).toContain('2 sessions');
+        await p.eval("document.querySelector('.mt-receipt [aria-label=\"All counts\"]').click()");
+        await p.until("document.querySelector('.ui-note')?.textContent.includes('Tool calls')");
+        expect(await p.eval<string>("document.querySelector('.ui-note').textContent")).toContain('interrupted, no result');
+        await p.key('Escape');
         // "Start the act" sits at the top of the mirror, under one line saying what the page is.
         const top = await p.eval<number>("[...document.querySelectorAll('button')].find((b) => b.textContent === 'Start the act').getBoundingClientRect().top");
         expect(top).toBeLessThan(300);

@@ -219,7 +219,8 @@
   touch-action: none;
 }
 .pl-room-head-img, .pl-room-lantern { position: absolute; inset: 0; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; pointer-events: none; }
-.pl-room-hit { position: absolute; background: transparent; border: 0; padding: 0; cursor: pointer; border-radius: 8px; }
+/* The page-wide button:hover paints a paper well; a head's hit area must stay invisible on hover. */
+.pl-room-hit, .pl-room-hit:hover:not(:disabled) { position: absolute; background: transparent; border: 0; padding: 0; cursor: pointer; border-radius: 8px; }
 .pl-room-hit:focus-visible { outline: 2px solid var(--pl-room-ink); outline-offset: 2px; }
 
 /* wrapped: a paper wrap over the silhouette (the head png masks the overlay) */
@@ -233,7 +234,8 @@
   mask-repeat: no-repeat;
   background-color: rgba(246, 237, 221, 0.62);
 }
-.pl-room-wrap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* The wrap is a plain paper veil: the diagonal binding lines read as a glitch, so they are not drawn. */
+.pl-room-wrap svg { display: none; }
 .pl-room-head.is-wrapped .pl-room-head-img { filter: grayscale(0.6) contrast(0.8) brightness(1.04); }
 .pl-room-head.is-standing .pl-room-head-img { filter: sepia(0.35) saturate(1.3) brightness(0.9); }
 .pl-room-head.is-bound { transform: translate(var(--fx, 0px), var(--fy, 0px)) scaleY(0.3); }
@@ -274,6 +276,7 @@
 .pl-room-tagrow { position: relative; display: flex; gap: 8px; }
 .pl-room-tagrow::before { content: ''; position: absolute; left: 0; right: 0; top: 7px; bottom: 7px; background: var(--pl-room-paper); border: 1px solid var(--pl-room-ink); border-radius: 3px; pointer-events: none; }
 .pl-room-tagrow .pl-room-tagpart + .pl-room-tagpart::before { content: ''; position: absolute; left: -4px; top: 13px; bottom: 13px; border-left: 1px solid var(--pl-room-line); }
+.pl-room-tagpart:hover:not(:disabled) { background: transparent; }
 .pl-room-tagpart {
   position: relative;
   z-index: 1;
@@ -431,3 +434,50 @@
 .pl-room-scope-chip { display: inline-flex; align-items: center; gap: 4px; }
 .pl-room-scope-chip.is-warn { border-color: #b86a74; }
 .pl-room-buttons { align-items: center; }
+
+/* ---------------------------------------------------------------- judging: the slip front and centre (owner 10-10) */
+.pl-room { position: relative; }
+.pl-room-spacer { flex: 0 0 auto; }
+.pl-room-side.is-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  overflow: visible;
+  padding-bottom: 0;
+}
+.pl-room-slip.is-speech {
+  position: relative;
+  padding: 16px 22px 18px;
+  gap: 10px;
+  border: 1.5px solid var(--pl-room-ink);
+  border-radius: 10px;
+  box-shadow: 0 2px 0 rgba(65, 41, 31, 0.35), 0 10px 24px rgba(65, 41, 31, 0.22);
+  overflow: visible;
+}
+/* the bubble's tail points up at the beast */
+.pl-room-slip.is-speech::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -13px;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  background: var(--pl-room-paper);
+  border-left: 1.5px solid var(--pl-room-ink);
+  border-top: 1.5px solid var(--pl-room-ink);
+  transform: rotate(45deg);
+}
+.is-center .pl-room-slip { max-height: inherit; }
+.pl-room-slip.is-speech .pl-room-slip-head { justify-content: space-between; }
+.pl-room-say { display: grid; grid-template-columns: 92px 1fr; gap: 12px; align-items: baseline; }
+.pl-room-say-k { font: 600 12px/1.2 var(--pl-room-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--pl-room-soft); text-align: right; }
+.pl-room-say .pl-room-mono { font-size: 15px; }
+.pl-room-say.is-quote .pl-room-quote { font-size: 23px; line-height: 1.3; }
+.pl-room-say.is-quote .pl-room-say-k { color: var(--pl-room-ink); }
+.pl-room-ask-q { margin: 4px 0 0; font: 600 20px/1.2 var(--pl-room-title, var(--pl-room-body)); text-align: center; }
+.pl-room-slip.is-speech .pl-room-stamps { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.pl-room-slip.is-speech .pl-room-stamp { min-height: 64px; }
+.pl-room-slip.is-speech .pl-room-stamp-word { font: 600 15px/1.2 var(--pl-room-body); letter-spacing: 0; text-transform: none; }
+.pl-room-slip.is-speech .pl-room-stamp svg { width: 22px; height: 22px; }

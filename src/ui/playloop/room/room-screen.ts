@@ -226,7 +226,10 @@ function compose(p: ScreenProps<RoomView>, event: boolean): HTMLElement {
   const arena = el('div', 'pl-room-arena', beast);
   arena.style.height = `${arenaH}px`;
   if (!phone) arena.style.width = `${cols.arena}px`;
-  const side = el('div', 'pl-room-side', ReceiptStage({ room: v, api: p.api }));
+  // While heads wait for stamps (desktop and tablet) the slip leaves the side column for the centre of the table, under
+  // the beast, larger: it is the one thing to read. After the deal it returns to the side.
+  const center = judging && !phone;
+  const side = el('div', `pl-room-side${center ? ' is-center' : ''}`, ReceiptStage({ room: v, api: p.api, speech: center }));
   if (phone) {
     // One scroller under the beast: slip, prompt, wording, then the controls, which stick to its bottom edge once
     // judging is done (while heads wait for stamps the slip needs the room).
@@ -235,11 +238,21 @@ function compose(p: ScreenProps<RoomView>, event: boolean): HTMLElement {
     root.append(arena, scroller);
   } else {
     const rail = el('div', 'pl-room-rail', askBox(p), scopeBox(p), wordingBox(p), controlsBox(p));
-    side.style.width = `${cols.side}px`;
     rail.style.width = `${cols.rail}px`;
-    side.style.maxHeight = `${stageH - 8}px`;
     rail.style.maxHeight = `${stageH - 8}px`;
-    root.append(side, arena, rail);
+    if (center) {
+      // A spacer keeps the beast where it stands; the slip sits centred on the shore line and the wood below it.
+      const spacer = el('div', 'pl-room-spacer');
+      spacer.style.width = `${cols.side}px`;
+      side.style.width = `${Math.min(720, b.viewport.w - 2 * cols.pad - 2 * 200)}px`;
+      side.style.top = `${Math.round(stageH * 0.74)}px`;
+      side.style.maxHeight = `${Math.max(240, b.viewport.h - (b.header.y + b.header.h) - Math.round(stageH * 0.74) - 64)}px`;
+      root.append(spacer, arena, rail, side);
+    } else {
+      side.style.width = `${cols.side}px`;
+      side.style.maxHeight = `${stageH - 8}px`;
+      root.append(side, arena, rail);
+    }
   }
   return root;
 }

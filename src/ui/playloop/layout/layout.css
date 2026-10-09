@@ -141,3 +141,6 @@
 .pl-layout-notice { margin-left: auto; padding-left: 12px; border-left: 2px solid var(--pl-cards-ink, #41291f); color: var(--pl-cards-ink, #41291f); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .pl-layout-phone .pl-layout-statusbar { padding: 0 16px; gap: 10px; font-size: 12px; }
 .pl-layout-phone .pl-layout-notice { white-space: normal; line-height: 14px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+
+/* While the room's slip is centred (judging), the books and piles wait dimmed and the slip paints over them. */
+.pl-layout-table:has(.pl-room-side.is-center) .pl-layout-wood { z-index: 0; }

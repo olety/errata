@@ -55,10 +55,13 @@ function stampedLike(v: RoomView): { stamp: Exclude<HeadView['disposition'], 'un
 }
 
 /** One complete receipt at a time with a visible queue and immediate advance; the four stamps (§0a.6, §0a.13). */
-export function ReceiptStage(p: { room: RoomView; api: ControllerApi }): HTMLElement {
+export function ReceiptStage(p: { room: RoomView; api: ControllerApi; speech?: boolean }): HTMLElement {
   const v = p.room;
   const r = v.receipts.current;
-  const root = el('section', 'pl-room-slip');
+  // speech: while heads wait for stamps the slip is the room's centre, the beast's speech bubble, read top to bottom:
+  // what the agent did, what you said, what happened, and the question.
+  const speech = !!p.speech;
+  const root = el('section', `pl-room-slip${speech ? ' is-speech' : ''}`);
   root.setAttribute('aria-label', 'Receipt');
   if (!r) {
     root.append(el('p', 'pl-room-slip-empty', 'No receipt to read in this room.'));
@@ -68,19 +71,27 @@ export function ReceiptStage(p: { room: RoomView; api: ControllerApi }): HTMLEle
   const workshop = v.kind === 'workshop';
   const { position, total } = v.receipts.progress;
   const headRow = el('header', 'pl-room-slip-head', el('span', 'pl-room-slip-count', workshop ? `Session ${position} of ${total}` : `Receipt ${position} of ${total}`));
-  root.append(
-    headRow,
-    tagLine(head, r),
-    r.quote
-      ? el('blockquote', 'pl-room-quote', '“', codeText(r.quote), '”', r.pasted ? el('small', 'pl-room-pasted', ' pasted') : null)
-      : el('p', 'pl-room-noquote', 'Tool evidence only'),
-  );
-  const act = el('div', 'pl-room-act');
-  if (r.action) act.append(el('div', 'pl-room-act-line', el('span', 'pl-room-act-k', 'did'), el('span', 'pl-room-mono', codeText(r.action))));
-  if (r.result) act.append(el('div', 'pl-room-act-line', el('span', 'pl-room-act-k', '→'), el('span', 'pl-room-mono', codeText(r.result))));
-  // What came after the repeats (it broke the loop), never between them: say so (cold run 2: read as "changed").
-  if (r.then) act.append(el('div', 'pl-room-act-line', el('span', 'pl-room-act-k', head?.rings ? 'after the repeats' : 'then'), el('span', 'pl-room-mono', codeText(r.then))));
-  if (act.childNodes.length) root.append(act);
+  const quote = r.quote
+    ? el('blockquote', 'pl-room-quote', '“', codeText(r.quote), '”', r.pasted ? el('small', 'pl-room-pasted', ' pasted') : null)
+    : el('p', 'pl-room-noquote', 'Tool evidence only');
+  if (speech) {
+    // The story in order: before (the agent's action), your words, after (the result, then what broke the loop).
+    headRow.append(tagLine(head, r));
+    const line = (k: string, body: Node | string, cls = '') => el('div', `pl-room-say${cls}`, el('span', 'pl-room-say-k', k), body);
+    root.append(headRow);
+    if (r.action) root.append(line('Agent did', el('span', 'pl-room-mono', codeText(r.action))));
+    root.append(line(r.quote ? 'You said' : 'You', quote, ' is-quote'));
+    const after = [r.result, r.then].filter(Boolean).join(' · then ');
+    if (after) root.append(line('Then', el('span', 'pl-room-mono', codeText(after))));
+  } else {
+    root.append(headRow, tagLine(head, r), quote);
+    const act = el('div', 'pl-room-act');
+    if (r.action) act.append(el('div', 'pl-room-act-line', el('span', 'pl-room-act-k', 'did'), el('span', 'pl-room-mono', codeText(r.action))));
+    if (r.result) act.append(el('div', 'pl-room-act-line', el('span', 'pl-room-act-k', '→'), el('span', 'pl-room-mono', codeText(r.result))));
+    // What came after the repeats (it broke the loop), never between them: say so (cold run 2: read as "changed").
+    if (r.then) act.append(el('div', 'pl-room-act-line', el('span', 'pl-room-act-k', head?.rings ? 'after the repeats' : 'then'), el('span', 'pl-room-mono', codeText(r.then))));
+    if (act.childNodes.length) root.append(act);
+  }
   // The rings are evidence, never the beast's health: say what they count first (cold run 2: read as HP).
   // Text-density pass: the count with its unit on the slip; the sentence in the tooltip and behind the (i).
   if (head?.rings) {
@@ -111,6 +122,7 @@ export function ReceiptStage(p: { room: RoomView; api: ControllerApi }): HTMLEle
       tip(b, `${s.label} · key ${s.key.toUpperCase()}`);
       stamps.append(b);
     }
+    if (speech && live) root.append(el('p', 'pl-room-ask-q', 'Was this a problem?'));
     root.append(stamps);
     // After the first stamp, a secondary control stamps each remaining head the same way, one act per head, each
     // re-stampable from the queue (P3 gate fix G). It is offered only once the player has read and stamped one.
