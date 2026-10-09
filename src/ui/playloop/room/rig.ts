@@ -60,7 +60,9 @@ function neckWidths(collars: readonly { at: Pt; w: number }[], plan: readonly [n
 
 // Socket allocation (Astra, astra-neck §5): the x order of sockets and head points is always 3, 1, 0, 2, 4.
 const ONE_EACH: [number, number][] = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]];
-const WYRM_PLAN: [number, number][] = [[0, 0], [0, -0.16], [1, 0], [0, -0.32], [2, 0]];
+// R15 (necks): the wyrm's first three necks take a collar each, left to right (1 on the tall front collar, 0 on the
+// middle one, 2 on the back one), so no two necks leave one collar until a fourth head comes.
+const WYRM_PLAN: [number, number][] = [[1, 0], [0, 0], [2, 0], [0, -0.32], [2, 0.32]];
 const ONE_COLLAR: [number, number][] = [[0, 0], [0, -0.16], [0, 0.16], [0, -0.32], [0, 0.32]];
 // P3 (Astra, astra-rig five heads): one collar carrying a three-over-two crown spreads its sockets wider, so the
 // outer necks leave the collar on their own side.
@@ -93,7 +95,7 @@ export const RIGS: Record<Skin, Rig> = {
     headPlate: { w: 1225, h: 1284 },
     bodyBox: { x0: 0.0084, y0: 0.005, x1: 0.9909, y1: 0.995 },
     collars: WYRM_COLLARS,
-    // Three collars, five necks: the tall front collar carries the anchor and two more.
+    // Three collars, five necks: one neck per collar up to three heads; the fourth and fifth share the outer collars.
     sockets: socketsOn(WYRM_COLLARS, WYRM_PLAN),
     neckW: neckWidths(WYRM_COLLARS, WYRM_PLAN),
     heads: [[0.47, -0.17], [0.15, -0.08], [0.8, 0.02], [-0.17, 0.0], [1.12, 0.2]],
@@ -231,14 +233,88 @@ export interface RigPlace {
   shadow: Rect;
 }
 
-/** The head sprite box for socket i at plate height Hp (origin at the plate's top-left). */
-function headBox(rig: Rig, i: number, Hp: number): { box: Rect; at: { x: number; y: number } } {
+/** The head sprite box for head point `p` (normalized) at plate height Hp (origin at the plate's top-left). */
+function headBox(rig: Rig, p: Pt, Hp: number): { box: Rect; at: { x: number; y: number } } {
   const Wp = Hp * (rig.plate.w / rig.plate.h);
-  const p = rig.heads[i]!;
   const hh = rig.headScale * Hp;
   const hw = hh * (rig.headPlate.w / rig.headPlate.h);
   const at = { x: p[0] * Wp, y: p[1] * Hp };
   return { box: { x: at.x - rig.headAnchor[0] * hw, y: at.y - rig.headAnchor[1] * hh, w: hw, h: hh }, at };
+}
+
+/**
+ * Necks never cross (R15): pair head points with sockets in x order, the k-th leftmost head point to the k-th leftmost
+ * socket (ties keep their index order). Returns, for each socket (by its index in `socketXs`), the index of its head
+ * point in `headXs`. Pure; the heads keep their identity, so a head's tag, glow and rings follow it to its point.
+ */
+export function pairSockets(headXs: readonly number[], socketXs: readonly number[]): number[] {
+  const rank = (xs: readonly number[]) => xs.map((x, i) => [x, i] as const).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(([, i]) => i);
+  const hs = rank(headXs);
+  const out: number[] = [];
+  rank(socketXs).forEach((s, k) => {
+    out[s] = hs[k]!;
+  });
+  return out;
+}
+
+/** The longest neck, in head heights (R15): a head further from its socket comes down its own neck line. */
+export const NECK_MAX = 1;
+/** Neighbouring head sprites may layer by at most this share of a head's width (the fit test allows the same). */
+const LAYER = 0.15;
+
+function layered(a: Rect, b: Rect): boolean {
+  const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return ox > LAYER * Math.min(a.w, b.w) + 1e-9 && oy > 1e-9;
+}
+
+/** Do segments ab and cd cross (proper intersection)? */
+export function segmentsCross(a: Pt, b: Pt, c: Pt, d: Pt): boolean {
+  const o = (p: Pt, q: Pt, r: Pt) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+  return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
+}
+
+/**
+ * The head points for the sockets in use, in rig space: paired in x order, then each ribbon neck longer than NECK_MAX
+ * head heights settles toward its socket (straight down where it can, else along its own line), lowest heads first, as
+ * far as it goes without layering onto another head more than the fit allows or crossing another neck. A head that
+ * cannot come all the way keeps the closest clear point; the drawn point is always clear.
+ */
+export function headPoints(rig: Rig, used: readonly number[]): Pt[] {
+  const pair = pairSockets(used.map((s) => rig.heads[s]![0]), used.map((s) => rig.sockets[s]![0]));
+  const pts: Pt[] = used.map((_, k) => rig.heads[used[pair[k]!]!]!);
+  if (rig.neck !== 'ribbon') return pts;
+  const aspect = rig.plate.w / rig.plate.h;
+  const sk = used.map((s) => rig.sockets[s]!);
+  // Rig space in plate heights on both axes, for lengths and crossings.
+  const sq = (p: Pt): Pt => [p[0] * aspect, p[1]];
+  const boxes = pts.map((p) => headBox(rig, p, 1).box);
+  const most = NECK_MAX * rig.headScale;
+  const order = used.map((_, k) => k).sort((a, b) => pts[b]![1] - pts[a]![1] || used[a]! - used[b]!);
+  for (const k of order) {
+    const s = sk[k]!;
+    const p = pts[k]!;
+    const dx = (p[0] - s[0]) * aspect;
+    const len = Math.hypot(dx, p[1] - s[1]);
+    if (len <= most) continue;
+    // The target: straight down to one head height when the head stays well above its socket, else along the line.
+    const rise = Math.sqrt(Math.max(0, most * most - dx * dx));
+    const target: Pt = rise >= 0.35 * most ? [p[0], s[1] - rise * 0.995] : [s[0] + (p[0] - s[0]) * (most / len) * 0.995, s[1] + (p[1] - s[1]) * (most / len) * 0.995];
+    const at = (t: number): Pt => [target[0] + (p[0] - target[0]) * t, target[1] + (p[1] - target[1]) * t];
+    const clear = (q: Pt) => {
+      const b = headBox(rig, q, 1).box;
+      return pts.every((o, j) => j === k || (!layered(b, boxes[j]!) && !segmentsCross(sq(s), sq(q), sq(sk[j]!), sq(o))));
+    };
+    for (let i = 0; i < 40; i++) {
+      const q = at(i / 40);
+      if (clear(q)) {
+        pts[k] = [round(q[0]), round(q[1])];
+        boxes[k] = headBox(rig, pts[k]!, 1).box;
+        break;
+      }
+    }
+  }
+  return pts;
 }
 
 /**
@@ -247,17 +323,18 @@ function headBox(rig: Rig, i: number, Hp: number): { box: Rect; at: { x: number;
  */
 export function fitRig(rig: Rig, sockets: readonly number[], maxH: number, maxW = Infinity): RigPlace {
   const used = sockets.filter((s) => s >= 0 && s < rig.heads.length);
+  const points = headPoints(rig, used);
   // Bounding box at Hp = 1.
   let x0 = rig.body ? rig.bodyBox.x0 * (rig.plate.w / rig.plate.h) : Infinity;
   let x1 = rig.body ? rig.bodyBox.x1 * (rig.plate.w / rig.plate.h) : -Infinity;
   let y0 = rig.body ? rig.bodyBox.y0 : Infinity;
   const y1 = rig.bodyBox.y1;
-  for (const s of used) {
-    const { box } = headBox(rig, s, 1);
+  used.forEach((s, k) => {
+    const { box } = headBox(rig, points[k]!, 1);
     x0 = Math.min(x0, box.x);
     x1 = Math.max(x1, box.x + box.w);
     y0 = Math.min(y0, box.y, rig.neck === 'string' ? rig.sockets[s]![1] : Infinity);
-  }
+  });
   if (!Number.isFinite(x0)) {
     x0 = 0;
     x1 = rig.plate.w / rig.plate.h;
@@ -273,8 +350,8 @@ export function fitRig(rig: Rig, sockets: readonly number[], maxH: number, maxW 
   const ox = -x0 * Hp;
   const oy = -y0 * Hp;
   const body = rig.body ? { x: ox, y: oy, w: Wp, h: Hp } : null;
-  const heads = used.map((s) => {
-    const { box, at } = headBox(rig, s, Hp);
+  const heads = used.map((s, k) => {
+    const { box, at } = headBox(rig, points[k]!, Hp);
     const sk = rig.sockets[s]!;
     return {
       socket: s,
