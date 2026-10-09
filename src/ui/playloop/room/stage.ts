@@ -151,7 +151,7 @@ export function ReceiptStage(p: { room: RoomView; api: ControllerApi }): HTMLEle
         { aria: label, pressed: cur },
       );
       b.append(sigil(h.tag.agent, 14), el('span', 'pl-room-qdate', shortDate(h.tag.date) ?? '·'), el('span', 'pl-room-qmark', ''));
-      b.title = label;
+      tip(b, label);
       q.append(b);
     }
     headRow.append(q);

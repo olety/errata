@@ -111,7 +111,7 @@ function BuckleToggle(book: HTMLElement, b: BookView, p: BooksProps, onChange: (
   if (!clasp || !clasp.parentElement) return null;
   const toggle = el('button', 'pl-cards-buckle-btn');
   toggle.type = 'button';
-  toggle.title = 'Raise the token budget';
+  tip(toggle, 'Raise the token budget');
   toggle.setAttribute('aria-label', `Raise ${b.file}'s token budget`);
   clasp.parentElement.replaceChild(toggle, clasp);
   toggle.append(clasp);
@@ -300,7 +300,7 @@ function Tab(b: BookView, ghost: GhostDelta | null, dest: boolean, p: BooksProps
   if (sync) toggles.push(sync);
   tab.dataset.lane = b.lane;
   tab.setAttribute('aria-label', strapLabel(b));
-  if (b.blocked) tab.title = b.blocked;
+  if (b.blocked) tip(tab, b.blocked);
   return tab;
 }
 

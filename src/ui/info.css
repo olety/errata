@@ -76,7 +76,8 @@
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: transparent;
+  /* A paper disc behind the glyph, so an (i) that sits on the wood or the lake stays legible. */
+  background: #fff9ee;
   color: #41291f;
   cursor: help;
   vertical-align: middle;
@@ -90,7 +91,7 @@
   border-radius: 50%;
 }
 .ui-info:hover {
-  background: rgba(65, 41, 31, 0.08);
+  background: #f3e7d3;
 }
 
 .ui-tip {

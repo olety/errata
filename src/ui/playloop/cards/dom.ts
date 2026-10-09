@@ -133,7 +133,8 @@ export function Sigil(agent: Agent, on: boolean): HTMLElement {
       ? 'M8 1.5 9.3 6.2 13.6 4 10.4 7.6 14.5 9.6 9.8 9.4 10.4 14.3 8 10.1 5.6 14.3 6.2 9.4 1.5 9.6 5.6 7.6 2.4 4 6.7 6.2Z'
       : 'M2.6 4.2 7.2 8l-4.6 3.8M8.6 12.2h5';
   const s = el('span', `pl-cards-sigil pl-cards-sigil-${agent}${on ? ' is-on' : ''}`);
-  s.title = on ? `${name}: in this card's targets` : `${name}: not targeted`;
+  // The agent glyph names its agent in the shared tooltip (text-density pass, R4).
+  s.setAttribute('data-tip', `${agent === 'claude' ? 'Claude Code' : 'Codex'}${on ? '' : ' · not targeted'}`);
   s.append(svg('0 0 16 16', '', [{ d, fill: agent === 'claude' }], on ? `${name}, targeted` : `${name}, not targeted`));
   return s;
 }
