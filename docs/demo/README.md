@@ -1,6 +1,8 @@
 # The demo film
 
-`errata-demo-16x9.mp4`: 33.8 s, 1920 × 1080, H.264 High yuv420p, 30 fps, AAC 48 kHz stereo, −16 LUFS. It follows [SCRIPT.md](SCRIPT.md) beat by beat on the built site and the synthetic sample. This page says how it was made.
+`errata-demo-16x9.mp4`: 34.4 s, 1920 × 1080, H.264 High yuv420p, 30 fps, AAC 48 kHz stereo, −16 LUFS. It follows [SCRIPT.md](SCRIPT.md) beat by beat on the built site and the synthetic sample. This page says how it was made.
+
+Re-captured on 2026-10-10 after the text-density pass, so the film matches the live site. The narration, the caption slips and the title and end cards are the 10-07 ones; the gameplay was recorded again on the same route with the new UI and cut the same way. On screen now: the stamps are ink marks with their word under them; the books show "budget" and "104 / 1,200 tok"; the card footer is an eye "3 sessions" and a target "3 cases"; the coach lines are eight words at most (the poster shows "Drag the card onto the beast."); the campfire threads carry a knot, and the merge preview shows "−19 tok" and "3 → 3 cases"; the buttons read Seal, Leave and Undo; the boss tally reads "Later cases 2 / 2". Beat 2 runs about 0.75 s longer: after the third stamp the pointer rests on the CLAUDE.md book's (i) and its tooltip opens ("~/.claude/CLAUDE.md · 104 of 1,200 used · 1,096 left"), the only tooltip in the film. Between actions the pointer rests in an empty corner, so no other tooltip opens by hover.
 
 ## Capture
 
@@ -11,8 +13,8 @@
 
 ## What the film leaves out of SCRIPT.md
 
-- Beat 4: the force-push merge shows only from its preview ("CLAUDE.md 153 → 147") to the seal; the thread and card clicks before it are cut.
-- Beat 5: the second boss head (Codex · pyramid · 2026-10-05) was played on the take but is cut; the film goes from the first answered head to the score sheet, "Later cases: 2 of 2 addressed".
+- Beat 4: the force-push merge shows only from its preview ("−6 tok") to the seal; the thread and card clicks before it are cut.
+- Beat 5: the second boss head (Codex · pyramid · 2026-10-05) was played on the take but is cut; the film goes from the first answered head to the score sheet, "Later cases 2 / 2".
 - The sample's loading message before the mirror.
 
 ## Voice
